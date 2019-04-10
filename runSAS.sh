@@ -8,9 +8,9 @@
 #            : The list of programs/jobs are provided as an input.                                                   #
 #            : It is useful for SAS 9.x environments where a third-party job scheduler is not installed .            #
 #                                                                                                                    #
-#     Version: 6.0                                                                                                   #
+#     Version: 6.1                                                                                                   #
 #                                                                                                                    #
-#        Date: 29/03/2019                                                                                            #
+#        Date: 10/04/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D (all copyrights reserved)                                                            #
 #                                                                                                                    #
@@ -76,7 +76,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|6|.|0|
+|r|u|n|S|A|S| |v|6|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -593,7 +593,7 @@ function backup_directory(){
 #   In: (1) A SAS deployed job name (e.g: 99_Execute_Scoring_Component_Graph)
 #       (2) SAS BatchServer directory name (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer)
 #       (3) SAS BatchServer shell script (e.g.: sasbatch.sh)
-#       (4) SAS BatchServer logs directory (e.g.: /SASInside/GFS/logs)
+#       (4) SAS BatchServer logs directory (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer/logs)
 #       (5) SAS deployed jobs directory  (e.g.: /SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs)
 #  Out: <NA>
 #------
@@ -617,37 +617,29 @@ function runSAS(){
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
     if [[ "$run_from_mode" -ne "1" ]]; then
-        if [ $run_hpeng_delete_job == N ]; then
-            write_skipped_job_details_on_screen $1
-            continue
-        fi
+        write_skipped_job_details_on_screen $1
+        continue
     fi
 
     # Run a single job
     run_a_single_job_mode_check
     if [[ "$run_a_job_mode" -ne "1" ]]; then
-        if [ $run_hpeng_delete_job == N ]; then
-            write_skipped_job_details_on_screen $1
-            continue
-        fi
+        write_skipped_job_details_on_screen $1
+        continue
     fi
 
     # Run until a job mode: The script will run everything (including) until the specified job
     run_until_a_job_mode_check
     if [[ "$run_until_mode" -gt "1" ]]; then
-        if [ $run_hpeng_delete_job == N ]; then
-            write_skipped_job_details_on_screen $1
-            continue
-        fi
+        write_skipped_job_details_on_screen $1
+        continue
     fi
 
     # Run from a job to another job (including the specified jobs)
     run_from_to_job_mode_check
     if [[ "$run_from_to_job_mode" -lt "1" ]]; then
-        if [ $run_hpeng_delete_job == N ]; then
-            write_skipped_job_details_on_screen $1
-            continue
-        fi
+        write_skipped_job_details_on_screen $1
+        continue
     fi
 
     # Run from a job to another job in interactive (including the specified jobs)
@@ -656,10 +648,8 @@ function runSAS(){
     # Run from a job to another job (including the specified jobs)
     run_from_to_job_interactive_skip_mode_check
     if [[ "$run_from_to_job_interactive_skip_mode" -lt "1" ]]; then
-        if [ $run_hpeng_delete_job == N ]; then
-            write_skipped_job_details_on_screen $1
-            continue
-        fi
+        write_skipped_job_details_on_screen $1
+        continue
     fi
 
     # Display current job details on console, jobname is passed to the function
@@ -881,7 +871,7 @@ if [[ ${#@} -ne 0 ]] && [[ "${@#"--help"}" = "" ]]; then
     printf "\n       -ss <job-name> <job-name> The script will run from one job to the other job, but in a interactive mode (skips the rest in non-interactive mode)"
     printf "\n       --help                    Display this help and exit"
     printf "\n"
-    printf "\nTip: You can use <job-number> instead of <job-name> in the above modes (e.g.: ./runSAS.sh -f 1 3)"
+    printf "\nTip:   You can use <job-number> instead of <job-name> in the above modes (e.g.: ./runSAS.sh -f 1 3)"
     printf "${underline}"
     printf "\nAUTHOR"
     printf "${end}${blue}"
@@ -964,9 +954,6 @@ print_to_console_debug_only "runSAS session variables"
 
 # Hide the cursor
 setterm -cursor off
-
-# Reset of the variable is a must, as "run from a job" mode processing checks for this variable.
-run_hpeng_delete_job=N
 
 # Run the jobs from the list one at a time
 while read job; do
