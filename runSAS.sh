@@ -35,12 +35,11 @@
 #
 # 1/3: Set the SAS 9.x environment parameters, setting the first parameter should work but amend as needed.
 #
-sas_app_server_root_directory="/SASInside/SAS/Lev1/SASApp"
-sas_batch_server_root_directory="${sas_app_server_root_directory}/BatchServer"
-sas_logs_root_directory="${sas_app_server_root_directory}/BatchServer/Logs"
-sas_deployed_jobs_root_directory="${sas_app_server_root_directory}/SASEnvironment/SASCode/Jobs"
+sas_app_root_directory="/SASInside/SAS/Lev1/SASApp"
+sas_batch_server_root_directory="${sas_app_root_directory}/BatchServer"
+sas_logs_root_directory="${sas_app_root_directory}/BatchServer/Logs"
+sas_deployed_jobs_root_directory="${sas_app_root_directory}/SASEnvironment/SASCode/Jobs"
 sas_batch_sh="sasbatch.sh"
-sas_sh="sas.sh"
 #
 # 2/3: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
 #
@@ -902,7 +901,7 @@ if [[ "$check_for_dependencies" == "Y" ]]; then
 fi
 
 # Check if the directory and file exists (specified by the user as configuration)
-check_if_the_dir_exists -d $sas_app_server_root_directory
+check_if_the_dir_exists -d $sas_app_root_directory
 check_if_the_dir_exists -d $sas_batch_server_root_directory
 check_if_the_dir_exists -d $sas_logs_root_directory
 check_if_the_dir_exists -d $sas_deployed_jobs_root_directory
