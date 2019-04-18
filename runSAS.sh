@@ -21,7 +21,7 @@
 #          [3] Run-until mode------------------------: ./runSAS.sh -u  <name or index>                               #
 #          [4] Run-from mode-------------------------: ./runSAS.sh -f  <name or index>                               #
 #          [5] Run-a-job mode------------------------: ./runSAS.sh -o  <name or index>                               #
-#          [6] Run-from-to-job mode------------------: ./runSAS.sh -t  <name or index>                               #
+#          [6] Run-from-to-job mode------------------: ./runSAS.sh -t  <name or index> <name or index>               #
 #          [7] Run-from-to-job-interactive mode------: ./runSAS.sh -s  <name or index> <name or index>               #
 #          [8] Run-from-to-job-interactive-skip mode-: ./runSAS.sh -ss <name or index> <name or index>               #
 #                                                                                                                    #
@@ -866,8 +866,8 @@ if [[ ${#@} -ne 0 ]] && [[ "${@#"--help"}" = "" ]]; then
     printf "\n       -f  <job-name>            The script will run from (and including) a specified job."
     printf "\n       -o  <job-name>            The script will run a specified job."
     printf "\n       -t  <job-name> <job-name> The script will run from one job to the other job."
-    printf "\n       -s  <job-name> <job-name> The script will run from one job to the other job, but in a interactive mode (runs the rest in non-interactive mode)"
-    printf "\n       -ss <job-name> <job-name> The script will run from one job to the other job, but in a interactive mode (skips the rest in non-interactive mode)"
+    printf "\n       -s  <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
+    printf "\n       -ss <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (skips the rest in a non-interactive mode)"
     printf "\n       --help                    Display this help and exit"
     printf "\n"
     printf "\nTip:   You can use <job-number> instead of <job-name> in the above modes (e.g.: ./runSAS.sh -f 1 3)"
