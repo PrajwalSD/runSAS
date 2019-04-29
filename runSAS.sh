@@ -4,26 +4,26 @@
 #                                                                                                                    #
 #     Program: runSAS.sh                                                                                             #
 #                                                                                                                    #
-#        Desc: This script can run a batch of (and monitor) SAS programs or SAS Data Integration (DI) jobs.          #
+#        Desc: This script can run (and monitor) single (or batch) of SAS program(s)/Data Integration (DI) job(s).   #
 #            : The list of programs/jobs are provided as an input.                                                   #
-#            : It is useful for SAS 9.x environments where a third-party job scheduler is not installed .            #
+#            : Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 6.1                                                                                                   #
+#     Version: 6.3                                                                                                   #
 #                                                                                                                    #
-#        Date: 10/04/2019                                                                                            #
+#        Date: 29/04/2019                                                                                            #
 #                                                                                                                    #
-#      Author: Prajwal Shetty D (all copyrights reserved)                                                            #
+#      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
 #       Usage: The script has many invocation/execution modes:                                                       #
 #                                                                                                                    #
-#          [1] Non-Interactive mode------------------: ./runSAS.sh                                                   #
-#          [2] Interactive mode----------------------: ./runSAS.sh -i                                                #
-#          [3] Run-until mode------------------------: ./runSAS.sh -u  <name or index>                               #
-#          [4] Run-from mode-------------------------: ./runSAS.sh -f  <name or index>                               #
-#          [5] Run-a-job mode------------------------: ./runSAS.sh -o  <name or index>                               #
-#          [6] Run-from-to-job mode------------------: ./runSAS.sh -t  <name or index> <name or index>               #
-#          [7] Run-from-to-job-interactive mode------: ./runSAS.sh -s  <name or index> <name or index>               #
-#          [8] Run-from-to-job-interactive-skip mode-: ./runSAS.sh -ss <name or index> <name or index>               #
+#              [1] Non-Interactive mode------------------: ./runSAS.sh                                               #
+#              [2] Interactive mode----------------------: ./runSAS.sh -i                                            #
+#              [3] Run-until mode------------------------: ./runSAS.sh -u  <name or index>                           #
+#              [4] Run-from mode-------------------------: ./runSAS.sh -f  <name or index>                           #
+#              [5] Run-a-job mode------------------------: ./runSAS.sh -o  <name or index>                           #
+#              [6] Run-from-to-job mode------------------: ./runSAS.sh -t  <name or index> <name or index>           #
+#              [7] Run-from-to-job-interactive mode------: ./runSAS.sh -s  <name or index> <name or index>           #
+#              [8] Run-from-to-job-interactive-skip mode-: ./runSAS.sh -ss <name or index> <name or index>           #
 #                                                                                                                    #
 #  Dependency: SAS 9.x environment (Linux) with SAS BatchServer with XCMD is required for the script to work or      #
 #              any equivalent (i.e. sas.sh, sasbatch.sh etc.) would work. The other dependencies are automatically   #
@@ -40,25 +40,27 @@ sas_batch_server_root_directory="${sas_app_root_directory}/BatchServer"
 sas_logs_root_directory="${sas_app_root_directory}/BatchServer/Logs"
 sas_deployed_jobs_root_directory="${sas_app_root_directory}/SASEnvironment/SASCode/Jobs"
 sas_batch_sh="sasbatch.sh"
+sas_sh="sas.sh"
 #
 # 2/3: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
+#      You can add a --prompt option next to the job name to allow the user to optionally skip a job during the runtime
 #
 cat <<EOF > .job.list
-XXXXXXXXXXXXXXXXXXXXX
+XXXXXXXXXXXXXXXXXXXXX --prompt
 YYYYYYYYYYYYYYYYYYYYY
 EOF
 #
 # 3/3: Change default behaviors, defaults have been set by the developer, change them as per the needs
 #
-run_in_debug_mode=N                     # Default is N, Y to turn on debugging mode
-runtime_comparsion_routine=Y            # Default is Y, set this N to turn off job runtime checks
-increase_in_runtime_factor=15           # Default is 15, this parameter is used in determining the runtime changes (to last successful run)
-job_error_display_count=1               # Default is 1, this parameter will restrict the error log display to the x no. of error(s) in the log
-job_error_display_steps=N               # Default is N, this parameter will show more details when a job fails, it can be a page long output
-job_error_display_lines_around_count=1  # Default is 1, this parameter will allow you to increase or decrease how much is shown from the log
-job_error_display_lines_around_mode=a   # Default is 'a', a=after error, b=before error, c=after & before (see grep modes)
-kill_process_on_user_abort=Y            # Default is Y, the rogue processes are automatically killed by the script on user abort.
-program_type_ext=sas                    # Default is sas
+run_in_debug_mode=N                    # Default is N, Y to turn on debugging mode
+runtime_comparsion_routine=Y           # Default is Y, set this N to turn off job runtime checks
+increase_in_runtime_factor=50          # Default is 10, this parameter is used in determining the runtime changes (to last successful run)
+job_error_display_count=1              # Default is 1, this parameter will restrict the error log display to the x no. of error(s) in the log
+job_error_display_steps=N              # Default is Y, this parameter will show more details when a job fails, it can be a page long output
+job_error_display_lines_around_count=1 # Default is 1, this parameter will allow you to increase or decrease how much is shown from the log
+job_error_display_lines_around_mode=a  # Default is 'a', a=after error, b=before error, c=after & before
+kill_process_on_user_abort=Y           # Default is Y, the rogue processes are automatically killed by the script on user abort.
+program_type_ext=sas                   # Default is sas
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 
@@ -75,7 +77,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|6|.|1|
+|r|u|n|S|A|S| |v|6|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -89,6 +91,7 @@ printf "\n${white}"
 #  Out: <NA>
 #------
 function set_colors_codes(){
+    black=$'\e[30m'
     red=$'\e[31m'
     green=$'\e[1;32m'
     yellow=$'\e[1;33m'
@@ -115,7 +118,7 @@ function set_colors_codes(){
 #  Out: <NA>
 #------
 function display_post_banner_messages(){
-    printf "${green}The script has many modes of execution, type ./runSAS.sh --help to see more details.${white}\n"
+    printf "${white}The script has many modes of execution, type ./runSAS.sh --help to see more details.${white}\n"
 }
 #------
 # Name: check_dependencies()
@@ -374,12 +377,12 @@ function terminate_running_processes(){
                 kill -9 $1
                 sleep 2
                 if [[ -z `ps -p $1 -o comm=` ]]; then
-                    printf "${green}The last job process with $1 has been terminated successfully!\n\n${white}"
+                    printf "${green}\nThe last job process with $1 has been terminated successfully!\n\n${white}"
                 else
-                    printf "${red}ERROR: Attempt to kill the last job process with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already.\n\n${white}"
+                    printf "${red}\nERROR: Attempt to kill the last job process with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already.\n\n${white}"
                 fi
             else
-                printf "${yellow}WARNING: The last process $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
+                printf "${yellow}\nWARNING: The last process $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
             fi
         fi
     fi
@@ -432,9 +435,13 @@ function print_to_console_debug_only(){
 function display_progressbar_with_offset(){
     # Defaults
     progressbar_width=20
-    progressbar_green_unicode_char=▬
-    progressbar_grey_unicode_char=▬
+    progressbar_green_unicode_char=" "
+    progressbar_grey_unicode_char=" "
     progressbar_sleep_interval_in_secs=0.5
+
+    # Defaults for percentages shown on the console
+    progress_bar_pct_symbol_length=1
+    progress_bar_100_pct_length=3
 
     # Passed parameters
     progressbar_steps_completed=$1
@@ -446,6 +453,30 @@ function display_progressbar_with_offset(){
 
 	# Calculate the perecentage completed
     progress_bar_pct_completed=`bc <<< "scale = 0; ($progressbar_steps_completed + $progressbar_offset) * 100 / $progressbar_total_steps / $progressbar_scale"`
+
+    # Reset the console, backspacing operation defined by the length of the progress bar and the percentage string length
+    if [[ "$progress_bar_pct_completed_charlength" != "" ]] && [[ $progress_bar_pct_completed_charlength -gt 0 ]]; then
+        for (( i=1; i<=$progress_bar_pct_symbol_length; i++ )); do
+            printf "\b"
+        done
+        for (( i=1; i<=$progress_bar_pct_completed_charlength; i++ )); do
+            printf "\b"
+        done
+    fi
+
+    # Calculate percentage variables
+    progress_bar_pct_completed_x_scale=`bc <<< "scale = 0; ($progress_bar_pct_completed * $progressbar_scale)"`
+
+    # Reset if the variable goes beyond the boundary values
+    if [[ $progress_bar_pct_completed_x_scale -lt 0 ]]; then
+        progress_bar_pct_completed_x_scale=0
+    fi
+
+    # Get the length of the current percentage
+    progress_bar_pct_completed_charlength=${#progress_bar_pct_completed_x_scale}
+
+    # Show the percentage on console, right justfied
+    printf "${green_bg}${black}$progress_bar_pct_completed_x_scale%%${white}"
 
     # Reset if the variable goes beyond the boundary values
     if [[ $progress_bar_pct_completed -lt 0 ]]; then
@@ -461,13 +492,13 @@ function display_progressbar_with_offset(){
 
     # Show the completed "green" block
     if [[ $progress_bar_pct_completed -ne 0 ]]; then
-        printf "${green}"
+        printf "${green_bg}"
         printf "%0.s$progressbar_green_unicode_char" $(seq 1 $progress_bar_pct_completed)
     fi
 
     # Show the remaining "grey" block
     if [[ $progress_bar_pct_remaining -ne 0 ]]; then
-        printf "${grey}"
+        printf "${darkgrey_bg}"
         printf "%0.s$progressbar_grey_unicode_char" $(seq 1 $progress_bar_pct_remaining)
     fi
 
@@ -476,9 +507,18 @@ function display_progressbar_with_offset(){
     sleep $progressbar_sleep_interval_in_secs
 
     # Reset the console, backspacing operation defined by the length of the progress bar.
-    for (( i=1; i <= $progressbar_width; i++ )); do
+    for (( i=1; i<=$progressbar_width; i++ )); do
         printf "\b"
     done
+
+    # Reset the percentage variables on last iteration (i.e. when the offset is 0)
+    if [[ $progressbar_offset -eq 0 ]]; then
+        progress_bar_pct_completed_charlength=0
+        # Remove the percentages from console
+        for (( i=1; i<=$progress_bar_pct_symbol_length+$progress_bar_100_pct_length; i++ )); do
+            printf "\b"
+        done
+    fi
 }
 #------
 # Name: store_job_runtime_stats()
@@ -585,13 +625,25 @@ function backup_directory(){
 	tar -zcf $2/$3_${curr_timestamp}.tar.gz $1
 }
 #------
+# Name: press_enter_key_to_continue()
+# Desc: This function will pause the script and wait for the ENTER key to be pressed
+#   In: <ENTER-KEY>
+#  Out: enter_to_continue_user_input
+#------
+function press_enter_key_to_continue(){
+    printf "\n"
+    printf "${green}Press the ENTER key to continue or CTRL+C to abort the session...${white}"
+    read enter_to_continue_user_input
+    printf "\n"
+}
+#------
 # Name: runSAS()
 # Desc: This function implements the SAS job execution routine, quite an important one
-#   In: (1) A SAS deployed job name (e.g: 99_Execute_Scoring_Component_Graph)
+#   In: (1) A SAS deployed job name        (e.g: 99_Run_Marketing_Jobs)
 #       (2) SAS BatchServer directory name (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer)
-#       (3) SAS BatchServer shell script (e.g.: sasbatch.sh)
-#       (4) SAS BatchServer logs directory (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer/logs)
-#       (5) SAS deployed jobs directory  (e.g.: /SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs)
+#       (3) SAS BatchServer shell script   (e.g.: sasbatch.sh)
+#       (4) SAS BatchServer logs directory (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer/Logs)
+#       (5) SAS deployed jobs directory    (e.g.: /SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs)
 #  Out: <NA>
 #------
 function runSAS(){
@@ -649,6 +701,17 @@ function runSAS(){
         continue
     fi
 
+    # Check if the prompt option is set by the user for the job
+    if [[ "$opt" == "--prompt" ]] || [[ "$opt" == "-p" ]]; then
+        printf "${red}Do you want to run this ${darkgrey_bg}${red}$local_sas_job${end}${red} job as part of this run? (Y/N): ${white}"
+        read run_job_with_prompt < /dev/tty
+        printf "\n"
+        if [[ $run_job_with_prompt != Y ]]; then
+            write_skipped_job_details_on_screen $1
+            continue
+        fi
+    fi
+
     # Display current job details on console, jobname is passed to the function
     write_current_job_details_on_screen $1
 
@@ -660,7 +723,7 @@ function runSAS(){
                                                                           -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext &
 
     # Count the no. of steps in the job
-    total_no_of_steps_in_a_job=`grep -o 'Step:'  $local_sas_deployed_jobs_root_directory/$local_sas_job.sas | wc -l`
+    total_no_of_steps_in_a_job=`grep -o 'Step:'  $local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext | wc -l`
 
     # Get the PID details
     job_pid=$!
@@ -743,7 +806,7 @@ function runSAS(){
         sed -i 's/[A0-Z9]*\.[A0-Z9]* \*//g' $job_that_errored_file
 
         # Print error(s)
-        printf "\b${white}$print_msg_separator${red}(ERROR rc=$job_rc, see the errors below)${white}\n"
+        printf "${white}${red} (ERROR rc=$job_rc, see the errors below. Failed on `date '+%Y-%m-%d %H:%M:%S'`)${white}\n"
         printf "${red}$log_block_wrapper${white}\n"
 
         # Depending on user setting show the log details
@@ -780,7 +843,7 @@ function runSAS(){
         get_current_cursor_position
         buff_to_fix_col=$((filler_col_begin_pos-cursor_col_pos))
         printf "\b"
-        for (( k=1; k <= $buff_to_fix_col; k++ )); do
+        for (( k=1; k<=$buff_to_fix_col; k++ )); do
             printf "$filler_char"
         done
 
@@ -816,7 +879,6 @@ function runSAS(){
 set_colors_codes
 
 # System parameters
-print_msg_separator=.......
 check_for_error_string="^ERROR"
 check_for_step_string="Step:"
 debug_console_print_color=white
@@ -864,8 +926,8 @@ if [[ ${#@} -ne 0 ]] && [[ "${@#"--help"}" = "" ]]; then
     printf "\n       -f  <job-name>            The script will run from (and including) a specified job."
     printf "\n       -o  <job-name>            The script will run a specified job."
     printf "\n       -t  <job-name> <job-name> The script will run from one job to the other job."
-    printf "\n       -s  <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
-    printf "\n       -ss <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (skips the rest in a non-interactive mode)"
+    printf "\n       -s  <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (runs the rest in non-interactive mode)"
+    printf "\n       -ss <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (skips the rest in non-interactive mode)"
     printf "\n       --help                    Display this help and exit"
     printf "\n"
     printf "\nTip:   You can use <job-number> instead of <job-name> in the above modes (e.g.: ./runSAS.sh -f 1 3)"
@@ -876,7 +938,7 @@ if [[ ${#@} -ne 0 ]] && [[ "${@#"--help"}" = "" ]]; then
     printf "${underline}"
     printf "\nBUGS"
     printf "${end}${blue}"
-    printf "\n       Report bug(s) to neoprajwal@sas.com\n\n"
+    printf "\n       Report bug(s) to prajwalsd@github\n\n"
     printf "${white}"
     exit 0;
 fi;
@@ -914,8 +976,8 @@ fi
 move_files_to_a_directory $sas_logs_root_directory/*.log $sas_logs_root_directory/archives
 
 # Print session details on console
-printf "\n${white}The script was launched (in a "${1:-'non-interactive'}" mode) with pid ${green}$$${white} on ${green}$HOSTNAME${white} at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
-printf '%s' ${green}"${SUDO_USER:-$USER}${white}"
+printf "\n${white}The script was launched (in a "${1:-'non-interactive'}" mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
+printf '%s' ${white}"${SUDO_USER:-$USER}${white}"
 printf "${white} user\n${white}"
 
 # Print job(s) list on console
@@ -949,11 +1011,17 @@ fi
 # Debug mode
 print_to_console_debug_only "runSAS session variables"
 
+# Get the consent from the user to trigger the batch
+press_enter_key_to_continue
+
 # Hide the cursor
 setterm -cursor off
 
+# Reset the prompt variable
+run_job_with_prompt=N
+
 # Run the jobs from the list one at a time
-while read job; do
+while IFS=' ' read -r job opt; do
     runSAS $job
 done < .job.list
 
