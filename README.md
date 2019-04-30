@@ -13,7 +13,7 @@ SAS 9.x environment (Linux) with SAS BatchServer component is essential for the 
 # How to use the script?
   * Download/clone `runSAS.sh` and transfer it to the SAS server
   * Set the environment parameters (inside the script in the top section)
-  * Specify the list of job(s)/program(s) you want to run (use --prompt or -p to allow an user to skip a job in the runtime)
+  * Specify the list of the job(s)/program(s) you want to run (use --prompt or -p to allow a user to skip a job in the runtime)
   * Execute the script (see the details on modes of execution below) as a user who has execution privileges (OS and SAS Metadata privileges)
 
 # How to run the script? 
