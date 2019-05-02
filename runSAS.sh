@@ -703,7 +703,7 @@ function runSAS(){
 
     # Check if the prompt option is set by the user for the job
     if [[ "$opt" == "--prompt" ]] || [[ "$opt" == "-p" ]]; then
-        printf "${red}Do you want to run this ${darkgrey_bg}${red}$local_sas_job${end}${red} job as part of this run? (Y/N): ${white}"
+        printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} job as part of this run? (Y/N): ${white}"
         read run_job_with_prompt < /dev/tty
         printf "\n"
         if [[ $run_job_with_prompt != Y ]]; then
@@ -806,7 +806,7 @@ function runSAS(){
         sed -i 's/[A0-Z9]*\.[A0-Z9]* \*//g' $job_that_errored_file
 
         # Print error(s)
-        printf "${white}${red} (ERROR rc=$job_rc, see the errors below. Failed on `date '+%Y-%m-%d %H:%M:%S'`)${white}\n"
+        printf "${white}${red} *** ERROR rc=$job_rc, see the errors below. Failed on `date '+%Y-%m-%d %H:%M:%S'` ***${white}\n"
         printf "${red}$log_block_wrapper${white}\n"
 
         # Depending on user setting show the log details
