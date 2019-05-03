@@ -592,7 +592,7 @@ function clear_session_and_exit(){
         reset
     fi
     terminate_running_processes $job_pid
-    printf "${green}runSAS is existing now, session has been cleared.${white}\n\n"
+    printf "${green}runSAS is exiting now, session has been cleared.${white}\n\n"
     exit 1
 }
 #------
