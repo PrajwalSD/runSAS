@@ -187,12 +187,14 @@ function check_if_logged_in_user_is_root(){
 #  Out: <NA>
 #------
 function run_in_interactive_mode_check(){
-    if [[ "$script_mode" == "-i" ]]; then
+    if [[ "$script_mode" == "-i" ]] && [[ "$escape_interactive_mode" != "1" ]]; then
         interactive_mode=1
-        printf "${red_bg}Press ENTER key to continue...${white}"
+        printf "${red_bg}Press ENTER key to continue OR type E to escape the interactive mode${white} "
         stty -igncr < /dev/tty
-        read -s < /dev/tty
-        printf "\n"
+        read run_in_interactive_mode_check_user_input < /dev/tty
+        if [[ "$run_in_interactive_mode_check_user_input" == "E" ]] || [[ "$run_in_interactive_mode_check_user_input" == "e" ]]; then
+            escape_interactive_mode=1 
+        fi
     else
         interactive_mode=0
     fi
