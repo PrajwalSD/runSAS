@@ -8,9 +8,9 @@
 #            : The list of programs/jobs are provided as an input.                                                   #
 #            : Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 6.3                                                                                                   #
+#     Version: 6.4                                                                                                   #
 #                                                                                                                    #
-#        Date: 29/04/2019                                                                                            #
+#        Date: 09/05/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -18,12 +18,12 @@
 #                                                                                                                    #
 #              [1] Non-Interactive mode------------------: ./runSAS.sh                                               #
 #              [2] Interactive mode----------------------: ./runSAS.sh -i                                            #
-#              [3] Run-until mode------------------------: ./runSAS.sh -u  <name or index>                           #
-#              [4] Run-from mode-------------------------: ./runSAS.sh -f  <name or index>                           #
-#              [5] Run-a-job mode------------------------: ./runSAS.sh -o  <name or index>                           #
-#              [6] Run-from-to-job mode------------------: ./runSAS.sh -t  <name or index> <name or index>           #
-#              [7] Run-from-to-job-interactive mode------: ./runSAS.sh -s  <name or index> <name or index>           #
-#              [8] Run-from-to-job-interactive-skip mode-: ./runSAS.sh -ss <name or index> <name or index>           #
+#              [3] Run-until mode------------------------: ./runSAS.sh -u   <name or index>                          #
+#              [4] Run-from mode-------------------------: ./runSAS.sh -f   <name or index>                          #
+#              [5] Run-a-job mode------------------------: ./runSAS.sh -o   <name or index>                          #
+#              [6] Run-from-to-job mode------------------: ./runSAS.sh -t   <name or index> <name or index>          #
+#              [7] Run-from-to-job-interactive mode------: ./runSAS.sh -fi  <name or index> <name or index>          #
+#              [8] Run-from-to-job-interactive-skip mode-: ./runSAS.sh -fis <name or index> <name or index>          #
 #                                                                                                                    #
 #  Dependency: SAS 9.x environment (Linux) with SAS BatchServer with XCMD is required for the script to work or      #
 #              any equivalent (i.e. sas.sh, sasbatch.sh etc.) would work. The other dependencies are automatically   #
@@ -45,7 +45,7 @@ sas_sh="sas.sh"
 # 2/3: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
 #      You can add a --prompt option next to the job name to allow the user to optionally skip a job during the runtime
 #
-cat <<EOF > .job.list
+cat << EOF > .job.list
 XXXXXXXXXXXXXXXXXXXXX --prompt
 YYYYYYYYYYYYYYYYYYYYY
 EOF
@@ -77,7 +77,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|6|.|3|
+|r|u|n|S|A|S| |v|6|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -118,30 +118,41 @@ function set_colors_codes(){
 #  Out: <NA>
 #------
 function display_post_banner_messages(){
-    printf "${white}The script has many modes of execution, type ./runSAS.sh --help to see more details.${white}\n"
+    printf "${white}The script has many modes of execution, ./runSAS.sh --help to see more details.${white}\n"
 }
 #------
 # Name: check_dependencies()
 # Desc: Check if the dependencies have been installed (auto install is supported only via yum for now)
-#   In: program-name or package-name
+#   In: program-name or package-name (multiple could be specified)
 #  Out: <NA>
 #------
 function check_dependencies(){
-    package_installer=yum
-    printf "${white}"
-    check_dependency=`which $1`
-    if [[ -z "$check_dependency" ]]; then
-        printf "${red}\nERROR: Dependency checks failed, ${white}${red_bg}$1 program/pkg is not found${white}${red}, runSAS requires this package/program.\n"
-        printf "${green}\nPress Y to install $1 (requires yum and sudo access) or press N to manually install this program/package: ${white}"
-        read read_install_dependency
-        if [[ "$read_install_dependency" == "Y" ]]; then
-            printf "${white}Ok, attempting to install $1, running ${green}sudo yum install $1${white}...\n${white}"
-            sudo $package_installer install $1
-        else
-            printf "${white}You can manually install this using yum, run ${green}sudo yum install $1${white} or download the $1 package from web (Goooooogle!)"
+    for prg in "$@"
+    do
+        # Defaults
+        package_installer=yum
+        check_dependency_cmd=`which $prg`
+        # Check
+        printf "${white}"
+        if [[ -z "$check_dependency_cmd" ]]; then
+            printf "${red}\n*** ERROR: Dependency checks failed, ${white}${red_bg}$prg${white}${red} program is not found, runSAS requires this program to run. *** \n"
+            # If the package installer is available try installing the missing dependency
+            if [[ ! -z `which $package_installer` ]]; then
+                printf "${green}\nPress Y to auto install $prg (requires $package_installer and sudo access if you're not root): ${white}"
+                read read_install_dependency
+                if [[ "$read_install_dependency" == "Y" ]]; then
+                    printf "${white}\nAttempting to install $prg, running ${green}sudo yum install $prg${white}...\n${white}"
+                    sudo $package_installer install $prg
+                else
+                    printf "${white}Try installing this using $package_installer, run ${green}sudo $package_installer install $prg${white} or download the $prg package from web (Goooooogle!)"
+                fi
+            else
+                printf "${green}\n$package_installer not found, skipping auto install.\n${white}"
+                printf "${white}\nLaunch runSAS after installing the ${green}$prg${white} program manually (Google if your friend!) or ask server administrator."
+            fi
+            clear_session_and_exit
         fi
-        clear_session_and_exit
-    fi
+    done
 }
 #------
 # Name: move_files_to_a_directory()
@@ -157,14 +168,17 @@ function move_files_to_a_directory(){
 #------
 # Name: check_if_the_dir_exists()
 # Desc: Check if the directory exists
-#   In: mode, directory-name
+#   In: directory-name (multiple could be specified)
 #  Out: <NA>
 #------
 function check_if_the_dir_exists(){
-    if [[ ! -d "$2" ]]; then
-        printf "${red}ERROR: Directory ${white}${red_bg}$2${white}${red} was not found in the server, make sure you have correctly set the script parameters as per the environment.${white}"
-        clear_session_and_exit
-    fi
+    for dir in "$@"
+    do
+        if [[ ! -d "$dir" ]]; then
+            printf "${red}*** ERROR: Directory ${white}${red_bg}$dir${white}${red} was not found in the server, make sure you have correctly set the script parameters as per the environment *** ${white}"
+            clear_session_and_exit
+        fi
+    done
 }
 #------
 # Name: check_if_logged_in_user_is_root()
@@ -174,8 +188,8 @@ function check_if_the_dir_exists(){
 #------
 function check_if_logged_in_user_is_root(){
     if [[ "$EUID" -eq 0 ]]; then
-        printf "${yellow}\nWARNING: Typically you have to launch this script as a installation user such as ${green}sas${yellow} or any user that has batch execution privileges, you are currently logged in as ${red}root. ${white}"
-        printf "${yellow}Press ENTER key to ignore this warning and continue...${white}"
+        printf "${yellow}\nWARNING: Typically you have to launch this script as a SAS installation user such as ${green}sas${yellow} or any user that has SAS batch execution privileges, you are currently logged in as ${red}root. ${white}"
+        printf "${yellow}Press ENTER key to ignore this and continue (CTRL+C to abort this session)...${white}"
         read -s < /dev/tty
         printf "\n"
     fi
@@ -193,7 +207,7 @@ function run_in_interactive_mode_check(){
         stty -igncr < /dev/tty
         read run_in_interactive_mode_check_user_input < /dev/tty
         if [[ "$run_in_interactive_mode_check_user_input" == "E" ]] || [[ "$run_in_interactive_mode_check_user_input" == "e" ]]; then
-            escape_interactive_mode=1 
+            escape_interactive_mode=1
         fi
     else
         interactive_mode=0
@@ -208,7 +222,7 @@ function run_in_interactive_mode_check(){
 function run_until_a_job_mode_check(){
     if [[ "$script_mode" == "-u" ]]; then
         if [[ "$script_mode_value" == "0" ]]; then
-            printf "${red}ERROR: You launched the script in -u (run-until-a-job) mode, a job name is also required after -u option.${white}"
+            printf "${red}*** ERROR: You launched the script in $script_mode (run-until-a-job) mode, a job name is also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
             if [[ "$script_mode_value" == "$local_sas_job" ]]; then
@@ -234,7 +248,7 @@ function run_until_a_job_mode_check(){
 function run_from_a_job_mode_check(){
     if [[ "$script_mode" == "-f" ]]; then
         if [[ "$script_mode_value" == "0" ]]; then
-            printf "${red}ERROR: You launched the script in -f(run-from-a-job) mode, a job name is also required after -f option.${white}"
+            printf "${red}*** ERROR: You launched the script in $script_mode(run-from-a-job) mode, a job name is also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
             if [[ "$script_mode_value" == "$local_sas_job" ]]; then
@@ -254,7 +268,7 @@ function run_from_a_job_mode_check(){
 function run_a_single_job_mode_check(){
     if [[ "$script_mode" == "-o" ]]; then
         if [[ "$script_mode_value" == "0" ]]; then
-            printf "${red}ERROR: You launched the script in -o(run-a-single-job) mode, a job name is also required after -o option.${white}"
+            printf "${red}*** ERROR: You launched the script in $script_mode(run-a-single-job) mode, a job name is also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
             if [[ "$script_mode_value" == "$local_sas_job" ]]; then
@@ -276,7 +290,7 @@ function run_a_single_job_mode_check(){
 function run_from_to_job_mode_check(){
     if [[ "$script_mode" == "-t" ]]; then
         if [[ "$script_mode_value" == "0" ]] || [[ "$script_mode_value_other" == "0" ]]; then
-            printf "${red}ERROR: You launched the script in -t(run-from-to-job) mode, two job names (separated by spaces) are also required after -t option.${white}"
+            printf "${red}*** ERROR: You launched the script in $script_mode(run-from-to-job) mode, two job names (separated by spaces) are also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
             if [[ "$script_mode_value" == "$local_sas_job" ]]; then
@@ -301,14 +315,14 @@ function run_from_to_job_mode_check(){
 }
 #------
 # Name: run_from_to_job_interactive_mode_check()
-# Desc: Run from a job to a job mode in interactive mode (-s)
+# Desc: Run from a job to a job mode in interactive mode (-fi)
 #   In: <NA>
 #  Out: <NA>
 #------
 function run_from_to_job_interactive_mode_check(){
-    if [[ "$script_mode" == "-s" ]]; then
+    if [[ "$script_mode" == "-fi" ]]; then
         if [[ "$script_mode_value" == "0" ]] || [[ "$script_mode_value_other" == "0" ]]; then
-            printf "${red}ERROR: You launched the script in -s(run-from-to-job-interactive) mode, two job names (separated by spaces) are also required after -s option.${white}"
+            printf "${red}*** ERROR: You launched the script in $script_mode(run-from-to-job-interactive) mode, two job names (separated by spaces) are also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
             if [[ "$script_mode_value" == "$local_sas_job" ]]; then
@@ -333,14 +347,14 @@ function run_from_to_job_interactive_mode_check(){
 }
 #------
 # Name: run_from_to_job_interactive_skip_mode_check()
-# Desc: Run from a job to a job mode in interactive mode (-ss)
+# Desc: Run from a job to a job mode in interactive mode (-fis)
 #   In: <NA>
 #  Out: <NA>
 #------
 function run_from_to_job_interactive_skip_mode_check(){
-    if [[ "$script_mode" == "-ss" ]]; then
+    if [[ "$script_mode" == "-fis" ]]; then
         if [[ "$script_mode_value" == "0" ]] || [[ "$script_mode_value_other" == "0" ]]; then
-            printf "${red}ERROR: You launched the script in -ss(run-from-to-job-interactive-skip) mode, two job names (separated by spaces) are also required after -ss option.${white}"
+            printf "${red}*** ERROR: You launched the script in $script_mode(run-from-to-job-interactive-skip) mode, two job names (separated by spaces) are also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
             if [[ "$script_mode_value" == "$local_sas_job" ]]; then
@@ -373,18 +387,21 @@ function terminate_running_processes(){
     if [[ ! -z ${1} ]]; then
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$kill_process_on_user_abort" ==  "Y" ]]; then
+                stty igncr < /dev/tty
                 printf "${yellow}---\n"
                 ps $1 # Show process details
                 printf "${yellow}---\n${white}"
                 kill -9 $1
+                printf "${green}\nPlease wait...cleaning up!${white}"
                 sleep 2
                 if [[ -z `ps -p $1 -o comm=` ]]; then
-                    printf "${green}\nThe last job process with $1 has been terminated successfully!\n\n${white}"
+                    printf "${green}\n\nThe last job process launched by runSAS with pid $1 has been terminated successfully!\n\n${white}"
                 else
-                    printf "${red}\nERROR: Attempt to kill the last job process with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already.\n\n${white}"
+                    printf "${red}\n\n*** ERROR: Attempt to kill the last job process launched by runSAS with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already *** \n\n${white}"
                 fi
+                stty -igncr < /dev/tty
             else
-                printf "${yellow}\nWARNING: The last process $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
+                printf "${yellow}\nWARNING: The last process launched by runSAS with pid $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
             fi
         fi
     fi
@@ -402,10 +419,10 @@ function check_if_there_are_any_running_jobs(){
         printf "${yellow}---\n${green}"
         ps -ef | grep $process_srch_str
         printf "${yellow}---\n\n${white}"
-        printf "${yellow}Do you want to ignore this and continue...? (Press N to abort) ${white}"
+        printf "${yellow}Do you want to ignore this and continue...? (Press N or CTRL+C to abort this session) ${white}"
         read ignore_process_warning
         if [[ "$ignore_process_warning" == "N" ]]; then
-            printf "${red}Terminated by the user.${white}"
+            printf "${red}runSAS session has been terminated by the user.${white}"
             clear_session_and_exit
         fi
     fi
@@ -572,7 +589,7 @@ function write_skipped_job_details_on_screen(){
 function get_the_job_name_in_the_list(){
     job_name_from_the_list=`sed -n "${1}p" .job.list`
     if [[ -z $job_name_from_the_list ]]; then
-        printf "${red}ERROR: Job index overflow, no job found in the job list at $1. Please review the specified job number/index is correct and within the provided list.${white}"
+        printf "${red}*** ERROR: Job index is out-of-range, no job found at $1 in the list above. Please review the specified index and launch the script again ***${white}"
         clear_session_and_exit
     else
         printf "${white}Job ${darkgrey_bg}$job_name_from_the_list${white} has been selected from the job list at $1.${white}\n"
@@ -603,9 +620,11 @@ function clear_session_and_exit(){
 #------
 function get_current_cursor_position() {
     local pos
-    IFS='[;' read -p < /dev/tty $'\e[6n' -d R -a pos -rs || echo "cursor position routine failed with error: $? ; ${pos[*]}"
+    printf "${red}"
+    IFS='[;' read -p < /dev/tty $'\e[6n' -d R -a pos -rs || echo "*** ERROR: The cursor position routine failed with error: $? ; ${pos[*]} ***"
     cursor_row_pos=${pos[1]}
     cursor_col_pos=${pos[2]}
+    printf "${white}"
 }
 #------
 # Name: remove_a_line_from_file()
@@ -639,6 +658,21 @@ function press_enter_key_to_continue(){
     printf "\n"
 }
 #------
+# Name: print_job_list()
+# Desc: This function prints the file content with a index
+#   In: file-name, file-line-content-type
+#  Out: <NA>
+#------
+function print_file_content_with_index(){
+    # Count
+    total_lines_in_the_file=`cat $1 | wc -l`
+    # Print
+    printf "\n${white}There are $total_lines_in_the_file $2 in the list:${white}\n"
+    printf "${white}---${white}\n"
+    awk '{printf("%02d) %s\n", NR, $0)}' $1
+    printf "${white}---${white}\n"
+}
+#------
 # Name: runSAS()
 # Desc: This function implements the SAS job execution routine, quite an important one
 #   In: (1) A SAS deployed job name        (e.g: 99_Run_Marketing_Jobs)
@@ -649,8 +683,9 @@ function press_enter_key_to_continue(){
 #  Out: <NA>
 #------
 function runSAS(){
-    # Reset the return code
+    # Reset the return codes
     job_rc=0
+    script_rc=0
 
     # Increment the job counter for console display
     let job_counter_for_display+=1
@@ -705,13 +740,21 @@ function runSAS(){
 
     # Check if the prompt option is set by the user for the job
     if [[ "$opt" == "--prompt" ]] || [[ "$opt" == "-p" ]]; then
-        printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} job as part of this run? (Y/N): ${white}"
+        printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
         read run_job_with_prompt < /dev/tty
         printf "\n"
         if [[ $run_job_with_prompt != Y ]]; then
             write_skipped_job_details_on_screen $1
             continue
         fi
+    fi
+
+    # Check if the pause option is set by the user for the job (this option is a kind of redundant because you can use --prompt too to pause the flow!)
+    if [[ "$opt" == "--pause" ]]; then
+        press_enter_key_to_continue
+        stty -igncr < /dev/tty
+        read -s < /dev/tty
+        printf "\n"
     fi
 
     # Display current job details on console, jobname is passed to the function
@@ -734,7 +777,7 @@ function runSAS(){
     ps cax | grep $job_pid > /dev/null
     printf "${white} ${green}"
 
-    # Random sleep for pid fetch
+    # Sleep before pid fetch
     sleep 0.5
 
     # Get the current job log filename (absolute path)
@@ -767,7 +810,7 @@ function runSAS(){
             if [[ "$current_runtime_of_job" -gt "$hist_job_runtime_for_current_job_x_factor" ]]; then
                 if [[ "$long_running_job_msg_shown" == "0" ]]; then
                     printf "${red}\nNOTE: The job is taking a bit more time than usual (previously it took $hist_job_runtime secs, it is $current_runtime_of_job secs already), Press ENTER key to continue or CTRL+C to abort this run.${white}"
-                    printf "${red}\nNOTE: You can remove these warnings by setting the increase_in_runtime_factor parameter to a high value such as 999${white}"
+                    printf "${red}\nNOTE: You can remove these warnings by setting the INCREASE_IN_RUNTIME_FACTOR parameter in the script to a high value such as 999${white}"
                     stty -igncr < /dev/tty
                     read -s < /dev/tty
                     stty igncr < /dev/tty
@@ -783,7 +826,7 @@ function runSAS(){
         ps cax | grep $job_pid > /dev/null
     done
 
-    # Suppress unwanted lines in the log
+    # Suppress unwanted lines in the log (typical SAS errors!)
     remove_a_line_from_file "ERROR: Errors printed on pages" "$sas_logs_root_directory/$current_log_name"
 
     # Check if there are any errors in the logs
@@ -791,14 +834,15 @@ function runSAS(){
     grep -m${job_error_display_count} "$check_for_error_string" $sas_logs_root_directory/$current_log_name > $tmp_log_file
     egrep -m${job_error_display_count_for_egrep} -E --color "* $check_for_step_string|$check_for_error_string" -$job_error_display_lines_around_mode$job_error_display_lines_around_count $sas_logs_root_directory/$current_log_name > $tmp_log_w_steps_file
 
+    # Return code check
+    job_rc=$?
+    script_rc=$job_rc
     if [ -s $tmp_log_file ]; then
-        job_rc=900
-    else
-        job_rc=$?
+        script_rc=900
     fi
 
     # Check return code, abort if there's an error
-    if [ $job_rc -gt 4 ]; then
+    if [ $script_rc -gt 4 ]; then
         # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS)
         sed -n '1,/^ERROR:/ p' $sas_logs_root_directory/$current_log_name | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $job_that_errored_file
 
@@ -808,7 +852,7 @@ function runSAS(){
         sed -i 's/[A0-Z9]*\.[A0-Z9]* \*//g' $job_that_errored_file
 
         # Print error(s)
-        printf "${white}${red} *** ERROR rc=$job_rc, see the errors below. Failed on `date '+%Y-%m-%d %H:%M:%S'` ***${white}\n"
+        printf "${white}${red} *** ERROR: Job has failed with rc=$job_rc-$script_rc, details below. Failed on `date '+%Y-%m-%d %H:%M:%S'` ***${white}\n"
         printf "${red}$log_block_wrapper${white}\n"
 
         # Depending on user setting show the log details
@@ -818,6 +862,7 @@ function runSAS(){
             printf "%s" "$(<$tmp_log_file)"
         fi
 
+        # Line separator
         printf "\n${red}$log_block_wrapper${white}\n"
 
         # Print last job
@@ -827,7 +872,11 @@ function runSAS(){
         # Print the log filename
         printf "\n${white}${white}"
         printf "${red}Log: ${red}$sas_logs_root_directory/$current_log_name${white}\n"
+
+        # Line separator
         printf "${red}$log_block_wrapper${white}"
+
+        # Clear the session
         clear_session_and_exit
     else
         # Complete the progress bar with offset 0 (fill the last bit after the step is complete)
@@ -849,24 +898,24 @@ function runSAS(){
             printf "$filler_char"
         done
 
-        # Success message
-        printf "\b${white}${green}(DONE rc=$job_rc, it took "
+        # Success (DONE) message
+        printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, it took "
         printf "%03d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs. Completed on `date '+%Y-%m-%d %H:%M:%S'`)${white}\n"
     fi
 
-    # Forece to run in interactive mode if in run-from-to-job-interactive (-s) mode
+    # Forece to run in interactive mode if in run-from-to-job-interactive (-fi) mode
     if [[ "$run_from_to_job_interactive_mode" -ge "1" ]]; then
         script_mode="-i"
         run_in_interactive_mode_check
-        script_mode="-s"
+        script_mode="-fi"
     fi
 
-    # Forece to run in interactive mode if in run-from-to-job-interactive (-s) mode
+    # Forece to run in interactive mode if in run-from-to-job-interactive (-fis) mode
     if [[ "$run_from_to_job_interactive_skip_mode" -eq "1" ]] || [[ "$run_from_to_job_interactive_skip_mode" -eq "2" ]]; then
         script_mode="-i"
         run_in_interactive_mode_check
-        script_mode="-ss"
+        script_mode="-fis"
     fi
 
     # Interactive mode: Allow the script to pause and wait for the user to press a key to continue (useful during training)
@@ -915,24 +964,24 @@ if [[ ${#@} -ne 0 ]] && [[ "${@#"--help"}" = "" ]]; then
     printf "${underline}"
     printf "\nNAME"
     printf "${end}${blue}"
-    printf "\n       runSAS.sh                 The script will run (and monitor) SAS Data Integration (DI) job(s) in a specified order"
+    printf "\n       runSAS.sh                  The script will run (and monitor) SAS Data Integration (DI) job(s) in a specified order"
     printf "${underline}"
     printf "\nSYNOPSIS"
     printf "${end}${blue}"
-    printf "\n       runSAS.sh [script-mode] [script-mode-value]"
+    printf "\n       runSAS.sh [script-mode] [optional-script-mode-value-1] [optional-script-mode-value-2]"
     printf "${underline}"
     printf "\nDESCRIPTION"
     printf "${end}${blue}"
-    printf "\n       -i                        The script will halt after running each job, waiting for an ENTER key to continue"
-    printf "\n       -u  <job-name>            The script will run everything (and including) until the specified job.t"
-    printf "\n       -f  <job-name>            The script will run from (and including) a specified job."
-    printf "\n       -o  <job-name>            The script will run a specified job."
-    printf "\n       -t  <job-name> <job-name> The script will run from one job to the other job."
-    printf "\n       -s  <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (runs the rest in non-interactive mode)"
-    printf "\n       -ss <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (skips the rest in non-interactive mode)"
-    printf "\n       --help                    Display this help and exit"
+    printf "\n       -i                         The script will halt after running each job, waiting for an ENTER key to continue"
+    printf "\n       -u   <job-name>            The script will run everything (and including) until the specified job.t"
+    printf "\n       -f   <job-name>            The script will run from (and including) a specified job."
+    printf "\n       -o   <job-name>            The script will run a specified job."
+    printf "\n       -t   <job-name> <job-name> The script will run from one job to the other job."
+    printf "\n       -fi  <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (runs the rest in non-interactive mode)"
+    printf "\n       -fis <job-name> <job-name> The script will run from one job to the other job, but in an interactive mode (skips the rest in non-interactive mode)"
+    printf "\n       --help                     Display this help and exit"
     printf "\n"
-    printf "\nTip:   You can use <job-number> instead of <job-name> in the above modes (e.g.: ./runSAS.sh -f 1 3)"
+    printf "\nTip:   You can use <job-index> instead of <job-name> in the above modes (e.g.: ./runSAS.sh -f 1 3)"
     printf "${underline}"
     printf "\nAUTHOR"
     printf "${end}${blue}"
@@ -950,23 +999,11 @@ display_welcome_ascii_banner
 
 # Dependency checks
 if [[ "$check_for_dependencies" == "Y" ]]; then
-    check_dependencies ksh
-    check_dependencies bc
-    check_dependencies grep
-    check_dependencies egrep
-    check_dependencies awk
-    check_dependencies sed
-    check_dependencies sleep
-    check_dependencies ps
-    check_dependencies kill
-    check_dependencies nice
+    check_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf
 fi
 
 # Check if the directory and file exists (specified by the user as configuration)
-check_if_the_dir_exists -d $sas_app_root_directory
-check_if_the_dir_exists -d $sas_batch_server_root_directory
-check_if_the_dir_exists -d $sas_logs_root_directory
-check_if_the_dir_exists -d $sas_deployed_jobs_root_directory
+check_if_the_dir_exists $sas_app_root_directory $sas_batch_server_root_directory $sas_logs_root_directory $sas_deployed_jobs_root_directory
 
 # Information for the user
 display_post_banner_messages
@@ -983,10 +1020,7 @@ printf '%s' ${white}"${SUDO_USER:-$USER}${white}"
 printf "${white} user\n${white}"
 
 # Print job(s) list on console
-printf "\n${white}There are $total_no_of_jobs_counter jobs in the list:${white}\n"
-printf "${white}---${white}\n"
-awk '{printf("%02d) %s\n", NR, $0)}' .job.list
-printf "${white}---${white}\n"
+print_file_content_with_index .job.list jobs
 
 # Check for CTRL+C and clear the session
 trap clear_session_and_exit INT
