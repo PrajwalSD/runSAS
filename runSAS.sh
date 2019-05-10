@@ -8,9 +8,9 @@
 #            : The list of programs/jobs are provided as an input.                                                   #
 #            : Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 6.4                                                                                                   #
+#     Version: 6.5                                                                                                   #
 #                                                                                                                    #
-#        Date: 09/05/2019                                                                                            #
+#        Date: 10/05/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -77,7 +77,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|6|.|4|
+|r|u|n|S|A|S| |v|6|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -655,7 +655,6 @@ function press_enter_key_to_continue(){
     printf "\n"
     printf "${green}Press the ENTER key to continue or CTRL+C to abort the session...${white}"
     read enter_to_continue_user_input
-    printf "\n"
 }
 #------
 # Name: print_job_list()
@@ -740,21 +739,14 @@ function runSAS(){
 
     # Check if the prompt option is set by the user for the job
     if [[ "$opt" == "--prompt" ]] || [[ "$opt" == "-p" ]]; then
-        printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
+        printf "${red}\nDo you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
+        stty -igncr < /dev/tty
         read run_job_with_prompt < /dev/tty
         printf "\n"
         if [[ $run_job_with_prompt != Y ]]; then
             write_skipped_job_details_on_screen $1
             continue
         fi
-    fi
-
-    # Check if the pause option is set by the user for the job (this option is a kind of redundant because you can use --prompt too to pause the flow!)
-    if [[ "$opt" == "--pause" ]]; then
-        press_enter_key_to_continue
-        stty -igncr < /dev/tty
-        read -s < /dev/tty
-        printf "\n"
     fi
 
     # Display current job details on console, jobname is passed to the function
