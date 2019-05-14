@@ -264,7 +264,7 @@ check_dependencies wget dos2unix
 
 # Download the latest file from Github
 printf "NOTE: Downloading new version from Github...\n\n"
-if ! wget -O runSAS.sh.downloaded http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
+if ! wget -O runSAS.sh.downloaded http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh ; then
     printf "*** ERROR: Could not download the new version from Github, possibly internet issue or the server timed-out ***"
     exit 1
 fi
