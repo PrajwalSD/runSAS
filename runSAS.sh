@@ -51,23 +51,6 @@ sas_sh="sas.sh"
 #      You can add --prompt next to the job name to halt the script and allow the user to optionally skip a job during the runtime
 #
 cat << EOF > .job.list
-99_Delete_HPENG_output_files --prompt
-01_Populate_Batch_Start_RAW_LOAD
-03.1_Import_Presales_Demo_Data_to_Staging
-99_Validate_All
-01_Generate_Data_Validation_Report
-99_Populate_All --prompt
-99_Populate_CEGs_All
-99_Gather_Schema_Statistics
-99_Create_All_Network_Building_Input
-Run_HPENG_Plus_SMP
-99_Run_All_Post_Process_HPENG_Output
-99_Build_Scoring_Input
-99_Execute_Scoring_Component_Graph
-99_Run_All_Persist_Scoring_Output
-99_Build_Alerts
-99_Run_VI_ETL_Jobs
-02_Populate_Batch_End_RAW_LOAD
 EOF
 #
 # 3/3: Change default behaviors, defaults have been set by the developer, change them as per the needs
@@ -288,10 +271,10 @@ cat > runSAS_updateScript.sh << EOF
 # Update
 if mv runSAS.sh.downloaded runSAS.sh; then
     sleep $sleep_in_secs_for_autoupdate
-    chmod 775 runSAS_new.sh
-    dos2unix runSAS_new.sh
+    chmod 775 runSAS.sh
+    dos2unix runSAS.sh
     printf "NOTE: RunSAS has been updated to the latest version.\n"
-else
+elsea
     printf "*** ERROR: The update has failed! ***"
 fi
 EOF
