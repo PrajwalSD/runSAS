@@ -274,7 +274,7 @@ if mv runSAS.sh.downloaded runSAS.sh; then
     chmod 775 runSAS.sh
     dos2unix runSAS.sh
     printf "NOTE: RunSAS has been updated to the latest version.\n"
-elsea
+else
     printf "*** ERROR: The update has failed! ***"
 fi
 EOF
