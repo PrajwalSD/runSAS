@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 7.0                                                                                                   #
+#     Version: 7.1                                                                                                   #
 #                                                                                                                    #
 #        Date: 15/05/2019                                                                                            #
 #                                                                                                                    #
@@ -51,8 +51,23 @@ sas_sh="sas.sh"
 #      You can add --prompt next to the job name to halt the script and allow the user to optionally skip a job during the runtime
 #
 cat << EOF > .job.list
-XXXXXXXXXXXXXXXXXXXXX --prompt
-YYYYYYYYYYYYYYYYYYYYY
+99_Delete_HPENG_output_files --prompt
+01_Populate_Batch_Start_RAW_LOAD
+03.1_Import_Presales_Demo_Data_to_Staging
+99_Validate_All
+01_Generate_Data_Validation_Report
+99_Populate_All --prompt
+99_Populate_CEGs_All
+99_Gather_Schema_Statistics
+99_Create_All_Network_Building_Input
+Run_HPENG_Plus_SMP
+99_Run_All_Post_Process_HPENG_Output
+99_Build_Scoring_Input
+99_Execute_Scoring_Component_Graph
+99_Run_All_Persist_Scoring_Output
+99_Build_Alerts
+99_Run_VI_ETL_Jobs
+02_Populate_Batch_End_RAW_LOAD
 EOF
 #
 # 3/3: Change default behaviors, defaults have been set by the developer, change them as per the needs
@@ -83,7 +98,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|7|.|0|
+|r|u|n|S|A|S| |v|7|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -98,7 +113,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS version 7.0 (2019) \n${white}"
+        printf "${blue}runSAS version 7.1 (2019) \n${white}"
         printf "${blue}Get the latest version from Github (https://github.com/PrajwalSD/runSAS)\n${white}"
         exit 0;
     fi;
@@ -221,6 +236,87 @@ function check_dependencies(){
                 clear_session_and_exit
             fi
         done
+    fi
+}
+#------
+# Name: runsas_script_auto_update()
+# Desc: Auto updates the runSAS script from Github version (https://stackoverflow.com/questions/8595751/is-this-a-valid-self-update-approach-for-a-bash-scripts)
+#   In: <NA>
+#  Out: <NA>
+#------
+function runsas_script_auto_update(){
+
+# Init
+self=$(basename $0)
+sleep_in_secs_for_autoupdate=0.5
+
+# Generate a backup name
+runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
+sleep $sleep_in_secs_for_autoupdate
+
+# Create a backup of the existing script
+cp runSAS.sh $runsas_backup_script_name
+printf "NOTE: The existing script has been backed up as $runsas_backup_script_name\n"
+sleep $sleep_in_secs_for_autoupdate
+
+# Check if wget exists
+check_dependencies wget dos2unix
+
+# Download the latest file from Github
+printf "NOTE: Downloading new version from Github...\n\n"
+if ! wget -O runSAS.sh.downloaded http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
+    printf "*** ERROR: Could not download the new version from Github, possibly internet issue or the server timed-out ***"
+    exit 1
+fi
+sleep $sleep_in_secs_for_autoupdate
+
+# Get a config backup from existing script
+cat runSAS.sh | sed -n "/USER CONFIGURATION/,/DO NOT CHANGE ANYTHING BELOW THIS LINE/p" > runSAS.config
+sleep $sleep_in_secs_for_autoupdate
+
+# Remove everything between the markers in the downloaded file
+sed -i '/\#</,/\#>/{/\#</!{/\#>/!d;};}' runSAS.sh.downloaded
+sleep $sleep_in_secs_for_autoupdate
+
+# Insert the config to the latest script
+sed -i '/\#</rrunSAS.config' runSAS.sh.downloaded
+sleep $sleep_in_secs_for_autoupdate
+
+# Spawn update script
+cat > runSAS_updateScript.sh << EOF
+#!/bin/bash
+# Update
+if mv runSAS.sh.downloaded runSAS.sh; then
+    sleep $sleep_in_secs_for_autoupdate
+    chmod 775 runSAS_new.sh
+    dos2unix runSAS_new.sh
+    printf "NOTE: RunSAS has been updated to the latest version.\n"
+else
+    printf "*** ERROR: The update has failed! ***"
+fi
+EOF
+   
+# Spawn the script
+exec /bin/bash runSAS_updateScript.sh
+
+# Housekeeping
+rm -rf runSAS_updateScript.sh
+
+# Show version number
+show_the_script_version_number --version
+
+# Exit
+exit 0
+} 
+#------
+# Name: check_for_update_request_from_user()
+# Desc: Check if the user is requesting an update
+#   In: --update
+#  Out: <NA>
+#------
+function check_for_update_request_from_user(){
+    if [[ "$1" == "--update" ]]; then
+        runsas_script_auto_update
     fi
 }
 #------
@@ -657,6 +753,7 @@ function validate_parameters_passed_to_script(){
         case "$1" in
         --help) ;;
      --version) ;;
+      --update) ;;
             -v) ;;
            --v) ;;
             -i) ;;
@@ -1073,6 +1170,9 @@ start_datetime_of_session=`date +%s`
 
 # Idiomatic parameter handling
 validate_parameters_passed_to_script $1
+
+# Check if the user wants to update the script (--update)
+check_for_update_request_from_user $1
 
 # Help menu (if invoked via ./runSAS.sh --help)
 print_the_help_menu $1
