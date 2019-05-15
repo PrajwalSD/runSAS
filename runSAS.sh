@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 7.3                                                                                                   #
+#     Version: 7.5                                                                                                   #
 #                                                                                                                    #
 #        Date: 15/05/2019                                                                                            #
 #                                                                                                                    #
@@ -87,7 +87,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|7|.|3|
+|r|u|n|S|A|S| |v|7|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -102,7 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS version 7.3 (2019) \n${white}"
+        printf "${blue}runSAS version 7.5 (2019) \n${white}"
         printf "${blue}Get the latest version from Github using auto-update option: ./runSAS.sh --update\n${white}"
         exit 0;
     fi;
