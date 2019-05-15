@@ -269,7 +269,7 @@ sed -i '/^\#</,/^\#>/{/^\#</!{/^\#>/!d;};}' .runSAS.sh.downloaded
 sleep $sleep_in_secs_for_autoupdate
 
 # Insert the config to the latest script
-sed -i '/\#</r.runSAS.config' .runSAS.sh.downloaded
+sed -i '/^\#</r.runSAS.config' .runSAS.sh.downloaded
 sleep $sleep_in_secs_for_autoupdate
 
 # Spawn update script
