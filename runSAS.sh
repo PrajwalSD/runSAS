@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 7.1                                                                                                   #
+#     Version: 7.2                                                                                                   #
 #                                                                                                                    #
 #        Date: 15/05/2019                                                                                            #
 #                                                                                                                    #
@@ -31,13 +31,13 @@
 #              any equivalent (i.e. sas.sh, sasbatch.sh etc.) would work.                                            #
 #              The other dependencies are automatically checked by the script during the runtime.                    #
 #                                                                                                                    #
-#      Github: https://github.com/PrajwalSD/runSAS (Grab the latest version from Github)                             #
+#      Github: https://github.com/PrajwalSD/runSAS (Grab the latest version: ./runSAS.sh --update)                   #
 #                                                                                                                    #
 ######################################################################################################################
 #<
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
-# 1/3: Set the SAS 9.x environment parameter
+# 1/4: Set the SAS 9.x environment parameter
 #      Setting the first parameter should work but amend the rest as per the environment
 #
 sas_app_root_directory="/SASInside/SAS/Lev1/SASApp"
@@ -47,13 +47,15 @@ sas_deployed_jobs_root_directory="${sas_app_root_directory}/SASEnvironment/SASCo
 sas_batch_sh="sasbatch.sh"
 sas_sh="sas.sh"
 #
-# 2/3: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
+# 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
 #      You can add --prompt next to the job name to halt the script and allow the user to optionally skip a job during the runtime
 #
 cat << EOF > .job.list
+XXXXX --prompt
+YYYYY
 EOF
 #
-# 3/3: Change default behaviors, defaults have been set by the developer, change them as per the needs
+# 3/4: Change default behaviors, defaults have been set by the developer, change them as per the needs
 #
 run_in_debug_mode=N                    # Default is N        ---> Set this to Y to turn on debugging mode
 runtime_comparsion_routine=Y           # Default is Y        ---> Set this N to turn off job runtime checks
@@ -66,6 +68,10 @@ kill_process_on_user_abort=Y           # Default is Y        ---> The rogue proc
 program_type_ext=sas                   # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"        # Default is "^ERROR" ---> Change this to the locale setting
 check_for_step_string="Step:"          # Default is "Step:"  ---> Change this to the locale setting
+#
+# 4/4: Do not change this unless asked by the developer
+#
+runsas_github_url=http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -81,7 +87,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|7|.|1|
+|r|u|n|S|A|S| |v|7|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -96,7 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS version 7.1 (2019) \n${white}"
+        printf "${blue}runSAS version 7.2 (2019) \n${white}"
         printf "${blue}Get the latest version from Github (https://github.com/PrajwalSD/runSAS)\n${white}"
         exit 0;
     fi;
@@ -129,6 +135,7 @@ function print_the_help_menu(){
         printf "\n      -fu   <job-name> <job-name> The script will run from one job upto the other job."
         printf "\n      -fui  <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
         printf "\n      -fuis <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (skips the rest)"
+        printf "\n     --update                     The script will update itself to the latest version from Github"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> (e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC).   "
@@ -246,47 +253,46 @@ sleep $sleep_in_secs_for_autoupdate
 check_dependencies wget dos2unix
 
 # Download the latest file from Github
-printf "NOTE: Downloading new version from Github...\n\n"
-if ! wget -O runSAS.sh.downloaded http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh ; then
-    printf "*** ERROR: Could not download the new version from Github, possibly internet issue or the server timed-out ***"
-    exit 1
+printf "${green}NOTE: Downloading the latest version from Github using wget...${white}\n\n"
+if ! wget -O .runSAS.sh.downloaded $runsas_github_url; then
+    printf "${red}*** ERROR: Could not download the new version from Github using wget, possibly server restrictions or internet connection issues or the server has timed-out ***\n${white}"
+    clear_session_and_exit
 fi
+printf "${green}NOTE: Download complete, preparing for the self update...\n${white}"
 sleep $sleep_in_secs_for_autoupdate
 
 # Get a config backup from existing script
-cat runSAS.sh | sed -n "/USER CONFIGURATION/,/DO NOT CHANGE ANYTHING BELOW THIS LINE/p" > runSAS.config
+cat runSAS.sh | sed -n "/USER CONFIGURATION/,/DO NOT CHANGE ANYTHING BELOW THIS LINE/p" > .runSAS.config
 sleep $sleep_in_secs_for_autoupdate
 
 # Remove everything between the markers in the downloaded file
-sed -i '/\#</,/\#>/{/\#</!{/\#>/!d;};}' runSAS.sh.downloaded
+sed -i '/\#</,/\#>/{/\#</!{/\#>/!d;};}' .runSAS.sh.downloaded
 sleep $sleep_in_secs_for_autoupdate
 
 # Insert the config to the latest script
-sed -i '/\#</rrunSAS.config' runSAS.sh.downloaded
+sed -i '/\#</r.runSAS.config' .runSAS.sh.downloaded
 sleep $sleep_in_secs_for_autoupdate
 
 # Spawn update script
-cat > runSAS_updateScript.sh << EOF
+cat > .runSAS_updateScript.sh << EOF
 #!/bin/bash
+# Colors 
+red=$'\e[31m'
+green=$'\e[1;32m'
+white=$'\e[0m'
 # Update
-if mv runSAS.sh.downloaded runSAS.sh; then
-    sleep $sleep_in_secs_for_autoupdate
+if mv .runSAS.sh.downloaded runSAS.sh; then
+    sleep 0.5
     chmod 775 runSAS.sh
     dos2unix runSAS.sh
-    printf "NOTE: RunSAS has been updated to the latest version.\n"
+    printf "${green}\nNOTE: RunSAS has been updated to the latest version successfully.${white}\n"
 else
-    printf "*** ERROR: The update has failed! ***"
+    printf "${red}\n\n*** ERROR: The runSAS script update has failed in the last step! ***${white}\n"
 fi
 EOF
    
 # Spawn the script
-exec /bin/bash runSAS_updateScript.sh
-
-# Housekeeping
-rm -rf runSAS_updateScript.sh
-
-# Show version number
-show_the_script_version_number --version
+exec /bin/bash .runSAS_updateScript.sh
 
 # Exit
 exit 0
