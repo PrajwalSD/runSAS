@@ -51,8 +51,23 @@ sas_sh="sas.sh"
 #      You can add --prompt next to the job name to halt the script and allow the user to optionally skip a job during the runtime
 #
 cat << EOF > .job.list
-XXXXX --prompt
-YYYYY
+99_Delete_HPENG_output_files --prompt
+01_Populate_Batch_Start_RAW_LOAD
+03.1_Import_Presales_Demo_Data_to_Staging
+99_Validate_All
+01_Generate_Data_Validation_Report
+99_Populate_All --prompt
+99_Populate_CEGs_All
+99_Gather_Schema_Statistics
+99_Create_All_Network_Building_Input
+Run_HPENG_Plus_SMP
+99_Run_All_Post_Process_HPENG_Output
+99_Build_Scoring_Input
+99_Execute_Scoring_Component_Graph
+99_Run_All_Persist_Scoring_Output
+99_Build_Alerts
+99_Run_VI_ETL_Jobs
+02_Populate_Batch_End_RAW_LOAD
 EOF
 #
 # 3/4: Change default behaviors, defaults have been set by the developer, change them as per the needs
@@ -230,47 +245,43 @@ function check_dependencies(){
 }
 #------
 # Name: runsas_script_auto_update()
-# Desc: Auto updates the runSAS script from Github version (https://stackoverflow.com/questions/8595751/is-this-a-valid-self-update-approach-for-a-bash-scripts)
+# Desc: Auto updates the runSAS script from Github version
 #   In: <NA>
 #  Out: <NA>
 #------
 function runsas_script_auto_update(){
-
-# Init
-sleep_in_secs_for_autoupdate=0.5
+# Add a sleep to account for network and disk i/o latencies
+au_sleep=0.5
 
 # Generate a backup name
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
-sleep $sleep_in_secs_for_autoupdate
+sleep $au_sleep
 
 # Create a backup of the existing script
 cp runSAS.sh $runsas_backup_script_name
 printf "${green}\nNOTE: The existing runSAS script has been backed up as $runsas_backup_script_name${white}\n"
-sleep $sleep_in_secs_for_autoupdate
+sleep $au_sleep
 
 # Check if wget exists
 check_dependencies wget dos2unix
 
 # Download the latest file from Github
-printf "${green}\nNOTE: Downloading the latest version from Github using wget...${white}\n\n"
+printf "${green}\nNOTE: Downloading the latest version from Github using wget utility...${white}\n\n"
 if ! wget -O .runSAS.sh.downloaded $runsas_github_url; then
-    printf "${red}*** ERROR: Could not download the new version from Github using wget, possibly server restrictions or internet connection issues or the server has timed-out ***\n${white}"
+    printf "${red}*** ERROR: Could not download the new version of runSAS from Github using wget, possibly due to server restrictions or internet connection issues or the server has timed-out ***\n${white}"
     clear_session_and_exit
 fi
-printf "${green}NOTE: Download complete, preparing the update of script file...\n\n${white}"
-sleep $sleep_in_secs_for_autoupdate
+printf "${green}NOTE: Download complete, preparing the update...\n\n${white}"
+sleep $au_sleep
 
 # Get a config backup from existing script
 cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
-sleep $sleep_in_secs_for_autoupdate
 
 # Remove everything between the markers in the downloaded file
 sed -i '/^\#</,/^\#>/{/^\#</!{/^\#>/!d;};}' .runSAS.sh.downloaded
-sleep $sleep_in_secs_for_autoupdate
 
 # Insert the config to the latest script
 sed -i '/^\#</r.runSAS.config' .runSAS.sh.downloaded
-sleep $sleep_in_secs_for_autoupdate
 
 # Spawn update script
 cat > .runSAS_updateScript.sh << EOF
@@ -291,7 +302,7 @@ else
 fi
 EOF
    
-# Spawn the script
+# Handover the execution
 exec /bin/bash .runSAS_updateScript.sh
 
 # Exit
