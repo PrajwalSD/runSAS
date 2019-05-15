@@ -261,7 +261,7 @@ printf "${green}NOTE: Download complete, preparing for the self update...\n${whi
 sleep $sleep_in_secs_for_autoupdate
 
 # Get a config backup from existing script
-cat runSAS.sh | sed -n "/^\#</,/^\#>/p" > .runSAS.config
+cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
 sleep $sleep_in_secs_for_autoupdate
 
 # Remove everything between the markers in the downloaded file
