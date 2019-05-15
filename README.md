@@ -10,6 +10,12 @@ SAS 9.x environment (Linux) with SAS BatchServer component is essential for the 
 # Is there a help menu?
  `./runSAS.sh --help`
 
+# How can I see the version of the script?
+ `./runSAS.sh --version`
+ 
+# How can I update to the latest version?
+ `./runSAS.sh --update`
+
 # How to use the script?
   * Download/clone `runSAS.sh` and transfer it to the SAS server
   * Set the environment parameters (inside the script in the top section)
@@ -29,7 +35,7 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   
   `./runSAS.sh -i`
   
-* ### Run until mode (-u)
+* ### Run upto mode (-u)
   If you want to run until a specific job, the script will run all the jobs in the list until the specified job.
   
   `./runSAS.sh -u <name or index>`
@@ -46,17 +52,17 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   
   `./runSAS.sh -o <name or index>`
   
-* ### Run from a job to a job mode (-t)
+* ### Run from a job to a job mode (-fu)
   If you want to run a bunch of jobs together from one point to the other.
   
-  `./runSAS.sh -t <name or index> <name or index>` 
+  `./runSAS.sh -fu <name or index> <name or index>` 
   
-* ### Run from a job to a job interactive mode (-s)
+* ### Run from a job to a job interactive mode (-fui)
   If you want to run from one job to the other job, but in an interactive mode (__runs the rest__ in a non-interactive mode)  
   
-  `./runSAS.sh -s <name or index> <name or index>` 
+  `./runSAS.sh -fui <name or index> <name or index>` 
   
-* ### Run from a job to a job interactive mode (-ss)
+* ### Run from a job to a job interactive mode (-fuis)
   If you want to run from one job to the other job, but in an interactive mode (__skips__ the rest in a non-interactive       mode)" 
   
-  `./runSAS.sh -ss <name or index> <name or index>` 
+  `./runSAS.sh -fuis <name or index> <name or index>` 
