@@ -103,7 +103,7 @@ printf "\n${white}"
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "${blue}runSAS version 7.3 (2019) \n${white}"
-        printf "${blue}Get the latest version from Github (https://github.com/PrajwalSD/runSAS)\n${white}"
+        printf "${blue}Get the latest version from Github using auto-update option: ./runSAS.sh --update\n${white}"
         exit 0;
     fi;
 }
@@ -245,19 +245,19 @@ sleep $sleep_in_secs_for_autoupdate
 
 # Create a backup of the existing script
 cp runSAS.sh $runsas_backup_script_name
-printf "${green}NOTE: The existing runSAS script has been backed up as $runsas_backup_script_name${white}\n"
+printf "${green}\nNOTE: The existing runSAS script has been backed up as $runsas_backup_script_name${white}\n"
 sleep $sleep_in_secs_for_autoupdate
 
 # Check if wget exists
 check_dependencies wget dos2unix
 
 # Download the latest file from Github
-printf "${green}NOTE: Downloading the latest version from Github using wget...${white}\n\n"
+printf "${green}\nNOTE: Downloading the latest version from Github using wget...${white}\n\n"
 if ! wget -O .runSAS.sh.downloaded $runsas_github_url; then
     printf "${red}*** ERROR: Could not download the new version from Github using wget, possibly server restrictions or internet connection issues or the server has timed-out ***\n${white}"
     clear_session_and_exit
 fi
-printf "${green}NOTE: Download complete, preparing for the self update...\n${white}"
+printf "${green}NOTE: Download complete, preparing the update of script file...\n\n${white}"
 sleep $sleep_in_secs_for_autoupdate
 
 # Get a config backup from existing script
@@ -284,10 +284,10 @@ if mv .runSAS.sh.downloaded runSAS.sh; then
     sleep 0.5
     chmod 775 runSAS.sh
     dos2unix runSAS.sh
-    printf "${green}\nNOTE: runSAS script has been updated to the latest version successfully, try ./runSAS.sh --version ${white}\n"
+    printf "${green}\nNOTE: runSAS script has been updated to the latest version successfully, try ./runSAS.sh --version to verify.${white}\n\n"
 else
-    printf "${red}\n\n*** ERROR: The runSAS script update has failed in the last step! ***${white}\n"
-    printf "${red}\n\n*** Recover the old version from the backup if needed. ***${white}\n\n"
+    printf "${red}\n\n*** ERROR: The runSAS script update has failed in the last step (check perms)! ***${white}\n\n"
+    printf "${red}\n\n*** You can recover the old version of runSAS from the backup created during this process, if needed. ***${white}\n\n"
 fi
 EOF
    
