@@ -782,7 +782,7 @@ function create_a_new_file(){
 #  Out: <NA>
 #------
 function show_server_and_user_details(){
-    printf "\n${white}The script was launched (in $1 mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
+    printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
     printf '%s' ${white}"${SUDO_USER:-$USER}${white}"
     printf "${white} user\n${white}"
 }
