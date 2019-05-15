@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 7.2                                                                                                   #
+#     Version: 7.3                                                                                                   #
 #                                                                                                                    #
 #        Date: 15/05/2019                                                                                            #
 #                                                                                                                    #
@@ -87,7 +87,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|7|.|2|
+|r|u|n|S|A|S| |v|7|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -102,7 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS version 7.2 (2019) \n${white}"
+        printf "${blue}runSAS version 7.3 (2019) \n${white}"
         printf "${blue}Get the latest version from Github (https://github.com/PrajwalSD/runSAS)\n${white}"
         exit 0;
     fi;
@@ -237,7 +237,6 @@ function check_dependencies(){
 function runsas_script_auto_update(){
 
 # Init
-self=$(basename $0)
 sleep_in_secs_for_autoupdate=0.5
 
 # Generate a backup name
@@ -246,7 +245,7 @@ sleep $sleep_in_secs_for_autoupdate
 
 # Create a backup of the existing script
 cp runSAS.sh $runsas_backup_script_name
-printf "NOTE: The existing script has been backed up as $runsas_backup_script_name\n"
+printf "${green}NOTE: The existing runSAS script has been backed up as $runsas_backup_script_name${white}\n"
 sleep $sleep_in_secs_for_autoupdate
 
 # Check if wget exists
@@ -262,7 +261,7 @@ printf "${green}NOTE: Download complete, preparing for the self update...\n${whi
 sleep $sleep_in_secs_for_autoupdate
 
 # Get a config backup from existing script
-cat runSAS.sh | sed -n "/USER CONFIGURATION/,/DO NOT CHANGE ANYTHING BELOW THIS LINE/p" > .runSAS.config
+cat runSAS.sh | sed -n "/USER CONFIGURATION/,/DO NOT CHANGE ANYTHING BELOW THIS LINE/p" > runSAS.config
 sleep $sleep_in_secs_for_autoupdate
 
 # Remove everything between the markers in the downloaded file
@@ -270,7 +269,7 @@ sed -i '/\#</,/\#>/{/\#</!{/\#>/!d;};}' .runSAS.sh.downloaded
 sleep $sleep_in_secs_for_autoupdate
 
 # Insert the config to the latest script
-sed -i '/\#</r.runSAS.config' .runSAS.sh.downloaded
+sed -i '/\#</rrunSAS.config' .runSAS.sh.downloaded
 sleep $sleep_in_secs_for_autoupdate
 
 # Spawn update script
@@ -280,14 +279,15 @@ cat > .runSAS_updateScript.sh << EOF
 red=$'\e[31m'
 green=$'\e[1;32m'
 white=$'\e[0m'
-# Update
+# Update runSAS 
 if mv .runSAS.sh.downloaded runSAS.sh; then
     sleep 0.5
     chmod 775 runSAS.sh
     dos2unix runSAS.sh
-    printf "${green}\nNOTE: RunSAS has been updated to the latest version successfully.${white}\n"
+    printf "${green}\nNOTE: runSAS script has been updated to the latest version successfully, try ./runSAS.sh --version ${white}\n"
 else
     printf "${red}\n\n*** ERROR: The runSAS script update has failed in the last step! ***${white}\n"
+    printf "${red}\n\n*** Recover the old version from the backup if needed. ***${white}\n\n"
 fi
 EOF
    
