@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 7.8                                                                                                   #
+#     Version: 8.0                                                                                                   #
 #                                                                                                                    #
 #        Date: 16/05/2019                                                                                            #
 #                                                                                                                    #
@@ -87,7 +87,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|7|.|8|
+|r|u|n|S|A|S| |v|8|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -102,7 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS 7.8\n${white}"
+        printf "${blue}runSAS 8.0\n${white}"
         exit 0;
     fi;
 }
@@ -318,7 +318,8 @@ dos2unix .runSAS.sh.downloaded
 printf "${green}\nCurrent version: ${white}"
 ./runSAS.sh --version > .runSAS.sh.ver
 cat .runSAS.sh.ver
-printf "${green}\nNew version: ${white}"
+rm -rf .runSAS.sh.ver
+printf "${green}New version: ${white}"
 ./.runSAS.sh.downloaded --version > .runSAS.sh.downloaded.ver
 cat .runSAS.sh.downloaded.ver
 rm -rf .runSAS.sh.downloaded.ver
