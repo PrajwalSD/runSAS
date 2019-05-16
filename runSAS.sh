@@ -102,8 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS - version 7.8 \n${white}"
-        printf "${blue}Get the latest version from Github using auto-update option: ./runSAS.sh --update\n${white}"
+        printf "${blue}runSAS 7.8\n${white}"
         exit 0;
     fi;
 }
@@ -308,8 +307,21 @@ if ! wget -O .runSAS.sh.downloaded $runsas_github_url; then
     printf "${red}*** ERROR: Could not download the new version of runSAS from Github using wget, possibly due to server restrictions or internet connection issues or the server has timed-out ***\n${white}"
     clear_session_and_exit
 fi
-printf "${green}NOTE: Download complete, preparing for the update, please wait...\n${white}"
+printf "${green}NOTE: Download complete.\n${white}"
 sleep 0.5
+
+# Fix perms (775 is the default!)
+chmod 775 .runSAS.sh.downloaded
+dos2unix .runSAS.sh.downloaded
+
+# Show the version numbers 
+printf "${green}\n\nCurrent version: ${white}"
+./runSAS.sh --version > .runSAS.sh.ver
+cat .runSAS.sh.ver
+printf "${green}\nNew version: ${white}"
+./.runSAS.sh.downloaded --version > .runSAS.sh.downloaded.ver
+cat .runSAS.sh.downloaded.ver
+rm -rf .runSAS.sh.downloaded.ver
 
 # Get a config backup from existing script
 cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
@@ -331,7 +343,7 @@ white=$'\e[0m'
 if mv .runSAS.sh.downloaded runSAS.sh; then
     sleep 0.5
     chmod 775 runSAS.sh
-    dos2unix runSAS.sh
+    printf "${green}\nNOTE: runSAS script has been updated to the latest version (see the version number below)\n\n${white}"
     ./runSAS.sh --version
     printf "${green}\nNOTE: runSAS script has been updated to the latest version successfully.${white}\n\n"
 else
