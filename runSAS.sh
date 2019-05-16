@@ -346,7 +346,7 @@ if mv .runSAS.sh.downloaded runSAS.sh; then
     chmod 775 runSAS.sh
     printf "${green}\nNOTE: runSAS script has been successfully updated to ${white}"
     ./runSAS.sh --version
-    printf"\n\n"
+    printf "\n\n"
 else
     printf "${red}\n\n*** ERROR: The runSAS script update has failed at the last step! ***${white}\n\n"
     printf "${red}\n\n*** You can recover the old version of runSAS from the backup created during this process, if needed. ***${white}\n\n"
