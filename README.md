@@ -66,3 +66,6 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   If you want to run from one job to the other job, but in an interactive mode (__skips__ the rest in a non-interactive       mode)" 
   
   `./runSAS.sh -fuis <name or index> <name or index>` 
+  
+# Tips
+ To preview the job list use `./runSAS.sh --jobs`
