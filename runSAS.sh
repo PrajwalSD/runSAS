@@ -315,7 +315,7 @@ chmod 775 .runSAS.sh.downloaded
 dos2unix .runSAS.sh.downloaded
 
 # Show the version numbers 
-printf "${green}\n\nCurrent version: ${white}"
+printf "${green}\nCurrent version: ${white}"
 ./runSAS.sh --version > .runSAS.sh.ver
 cat .runSAS.sh.ver
 printf "${green}\nNew version: ${white}"
