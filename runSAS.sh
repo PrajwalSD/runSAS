@@ -8,9 +8,9 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 7.7                                                                                                   #
+#     Version: 7.8                                                                                                   #
 #                                                                                                                    #
-#        Date: 15/05/2019                                                                                            #
+#        Date: 16/05/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -51,23 +51,8 @@ sas_sh="sas.sh"
 #      You can add --prompt next to the job name to halt the script and allow the user to optionally skip a job during the runtime
 #
 cat << EOF > .job.list
-99_Delete_HPENG_output_files --prompt
-01_Populate_Batch_Start_RAW_LOAD
-03.1_Import_Presales_Demo_Data_to_Staging
-99_Validate_All
-01_Generate_Data_Validation_Report
-99_Populate_All --prompt
-99_Populate_CEGs_All
-99_Gather_Schema_Statistics
-99_Create_All_Network_Building_Input
-Run_HPENG_Plus_SMP
-99_Run_All_Post_Process_HPENG_Output
-99_Build_Scoring_Input
-99_Execute_Scoring_Component_Graph
-99_Run_All_Persist_Scoring_Output
-99_Build_Alerts
-99_Run_VI_ETL_Jobs
-02_Populate_Batch_End_RAW_LOAD
+XXXXX --prompt
+YYYYY
 EOF
 #
 # 3/4: Change default behaviors, defaults have been set by the developer, change them as per the needs
@@ -102,7 +87,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|7|.|7|
+|r|u|n|S|A|S| |v|7|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -117,7 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS version 7.7 (2019) \n${white}"
+        printf "${blue}runSAS - version 7.8 \n${white}"
         printf "${blue}Get the latest version from Github using auto-update option: ./runSAS.sh --update\n${white}"
         exit 0;
     fi;
@@ -151,6 +136,7 @@ function print_the_help_menu(){
         printf "\n      -fui  <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
         printf "\n      -fuis <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (skips the rest)"
         printf "\n     --update                     The script will update itself to the latest version from Github"
+        printf "\n     --jobs or --show             The script will show a list of job(s) provided by the user in the script (quick preview)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> (e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC).   "
@@ -166,8 +152,56 @@ function print_the_help_menu(){
         printf "${underline}"
         printf "\nGITHUB\n"
         printf "${end}${blue}"
-        printf "\n       Get the latest version from Github: https://github.com/PrajwalSD/runSAS \n\n"
+        printf "\n       Repo: https://github.com/PrajwalSD/runSAS\n"
+        printf "\n       To get the latest version of runSAS you can use the auto-update option: ./runSAS.sh --update \n\n"
         printf "${white}"
+        exit 0;
+    fi;
+}
+#------
+# Name: validate_parameters_passed_to_script()
+# Desc: This function validates the script parameters 
+#   In: <NA>
+#  Out: <NA>
+#------
+function validate_parameters_passed_to_script(){
+    while test $# -gt 0
+    do
+        case "$1" in
+        --help) ;;
+     --version) ;;
+      --update) ;;
+        --jobs) ;;
+         --job) ;;
+        --show) ;;
+        --list) ;;
+            -v) ;;
+           --v) ;;
+            -i) ;;
+            -o) ;;
+            -f) ;;
+            -u) ;;
+           -fu) ;;
+          -fui) ;;
+         -fuis) ;;
+             *) printf "${red}\n*** ERROR: ./runSAS ${white}${red_bg}$1${white}${red} is invalid, see the --help menu below for available options ***\n${white}"
+                print_the_help_menu --help
+                exit 0 
+                ;;
+        esac
+        shift
+    done
+}
+#------
+# Name: show_the_list()
+# Desc: Displays the list of jobs/programs in the script (quick preview)
+#   In: --jobs or --job or --show or --list
+#  Out: <NA>
+#------
+function show_the_list(){
+    if [[ ${#@} -ne 0 ]] && ([[ "${@#"--jobs"}" = "" ]] || [[ "${@#"--list"}" = "" ]] || [[ "${@#"--job"}" = "" ]] || [[ "${@#"--show"}" = "" ]]); then
+        print_file_content_with_index .job.list jobs
+        printf "\n"
         exit 0;
     fi;
 }
@@ -250,17 +284,20 @@ function check_dependencies(){
 #  Out: <NA>
 #------
 function runsas_script_auto_update(){
-# Add a sleep to account for network and disk i/o latencies
-au_sleep=0.5
 
-# Generate a backup name
+# Generate a backup name and folder
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
-sleep $au_sleep
+
+# Create backup folder
+create_a_directory backups
 
 # Create a backup of the existing script
-cp runSAS.sh $runsas_backup_script_name
-printf "${green}\nNOTE: The existing runSAS script has been backed up as $runsas_backup_script_name${white}\n"
-sleep $au_sleep
+if ! cp runSAS.sh backups/$runsas_backup_script_name; then
+     printf "${red}*** ERROR: Backup has failed! ***\n${white}"
+     clear_session_and_exit
+else
+    printf "${green}\nNOTE: The existing runSAS script has been backed up to `pwd`/backups/$runsas_backup_script_name ${white}\n"
+fi
 
 # Check if wget exists
 check_dependencies wget dos2unix
@@ -271,8 +308,8 @@ if ! wget -O .runSAS.sh.downloaded $runsas_github_url; then
     printf "${red}*** ERROR: Could not download the new version of runSAS from Github using wget, possibly due to server restrictions or internet connection issues or the server has timed-out ***\n${white}"
     clear_session_and_exit
 fi
-printf "${green}NOTE: Download complete, preparing the update...\n\n${white}"
-sleep $au_sleep
+printf "${green}NOTE: Download complete, preparing for the update, please wait...\n${white}"
+sleep 0.5
 
 # Get a config backup from existing script
 cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
@@ -284,7 +321,7 @@ sed -i '/^\#</,/^\#>/{/^\#</!{/^\#>/!d;};}' .runSAS.sh.downloaded
 sed -i '/^\#</r.runSAS.config' .runSAS.sh.downloaded
 
 # Spawn update script
-cat > .runSAS_updateScript.sh << EOF
+cat > .runSAS_update.sh << EOF
 #!/bin/bash
 # Colors 
 red=$'\e[31m'
@@ -295,15 +332,18 @@ if mv .runSAS.sh.downloaded runSAS.sh; then
     sleep 0.5
     chmod 775 runSAS.sh
     dos2unix runSAS.sh
-    printf "${green}\nNOTE: runSAS script has been updated to the latest version successfully, try ./runSAS.sh --version to verify.${white}\n\n"
+    ./runSAS.sh --version
+    printf "${green}\nNOTE: runSAS script has been updated to the latest version successfully.${white}\n\n"
 else
     printf "${red}\n\n*** ERROR: The runSAS script update has failed in the last step (check perms)! ***${white}\n\n"
     printf "${red}\n\n*** You can recover the old version of runSAS from the backup created during this process, if needed. ***${white}\n\n"
 fi
 EOF
+
+press_enter_key_to_continue
    
 # Handover the execution
-exec /bin/bash .runSAS_updateScript.sh
+exec /bin/bash .runSAS_update.sh
 
 # Exit
 exit 0
@@ -316,7 +356,14 @@ exit 0
 #------
 function check_for_update_request_from_user(){
     if [[ "$1" == "--update" ]]; then
-        runsas_script_auto_update
+        printf "${red}Press Y to confirm: ${white}"
+        read read_auto_update_confirmation
+        if [[ "$read_auto_update_confirmation" == "Y" ]]; then
+            runsas_script_auto_update
+        else
+            printf "Cancelled.\n"
+            exit 0
+        fi
     fi
 }
 #------
@@ -342,6 +389,22 @@ function check_if_the_dir_exists(){
         if [[ ! -d "$dir" ]]; then
             printf "${red}*** ERROR: Directory ${white}${red_bg}$dir${white}${red} was not found in the server, make sure you have correctly set the script parameters as per the environment *** ${white}"
             clear_session_and_exit
+        fi
+    done
+}
+#------
+# Name: create_a_directory()
+# Desc: Create a directory if it doesn't exist
+#   In: directory-name (multiple could be specified)
+#  Out: <NA>
+#------
+function create_a_directory(){
+    for dir in "$@"
+    do
+        if [[ ! -d "$dir" ]]; then
+            printf "${green}NOTE: Creating a directory named $dir in `pwd`...${white}"
+            mkdir -p $dir
+            printf "${green}DONE\n${white}"
         fi
     done
 }
@@ -742,36 +805,6 @@ function print_file_content_with_index(){
     printf "${white}---${white}\n"
 }
 #------
-# Name: validate_parameters_passed_to_script()
-# Desc: This function validates the script parameters 
-#   In: <NA>
-#  Out: <NA>
-#------
-function validate_parameters_passed_to_script(){
-    while test $# -gt 0
-    do
-        case "$1" in
-        --help) ;;
-     --version) ;;
-      --update) ;;
-            -v) ;;
-           --v) ;;
-            -i) ;;
-            -o) ;;
-            -f) ;;
-            -u) ;;
-           -fu) ;;
-          -fui) ;;
-         -fuis) ;;
-             *) printf "${red}\n*** ERROR: ./runSAS ${white}${red_bg}$1${white}${red} is invalid, see the --help menu below for available options ***\n${white}"
-                print_the_help_menu --help
-                exit 0 
-                ;;
-        esac
-        shift
-    done
-}
-#------
 # Name: create_a_new_file()
 # Desc: This function will create a new file, that's all.
 #   In: <file-name> (multiple files can be provided)
@@ -1165,11 +1198,14 @@ script_mode="${1:-0}"
 script_mode_value="${2:-0}"
 script_mode_value_other="${3:-0}"
 
-# Capture runtimes
+# Capture session runtimes
 start_datetime_of_session=`date +%s`
 
 # Idiomatic parameter handling
 validate_parameters_passed_to_script $1
+
+# Show the list if the user wants to quickly preview before launching the script (--show or --jobs or --list)
+show_the_list $1
 
 # Check if the user wants to update the script (--update)
 check_for_update_request_from_user $1
