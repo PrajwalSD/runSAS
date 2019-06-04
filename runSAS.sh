@@ -8,9 +8,9 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 8.0                                                                                                   #
+#     Version: 8.1                                                                                                   #
 #                                                                                                                    #
-#        Date: 16/05/2019                                                                                            #
+#        Date: 04/06/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -87,7 +87,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|8|.|0|
+|r|u|n|S|A|S| |v|8|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -102,7 +102,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS 8.0\n${white}"
+        printf "${blue}runSAS 8.1\n${white}"
         exit 0;
     fi;
 }
@@ -1008,7 +1008,9 @@ function runSAS(){
         printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
         stty -igncr < /dev/tty
         read run_job_with_prompt < /dev/tty
-        printf "\n"
+        if [[ "$job_counter_for_display" == "1" ]]; then
+            printf "\n"
+        fi
         if [[ $run_job_with_prompt != Y ]]; then
             write_skipped_job_details_on_screen $1
             continue
