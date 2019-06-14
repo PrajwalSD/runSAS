@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 9.4                                                                                                   #
+#     Version: 9.5                                                                                                   #
 #                                                                                                                    #
 #        Date: 14/06/2019                                                                                            #
 #                                                                                                                    #
@@ -95,7 +95,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|9|.|4|
+|r|u|n|S|A|S| |v|9|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -110,7 +110,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "9.4"
+        printf "9.5"
         exit 0;
     fi;
 }
