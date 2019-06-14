@@ -368,7 +368,7 @@ if ! [[ $curr_runsas_ver =~ $runsas_version_number_regex ]]; then
     printf "${red}*** Download the latest version (and update it) manually from $runsas_github_src_url ***${white}"
     clear_session_and_exit
 else
-    if (( $(echo "$curr_runsas_ver >= $compatible_runsas_ver" | bc -l) )); then
+    if (( $(echo "$curr_runsas_ver < $compatible_runsas_ver" | bc -l) )); then
 		printf "${red}\n\n*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update ***\n${white}"
 		printf "${red}*** Download the latest version (and update it) manually from $runsas_github_src_url ***${white}"
 		clear_session_and_exit
