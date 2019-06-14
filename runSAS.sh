@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 9.3                                                                                                   #
+#     Version: 9.4                                                                                                   #
 #                                                                                                                    #
 #        Date: 14/06/2019                                                                                            #
 #                                                                                                                    #
@@ -95,7 +95,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|9|.|3|
+|r|u|n|S|A|S| |v|9|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -110,7 +110,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "9.3"
+        printf "9.4"
         exit 0;
     fi;
 }
@@ -359,7 +359,7 @@ runsas_version_number_regex='^[0-9]+([.][0-9]+)?$'
 
 # Check if the environment already has the latest version, a warning must be shown
 if (( $(echo "$curr_runsas_ver >= $new_runsas_ver" | bc -l) )); then
-    printf "${red}\n\nWARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver). Do you still want to update?${white}\n"
+    printf "${red}\n\nWARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver). Do you still want to update?${white}"
 fi
 
 # Check if the current version is auto-update compatible? 
@@ -375,6 +375,7 @@ else
     fi
 fi
 
+# Just to keep it clean
 printf "\n"
 
 # Get a config backup from existing script
