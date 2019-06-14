@@ -760,9 +760,9 @@ email_optional_from_address=$8
 email_optional_to_distribution_list=$9
 
 # HTML files
-email_header_file=".runSAS_email_header.html" 
-email_body_file=".runSAS_email_body.html"
-email_footer_file=".runSAS_email_footer.html"
+email_header_file="$runsas_tmp_directory/.runSAS_email_header.html" 
+email_body_file="$runsas_tmp_directory/.runSAS_email_body.html"
+email_footer_file="$runsas_tmp_directory/.runSAS_email_footer.html"
 
 # Do not change this
 email_boundary_string="ZZ_/afg6432dfgkl.94531q"
