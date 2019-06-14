@@ -345,7 +345,7 @@ curr_runsas_ver=$(<.runSAS.sh.ver)
 printf "${green}\nNew version: ${white}"
 ./.runSAS.sh.downloaded --version > .runSAS.sh.downloaded.ver
 cat .runSAS.sh.downloaded.ver
-new_runsas_ver=$(<.runSAS.sh.downloaded.comp.ver)
+new_runsas_ver=$(<.runSAS.sh.downloaded.ver)
 # Get COMPATIBLE version from the downloaded file
 ./.runSAS.sh.downloaded --update-c > .runSAS.sh.downloaded.comp.ver
 compatible_runsas_ver=$(<.runSAS.sh.downloaded.comp.ver)
