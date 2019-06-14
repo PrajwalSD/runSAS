@@ -359,7 +359,7 @@ runsas_version_number_regex='^[0-9]+([.][0-9]+)?$'
 
 # Check if the environment already has the latest version, a warning must be shown
 if (( $(echo "$curr_runsas_ver >= $new_runsas_ver" | bc -l) )); then
-    printf "${red}WARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver)${white}"
+    printf "${red}\n\nWARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver). Do you still want to update?${white}\n"
     press_enter_key_to_continue
 fi
 
