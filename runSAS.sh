@@ -8,9 +8,9 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 8.1                                                                                                   #
+#     Version: 9.0                                                                                                   #
 #                                                                                                                    #
-#        Date: 04/06/2019                                                                                            #
+#        Date: 14/06/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -37,17 +37,17 @@
 #<
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
-# 1/4: Set the SAS 9.x environment parameter
-#      Setting the first parameter should work but amend the rest as per the environment
+# 1/5: Set the SAS 9.x environment parameters
+#      Setting just the first parameter should work but amend the rest if needed as per the environment
 #
-sas_app_root_directory="/SASInside/SAS/Lev1/SASApp"
+sas_app_root_directory="/opt/sas/9.4/config/Lev1/SASApp"
 sas_batch_server_root_directory="${sas_app_root_directory}/BatchServer"
 sas_logs_root_directory="${sas_app_root_directory}/BatchServer/Logs"
 sas_deployed_jobs_root_directory="${sas_app_root_directory}/SASEnvironment/SASCode/Jobs"
 sas_batch_sh="sasbatch.sh"
 sas_sh="sas.sh"
 #
-# 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
+# 2/5: Provide a list of SAS program(s) or SAS Data Integration Studio job(s), do not include ".sas" in the file name
 #      You can add --prompt next to the job name to halt the script and allow the user to optionally skip a job during the runtime
 #
 cat << EOF > .job.list
@@ -55,23 +55,31 @@ XXXXX --prompt
 YYYYY
 EOF
 #
-# 3/4: Change default behaviors, defaults have been set by the developer, change them as per the needs
+# 3/5: Change default behaviors, defaults have been set by the developer, change them as per the needs
 #
-run_in_debug_mode=N                    # Default is N        ---> Set this to Y to turn on debugging mode
-runtime_comparsion_routine=Y           # Default is Y        ---> Set this N to turn off job runtime checks
-increase_in_runtime_factor=50          # Default is 50       ---> This is used in determining the runtime changes between runs (to a last successful run only)
-job_error_display_count=1              # Default is 1        ---> This will restrict the error log display to the x no. of error(s) in the log
-job_error_display_steps=N              # Default is Y        ---> This will show more details when a job fails, it can be a page long output
-job_error_display_lines_around_count=1 # Default is 1        ---> This will allow you to increase or decrease how much is shown from the log
-job_error_display_lines_around_mode=a  # Default is a        ---> These are grep arguements, a=after error, b=before error, c=after & before
-kill_process_on_user_abort=Y           # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
-program_type_ext=sas                   # Default is sas      ---> Do not change this. 
-check_for_error_string="^ERROR"        # Default is "^ERROR" ---> Change this to the locale setting
-check_for_step_string="Step:"          # Default is "Step:"  ---> Change this to the locale setting
+run_in_debug_mode=N                                   # Default is N        ---> Set this to Y to turn on debugging mode.
+runtime_comparsion_routine=Y                          # Default is Y        ---> Set this N to turn off job runtime checks.
+increase_in_runtime_factor=50                         # Default is 50       ---> This is used in determining the runtime changes between runs (to a last successful run only).
+job_error_display_count=1                             # Default is 1        ---> This will restrict the error log display to the x no. of error(s) in the log.
+job_error_display_steps=N                             # Default is N        ---> This will show more details when a job fails, it can be a page long output.
+job_error_display_lines_around_count=1                # Default is 1        ---> This will allow you to increase or decrease how much is shown from the log.
+job_error_display_lines_around_mode=a                 # Default is a        ---> These are grep arguements, a=after error, b=before error, c=after & before.
+kill_process_on_user_abort=Y                          # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
+program_type_ext=sas                                  # Default is sas      ---> Do not change this. 
+check_for_error_string="^ERROR"                       # Default is "^ERROR" ---> Change this to the locale setting.
+check_for_step_string="Step:"                         # Default is "Step:"  ---> Change this to the locale setting.
+enable_runsas_run_history=N                           # Default is N        ---> Set to Y to capture runSAS run history
 #
-# 4/4: Do not change this unless asked by the developer
+# 4/5: Optional email alerts, set the first parameter to N to turn off this feature 
+#      If you don't receive emails, add <logged-in-user>@<server-full-name> (e.g.: sas@sasserver.demo.sas.com) to your email provider whitelist
 #
-runsas_github_url=http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
+email_alerts=N					      # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
+email_alert_to_address=""                             # Default is ""       ---> Provide email addresses separated by a semi-colon
+email_alert_user_name="runSAS"                        # Default is "runSAS" ---> This is used as FROM address for the email alerts
+#
+# 5/5: Do not change the below URL (remove the url reference if you don't want to include the --update feature)
+#
+runsas_github_src_url=http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -87,7 +95,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|8|.|1|
+|r|u|n|S|A|S| |v|9|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -102,7 +110,19 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}runSAS 8.1\n${white}"
+        printf "${blue}9.0${white}"
+        exit 0;
+    fi;
+}
+#------
+# Name: show_the_update_compatible_script_version_number()
+# Desc: Shows the version number from which you can auto-update (using --update)
+#   In: --update-c
+#  Out: <NA>
+#------
+function show_the_update_compatible_script_version_number(){
+    if [[ ${#@} -ne 0 ]] && [[ "${@#"--update-c"}" = "" ]]; then
+        printf "${blue}9.0${white}"
         exit 0;
     fi;
 }
@@ -170,6 +190,7 @@ function validate_parameters_passed_to_script(){
         --help) ;;
      --version) ;;
       --update) ;;
+    --update-c) ;;
         --jobs) ;;
          --job) ;;
         --show) ;;
@@ -256,7 +277,7 @@ function check_dependencies(){
             # Check
             printf "${white}"
             if [[ -z "$check_dependency_cmd" ]]; then
-                printf "${red}\n*** ERROR: Dependency checks failed, ${white}${red_bg}$prg${white}${red} program is not found, runSAS requires this program to run. *** \n"
+                printf "${red}\n*** ERROR: Dependency checks failed, ${white}${red_bg}$prg${white}${red} program is not found, runSAS requires this program to run. ***\n"
                 # If the package installer is available try installing the missing dependency
                 if [[ ! -z `which $package_installer` ]]; then
                     printf "${green}\nPress Y to auto install $prg (requires $package_installer and sudo access if you're not root): ${white}"
@@ -288,7 +309,7 @@ function runsas_script_auto_update(){
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
 
 # Create backup folder
-create_a_directory backups
+create_a_new_directory backups
 
 # Create a backup of the existing script
 if ! cp runSAS.sh backups/$runsas_backup_script_name; then
@@ -303,7 +324,7 @@ check_dependencies wget dos2unix
 
 # Download the latest file from Github
 printf "${green}\nNOTE: Downloading the latest version from Github using wget utility...${white}\n\n"
-if ! wget -O .runSAS.sh.downloaded $runsas_github_url; then
+if ! wget -O .runSAS.sh.downloaded $runsas_github_src_url; then
     printf "${red}*** ERROR: Could not download the new version of runSAS from Github using wget, possibly due to server restrictions or internet connection issues or the server has timed-out ***\n${white}"
     clear_session_and_exit
 fi
@@ -315,14 +336,45 @@ chmod 775 .runSAS.sh.downloaded
 dos2unix .runSAS.sh.downloaded
 
 # Show the version numbers 
+# Get OLD version from the current file
 printf "${green}\nCurrent version: ${white}"
 ./runSAS.sh --version > .runSAS.sh.ver
 cat .runSAS.sh.ver
-rm -rf .runSAS.sh.ver
-printf "${green}New version: ${white}"
+curr_runsas_ver=$(<.runSAS.sh.ver)
+# Get NEW version from the downloaded file
+printf "${green}\nNew version: ${white}"
 ./.runSAS.sh.downloaded --version > .runSAS.sh.downloaded.ver
 cat .runSAS.sh.downloaded.ver
+new_runsas_ver=$(<.runSAS.sh.downloaded.comp.ver)
+# Get COMPATIBLE version from the downloaded file
+./.runSAS.sh.downloaded --update-c > .runSAS.sh.downloaded.comp.ver
+compatible_runsas_ver=$(<.runSAS.sh.downloaded.comp.ver)
+
+# Delete the temp files
+rm -rf .runSAS.sh.ver
 rm -rf .runSAS.sh.downloaded.ver
+
+# runSAS version number regex pattern (i.e. nn.nn e.g. 9.0 or 10.12)
+runsas_version_number_regex='^[0-9]+([.][0-9]+)?$' 
+
+# Check if the environment already has the latest version, a warning must be shown
+if (( $(echo "$curr_runsas_ver >= $new_runsas_ver" | bc -l) )); then
+    printf "${red}WARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver)${white}"
+    press_enter_key_to_continue
+fi
+
+# Check if the current version is auto-update compatible? 
+if ! [[ $curr_runsas_ver =~ $runsas_version_number_regex ]]; then 
+    printf "${red}*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update ***\n${white}"
+    printf "${red}*** Download the latest version (and update it) manually from $runsas_github_src_url ***${white}"
+    clear_session_and_exit
+else
+    if (( $(echo "$curr_runsas_ver < $compatible_runsas_ver" | bc -l) )); then
+		printf "${red}*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update ***\n${white}"
+		printf "${red}*** Download the latest version (and update it) manually from $runsas_github_src_url ***${white}"
+		clear_session_and_exit
+    fi
+fi
 
 # Get a config backup from existing script
 cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
@@ -353,6 +405,7 @@ else
 fi
 EOF
 
+# Continue
 press_enter_key_to_continue
    
 # Handover the execution
@@ -406,12 +459,12 @@ function check_if_the_dir_exists(){
     done
 }
 #------
-# Name: create_a_directory()
+# Name: create_a_new_directory()
 # Desc: Create a directory if it doesn't exist
 #   In: directory-name (multiple could be specified)
 #  Out: <NA>
 #------
-function create_a_directory(){
+function create_a_new_directory(){
     for dir in "$@"
     do
         if [[ ! -d "$dir" ]]; then
@@ -687,14 +740,219 @@ function print_to_console_debug_only(){
     printf "${white}"
 }
 #------
+# Name: send_an_email()
+# Desc: This routine will send an email alert to the intended recipient(s)
+#   In: email-mode, subject-identifier, subject, to-address (separated by semi-colon), email-body-msg-html-file, 
+#       optional-email-attachement-dir, optional-email-attachment, optional-from-address (separated by semi-colon), optional-to-distribution-list (separated by semi-colon)
+#  Out: <NA>
+#------
+function send_an_email(){
+
+# Parameters
+email_mode=$1
+email_subject_id=$2
+email_subject=$3
+email_to_address=$4
+email_body_message_file=$5
+email_optional_attachment_directory=$6
+email_optional_attachment=$7
+email_optional_from_address=$8
+email_optional_to_distribution_list=$9
+
+# HTML files
+email_header_file=".runSAS_email_header.html" 
+email_body_file=".runSAS_email_body.html"
+email_footer_file=".runSAS_email_footer.html"
+
+# Do not change this
+email_boundary_string="ZZ_/afg6432dfgkl.94531q"
+
+# Customize the email content (HTML is default format used here, you could use any!) as per the customer need. 
+# The email body (dynamic) will be sandwiched between header and footer
+# Header 
+cat << EOF > $email_header_file
+<html><body>
+<font face=Arial size=2>Hi,<br>
+<font face=courier size=2><div style="font-size: 13; font-family: 'Courier New', Courier, monospace"><p style="color: #ffffff; background-color: #303030">
+EOF
+# Body (this is dynamically constructed)
+# Footer
+cat << EOF > $email_footer_file
+</p></div></body>
+<p><font face=Arial size=2>Cheers,<br>runSAS</p>
+<p><font face=Courier size=2>*** This is an auto-generated email ***</p>
+EOF
+
+# Validation
+if [[ "$email_to_address" == "" ]]; then
+    printf "${red}*** ERROR: Recipient email address was not specified in the parameters sections of the script, review and try again. *** \n${white}"
+    clear_session_and_exit
+fi
+
+# Compose the email body 
+cat $email_header_file       | awk '{print $0}'  > $email_body_file
+cat $email_body_message_file | awk '{print $0}' >> $email_body_file
+cat $email_footer_file       | awk '{print $0}' >> $email_body_file
+
+# Get the file contents to the variable
+email_body=$(<$email_body_file)
+
+# Build "To" and "Subject"
+email_to_address_all="$email_to_address $email_optional_to_distribution_list" 
+email_subject_full_line="$email_subject_id $email_subject"
+
+# Switch to attachments root directory and then back to the present one
+curr_directory=`pwd`
+cd $email_optional_attachment_directory
+
+# Build a console message (first part of the message)
+email_attachment_msg=
+if [[ "$email_mode" != "-s" ]]; then
+    printf "${green}An email ${white}"
+    email_attachment_msg="with no attachment "
+fi
+
+# Email routine
+declare -a attachments
+attachments=( "$email_optional_attachment" )
+{
+# Do not change anything beyond this line
+printf '%s\n' "FROM: $email_alert_user_name <$USER@`hostname`>
+To: $email_to_address_all
+SUBJECT: $email_subject_full_line
+Mime-Version: 1.0
+Content-Type: multipart/mixed; BOUNDARY=\"$email_boundary_string\"
+
+--${email_boundary_string}
+Content-Type: text/html; charset=\"US-ASCII\"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
+
+$email_body
+"
+# Loop over the attachments, guess the type and produce the corresponding part, encoded base64
+for attached_file in "${attachments[@]}"; do
+[ ! -f "$attached_file" ] && printf "${green}$email_attachment_msg${white}" >&2 && continue
+printf '%s\n' "--${email_boundary_string}
+Content-Type:text/plain; charset=\"US-ASCII\"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename=\"$attached_file\"
+"
+base64 "$attached_file"
+echo
+done
+# Print last email_boundary_string with closing --
+printf '%s\n' "--${email_boundary_string}--"
+} | sendmail -t -oi
+
+# Post email alert
+if [[ "$email_mode" != "-s" ]]; then
+    printf "${green}was sent to $email_to_address$email_to_distribution_list${white}"
+fi
+cd $curr_directory
+}
+#------
+# Name: add_html_color_tags_for_keywords()
+# Desc: This adds color tags for based on the content of the file
+#   In: file-name
+#  Out: <NA>
+#------
+function add_html_color_tags_for_keywords(){
+	sed -e 's/$/<br>/'                                                                      -i  $1
+	sed -e "s/ERROR/<font size=\"2\" face=\"courier\"color=\"RED\">ERROR<\/font>/g"         -i  $1
+	sed -e "s/MISSING/<font size=\"2\" face=\"courier\"color=\"RED\">MISSING<\/font>/g"     -i  $1
+	sed -e "s/LOCK/<font size=\"2\" face=\"courier\"color=\"RED\">LOCK<\/font>/g"           -i  $1
+	sed -e "s/ABORT/<font size=\"2\" face=\"courier\"color=\"RED\">ABORT<\/font>/g"         -i  $1
+	sed -e "s/WARNING/<font size=\"2\" face=\"courier\"color=\"YELLOW\">WARNING<\/font>/g"  -i  $1
+	sed -e "s/NOTE/<font size=\"2\" face=\"courier\"color=\"GREEN\">NOTE<\/font>/g"         -i  $1
+	sed -e "s/Log:/<font size=\"2\" face=\"courier\"color=\"RED\">Log:<\/font>/g"         	-i  $1
+	sed -e "s/Job:/<font size=\"2\" face=\"courier\"color=\"RED\">Job:<\/font>/g"        	-i  $1
+	sed -e "s/Step:/<font size=\"2\" face=\"courier\"color=\"RED\">Step:<\/font>/g"         -i  $1
+}
+#------
+# Name: runsas_triggered_email()
+# Desc: Send an email when runSAS is triggered
+#   In: <NA>
+#  Out: <NA>
+#------
+function runsas_triggered_email(){
+    if [[ "$email_alerts" == "Y" ]] || [[ "${email_alerts:1:1}" == "Y" ]]; then
+        echo "The $0 script was launched in ${1:-"a full batch"} mode with ${2:-"no other parameters."} $3 $4" > $email_body_msg_file
+
+        add_html_color_tags_for_keywords $email_body_msg_file
+        send_an_email -v "" "Batch has been triggered" $email_alert_to_address $email_body_msg_file
+        printf "\n\n"
+    fi
+}
+#------
+# Name: runsas_job_completed_email()
+# Desc: Send an email when a single job/program run is complete
+#   In: <NA>
+#  Out: <NA>
+#------
+function runsas_job_completed_email(){
+    if [[ "$email_alerts" == "Y" ]] || [[ "${email_alerts:2:1}" == "Y" ]]; then
+        echo "Job $1 completed successfully and took about $2 seconds to complete." > $email_body_msg_file
+
+        add_html_color_tags_for_keywords $email_body_msg_file
+        send_an_email -s "" "Job $1 has run successfully" $email_alert_to_address $email_body_msg_file
+    fi
+}
+#------
+# Name: runsas_error_email()
+# Desc: Send an email when runSAS has seen an error
+#   In: <NA>
+#  Out: <NA>
+#------
+function runsas_error_email(){
+    if [[ "$email_alerts" == "Y" ]] || [[ "${email_alerts:3:1}" == "Y" ]]; then
+        printf "\n\n"
+        echo "$log_block_wrapper" > $email_body_msg_file
+        
+        if [[ "$job_error_display_steps" == "Y" ]]; then
+            cat $tmp_log_w_steps_file | awk '{print $0}' >> $email_body_msg_file
+        else
+            cat $tmp_log_file | awk '{print $0}' >> $email_body_msg_file
+        fi
+
+        echo "$log_block_wrapper" >> $email_body_msg_file
+        echo "Job: $(<$job_that_errored_file)" >> $email_body_msg_file
+        echo "Log: $sas_logs_root_directory/$current_log_name" >> $email_body_msg_file
+        echo "$log_block_wrapper" >> $email_body_msg_file
+
+        add_html_color_tags_for_keywords $email_body_msg_file
+        send_an_email -v "" "Batch has failed!" $email_alert_to_address $email_body_msg_file $sas_logs_root_directory $current_log_name 
+    fi
+}
+#------
+# Name: runsas_success_email()
+# Desc: Send an email when runSAS has completed its run
+#   In: <NA>
+#  Out: <NA>
+#------
+function runsas_success_email(){
+    if [[ "$email_alerts" == "Y" ]] || [[ "${email_alerts:4:1}" == "Y" ]]; then
+        printf "\n\n"
+        cat $job_stats_delta_file | sed 's/ /,|,/g' | column -s ',' -t > $email_console_print_file
+        sed -e 's/ /\&nbsp\;/g' -i $email_console_print_file
+        echo "The batch completed successfully on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete. See the run details below.<br>" > $email_body_msg_file
+        cat $email_console_print_file | awk '{print $0}' >> $email_body_msg_file
+
+        add_html_color_tags_for_keywords $email_body_msg_file	
+        send_an_email -v "" "Batch has completed successfully!" $email_alert_to_address $email_body_msg_file
+    fi
+}
+#------
 # Name: store_job_runtime_stats()
 # Desc: Capture job runtime stats, single version of history is kept per job
-#   In: jobname, total-time-taken-by-job, logname
+#   In: jobname, total-time-taken-by-job, logname, start-timestamp, end-timestamp
 #  Out: <NA>
 #------
 function store_job_runtime_stats(){
     sed -i "/$1/d" $job_stats_file # Remove the previous entry
-    echo "$1 $2 $3 `date '+%Y-%m-%d %H:%M:%S'`" >> $job_stats_file # Add a new entry
+
+    echo "$1 $2 $3 $4 $5" >> $job_stats_file # Add a new entry 
+	echo "$1 $2 $3 $4 $5" >> $job_stats_delta_file # Add a new entry to a delta file
 }
 #------
 # Name: get_job_hist_runtime_stats()
@@ -796,13 +1054,19 @@ function backup_directory(){
 #------
 # Name: press_enter_key_to_continue()
 # Desc: This function will pause the script and wait for the ENTER key to be pressed
-#   In: <ENTER-KEY>
+#   In: <newline-count> (e.g. 2 for 2 newlines)
 #  Out: enter_to_continue_user_input
 #------
 function press_enter_key_to_continue(){
     printf "\n"
     printf "${green}Press the ENTER key to continue or CTRL+C to abort the session...${white}"
     read enter_to_continue_user_input
+    # See if a newline is requested
+    if [[ "$1" != "" ]]; then
+        for (( i=1; i<=$1; i++ )); do
+            printf "\n"
+        done
+    fi
 }
 #------
 # Name: print_job_list()
@@ -956,6 +1220,7 @@ function runSAS(){
     let job_counter_for_display+=1
 
     # Capture job runtimes
+	start_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
     start_datetime_of_job=`date +%s`
 
     # Set defaults if nothing is specified (i.e. just a job name is specified)
@@ -1037,7 +1302,7 @@ function runSAS(){
     ps cax | grep $job_pid > /dev/null
     printf "${white} ${green}"
 
-    # Sleep before pid fetch
+    # Sleep between pid fetches
     sleep 0.5
 
     # Get the current job log filename (absolute path)
@@ -1131,10 +1396,13 @@ function runSAS(){
 
         # Print the log filename
         printf "\n${white}${white}"
-        printf "${red}Log: ${red}$sas_logs_root_directory/$current_log_name${white}\n"
+        printf "${red}Log: ${red}$sas_logs_root_directory/$current_log_name${white}\n" 
 
         # Line separator
         printf "${red}$log_block_wrapper${white}"
+		
+		# Send an error email
+        runsas_error_email
 
         # Clear the session
         clear_session_and_exit
@@ -1145,10 +1413,11 @@ function runSAS(){
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0
 
         # Capture job runtimes
+		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
         end_datetime_of_job=`date +%s`
 
         # Store the stats for the next time
-        store_job_runtime_stats $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $current_log_name
+        store_job_runtime_stats $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $current_log_name $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
         # Fetch cursor position and populate the fillers
         get_current_cursor_position
@@ -1161,7 +1430,10 @@ function runSAS(){
         # Success (DONE) message
         printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, it took "
         printf "%03d" $((end_datetime_of_job-start_datetime_of_job))
-        printf " secs. Completed on `date '+%Y-%m-%d %H:%M:%S'`)${white}\n"
+        printf " secs. Completed on $end_datetime_of_job_timestamp)${white}\n"
+
+        # Send an email (silently)
+        runsas_job_completed_email $local_sas_job $((end_datetime_of_job-start_datetime_of_job))
     fi
 
     # Forece to run in interactive mode if in run-from-to-job-interactive (-fui) mode
@@ -1182,9 +1454,8 @@ function runSAS(){
     run_in_interactive_mode_check
 }
 #--------------------------------------------------END OF FUNCTIONS--------------------------------------------------#
-#
-# BEGIN: The script execution begins from here...
-#
+
+# BEGIN: The script execution begins from here.
 
 # Bash color codes for the console
 set_colors_codes
@@ -1196,30 +1467,37 @@ filler_char=.
 log_block_wrapper=-----
 specify_job_number_length_limit=3
 check_for_dependencies=Y
-
-# Files
-job_stats_file=.job.stats
-tmp_log_file=.tmp.log
-tmp_log_w_steps_file=.tmp_s.log
-job_that_errored_file=.errored_job.log
-
-# Initialization
+runsas_tmp_directory=.tmp
 job_counter_for_display=0
 long_running_job_msg_shown=0
 total_no_of_jobs_counter=`cat .job.list | wc -l`
+
+# Timestamps
+start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
+start_datetime_of_session=`date +%s`
+job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
+
+# Initialization
+create_a_new_directory $runsas_tmp_directory
+
+# Files
+job_stats_file=$runsas_tmp_directory/.job.stats
+tmp_log_file=$runsas_tmp_directory/.tmp.log
+tmp_log_w_steps_file=$runsas_tmp_directory/.tmp_s.log
+job_that_errored_file=$runsas_tmp_directory/.errored_job.log
+email_body_msg_file=$runsas_tmp_directory/.email_body_msg.html
+email_console_print_file=$runsas_tmp_directory/.email_console_print.html
+job_stats_delta_file=$runsas_tmp_directory/.job_delta.stats.$job_stats_timestamp
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="${1:-0}"
 script_mode_value="${2:-0}"
 script_mode_value_other="${3:-0}"
 
-# Capture session runtimes
-start_datetime_of_session=`date +%s`
-
-# Idiomatic parameter handling
+# Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
 
-# Show the list if the user wants to quickly preview before launching the script (--show or --jobs or --list)
+# Show the list, if the user wants to quickly preview before launching the script (--show or --jobs or --list)
 show_the_list $1
 
 # Check if the user wants to update the script (--update)
@@ -1230,6 +1508,9 @@ print_the_help_menu $1
 
 # Version menu (if invoked via ./runSAS.sh --version or ./runSAS.sh -v or ./runSAS.sh --v)
 show_the_script_version_number $1
+
+# Compatible version number
+show_the_update_compatible_script_version_number $1
 
 # Welcome banner
 display_welcome_ascii_banner
@@ -1278,9 +1559,8 @@ fi
 # Debug mode
 print_to_console_debug_only "runSAS session variables"
 
-# Get the consent from the user to trigger the batch
-press_enter_key_to_continue
-printf "\n"
+# Get the consent from the user to trigger the batch 
+press_enter_key_to_continue 1
 
 # Hide the cursor
 setterm -cursor off
@@ -1288,19 +1568,31 @@ setterm -cursor off
 # Reset the prompt variable
 run_job_with_prompt=N
 
+# Send a launch email
+runsas_triggered_email
+
 # Run the jobs from the list one at a time
 while IFS=' ' read -r job opt; do
     runSAS $job
 done < .job.list
 
 # Capture session runtimes
+end_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
 end_datetime_of_session=`date +%s`
 
-# Tidying up
-rm -rf $tmp_log_file $job_that_errored_file
-
 # Print a final message on console
-printf "\n${green}The run completed on `date '+%Y-%m-%d %H:%M:%S'` and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+printf "\n${green}The run completed on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+
+# Send a success email
+runsas_success_email
+
+# Clear the run history 
+if [[ "$enable_runsas_run_history" != "Y" ]]; then 
+    rm -rf $job_stats_delta_file
+fi
+
+# Tidy up
+rm -rf $tmp_log_file $job_that_errored_file
 
 # END: Clear the session, reset the console
 clear_session_and_exit
