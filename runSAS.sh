@@ -375,6 +375,8 @@ else
     fi
 fi
 
+printf "\n"
+
 # Get a config backup from existing script
 cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
 
