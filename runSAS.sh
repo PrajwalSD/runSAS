@@ -110,7 +110,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "${blue}9.0${white}"
+        printf "9.0"
         exit 0;
     fi;
 }
@@ -122,7 +122,7 @@ function show_the_script_version_number(){
 #------
 function show_the_update_compatible_script_version_number(){
     if [[ ${#@} -ne 0 ]] && [[ "${@#"--update-c"}" = "" ]]; then
-        printf "${blue}9.0${white}"
+        printf "9.0"
         exit 0;
     fi;
 }
