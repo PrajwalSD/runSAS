@@ -8,7 +8,7 @@
 #              The list of programs/jobs are provided as an input.                                                   #
 #              Useful for SAS 9.x environments where a third-party job scheduler is not installed.                   #
 #                                                                                                                    #
-#     Version: 9.5                                                                                                   #
+#     Version: 9.6                                                                                                   #
 #                                                                                                                    #
 #        Date: 14/06/2019                                                                                            #
 #                                                                                                                    #
@@ -68,18 +68,20 @@ kill_process_on_user_abort=Y                          # Default is Y        --->
 program_type_ext=sas                                  # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"                       # Default is "^ERROR" ---> Change this to the locale setting.
 check_for_step_string="Step:"                         # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=N                           # Default is N        ---> Set to Y to capture runSAS run history
+enable_runsas_run_history=Y                           # Default is Y        ---> Set to Y to capture runSAS run history
 #
 # 4/5: Optional email alerts, set the first parameter to N to turn off this feature 
 #      If you don't receive emails, add <logged-in-user>@<server-full-name> (e.g.: sas@sasserver.demo.sas.com) to your email provider whitelist
 #
-email_alerts=N					      # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
+email_alerts=N                                        # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
 email_alert_to_address=""                             # Default is ""       ---> Provide email addresses separated by a semi-colon
 email_alert_user_name="runSAS"                        # Default is "runSAS" ---> This is used as FROM address for the email alerts
 #
-# 5/5: Do not change the below URL (remove the url reference if you don't want to include the --update feature)
+# 5/5: No changes required for the below
 #
 runsas_github_src_url=http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
+runsas_version=9.6
+runsas_auto_update_compatible_version=9.0
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -95,7 +97,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+
-|r|u|n|S|A|S| |v|9|.|5|
+|r|u|n|S|A|S| |v|9|.|6|
 +-+-+-+-+-+-+ +-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -110,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
-        printf "9.5"
+        printf "$runsas_version"
         exit 0;
     fi;
 }
@@ -122,7 +124,7 @@ function show_the_script_version_number(){
 #------
 function show_the_update_compatible_script_version_number(){
     if [[ ${#@} -ne 0 ]] && [[ "${@#"--update-c"}" = "" ]]; then
-        printf "9.0"
+        printf "$runsas_auto_update_compatible_version"
         exit 0;
     fi;
 }
@@ -155,6 +157,7 @@ function print_the_help_menu(){
         printf "\n      -fui  <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
         printf "\n      -fuis <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (skips the rest)"
         printf "\n     --update                     The script will update itself to the latest version from Github"
+        printf "\n     --delay <time-in-seconds>    The script will launch after a specified time delay in seconds"
         printf "\n     --jobs or --show             The script will show a list of job(s) provided by the user in the script (quick preview)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
@@ -189,6 +192,7 @@ function validate_parameters_passed_to_script(){
         case "$1" in
         --help) ;;
      --version) ;;
+       --delay) ;;
       --update) ;;
     --update-c) ;;
         --jobs) ;;
@@ -435,6 +439,57 @@ function check_for_update_request_from_user(){
     fi
 }
 #------
+# Name: process_delayed_execution()
+# Desc: Check if the user is requesting a delayed execution
+#   In: --delay
+#  Out: <NA>
+#------
+function process_delayed_execution(){
+	# The delay implementation (called by the conditional code block below, requires the time delay in seconds)
+	function process_delayed_execution_core(){
+		if [[ "$1" == "0" ]]; then
+			printf "${red}*** ERROR: You launched the script in --delay mode, a ${white}${red_bg}time delay in seconds${red_bg}${white}${red} is required for this mode${white}"
+			printf "${red}(e.g. ./runSAS.sh --delay 3600 for a delay of one hour) ***${white}"
+			clear_session_and_exit
+		else
+			runsas_delayed_start_time=`date --date="+$1 seconds" '+%Y-%m-%d %T'`
+			printf "${green}A delay of $1 seconds was specified, runSAS will start at $runsas_delayed_start_time ${white}"
+			for (( j=1; j<=$1; j++ )); do
+				let delay_time_remaining=$1-$j
+				display_progressbar_with_offset $j $1 -1
+				sleep 1
+			done
+			display_progressbar_with_offset $1 $1 0
+			printf "\n\n"
+		fi
+	}
+
+	# Check if --delay mode is specified as a primary mode
+	if [[ "$script_mode" == "--delay" ]]; then
+		if [[ "$script_mode_value_1" == "0" ]]; then
+			printf "${red}*** ERROR: You launched the script in --delay mode, a ${white}${red_bg}time delay in seconds${red_bg}${white}${red} is required for this mode${white}"
+			printf "${red}(e.g. ./runSAS.sh --delay 3600 for a delay of one hour) ***${white}"
+			clear_session_and_exit
+		else
+			process_delayed_execution_core $script_mode_value_1
+		fi
+	else
+		# Check if --delay mode is specified in combination with other modes (assumption: --delay will be followed by time delay in seconds) 
+		for (( i=1; i<=$runsas_allowable_parameter_count; i++ )); do
+			delay_script_mode_value_i="script_mode_value_$i"
+			delay_script_mode_value="${!delay_script_mode_value_i}"
+			if [[ "$delay_script_mode_value" == "--delay" ]]; then
+				# If --delay is found, next one must be the time in seconds 
+				let i+=1
+				delay_script_mode_value=0
+				delay_script_mode_value_i="script_mode_value_$i"
+				delay_script_mode_value="${!delay_script_mode_value_i}" 
+				process_delayed_execution_core $delay_script_mode_value
+			fi
+		done
+	fi
+}
+#------
 # Name: move_files_to_a_directory()
 # Desc: Move files to a directory
 #   In: filename, directory-name
@@ -517,11 +572,11 @@ function run_in_interactive_mode_check(){
 #------
 function run_until_a_job_mode_check(){
     if [[ "$script_mode" == "-u" ]]; then
-        if [[ "$script_mode_value" == "0" ]]; then
+        if [[ "$script_mode_value_1" == "0" ]]; then
             printf "${red}*** ERROR: You launched the script in $script_mode (run-upto-a-job) mode, a job name is also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            if [[ "$script_mode_value" == "$local_sas_job" ]]; then
+            if [[ "$script_mode_value_1" == "$local_sas_job" ]]; then
                 run_until_mode=1
             else
                 if  [[ $run_until_mode -ge 1 ]]; then
@@ -543,11 +598,11 @@ function run_until_a_job_mode_check(){
 #------
 function run_from_a_job_mode_check(){
     if [[ "$script_mode" == "-f" ]]; then
-        if [[ "$script_mode_value" == "0" ]]; then
+        if [[ "$script_mode_value_1" == "0" ]]; then
             printf "${red}*** ERROR: You launched the script in $script_mode(run-from-a-job) mode, a job name is also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            if [[ "$script_mode_value" == "$local_sas_job" ]]; then
+            if [[ "$script_mode_value_1" == "$local_sas_job" ]]; then
                 run_from_mode=1
             fi
         fi
@@ -563,11 +618,11 @@ function run_from_a_job_mode_check(){
 #------
 function run_a_single_job_mode_check(){
     if [[ "$script_mode" == "-o" ]]; then
-        if [[ "$script_mode_value" == "0" ]]; then
+        if [[ "$script_mode_value_1" == "0" ]]; then
             printf "${red}*** ERROR: You launched the script in $script_mode(run-a-single-job) mode, a job name is also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            if [[ "$script_mode_value" == "$local_sas_job" ]]; then
+            if [[ "$script_mode_value_1" == "$local_sas_job" ]]; then
                 run_a_job_mode=1
             else
                 run_a_job_mode=0
@@ -585,14 +640,14 @@ function run_a_single_job_mode_check(){
 #------
 function run_from_to_job_mode_check(){
     if [[ "$script_mode" == "-fu" ]]; then
-        if [[ "$script_mode_value" == "0" ]] || [[ "$script_mode_value_other" == "0" ]]; then
+        if [[ "$script_mode_value_1" == "0" ]] || [[ "$script_mode_value_2" == "0" ]]; then
             printf "${red}*** ERROR: You launched the script in $script_mode(run-from-to-job) mode, two job names (separated by spaces) are also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            if [[ "$script_mode_value" == "$local_sas_job" ]]; then
+            if [[ "$script_mode_value_1" == "$local_sas_job" ]]; then
                 run_from_to_job_mode=1
             else
-                if [[ "$script_mode_value_other" == "$local_sas_job" ]]; then
+                if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then
                     run_from_to_job_mode=2
                 else
                     if  [[ $run_from_to_job_mode -eq 1 ]]; then
@@ -617,14 +672,14 @@ function run_from_to_job_mode_check(){
 #------
 function run_from_to_job_interactive_mode_check(){
     if [[ "$script_mode" == "-fui" ]]; then
-        if [[ "$script_mode_value" == "0" ]] || [[ "$script_mode_value_other" == "0" ]]; then
+        if [[ "$script_mode_value_1" == "0" ]] || [[ "$script_mode_value_2" == "0" ]]; then
             printf "${red}*** ERROR: You launched the script in $script_mode(run-from-to-job-interactive) mode, two job names (separated by spaces) are also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            if [[ "$script_mode_value" == "$local_sas_job" ]]; then
+            if [[ "$script_mode_value_1" == "$local_sas_job" ]]; then
                 run_from_to_job_interactive_mode=1
             else
-                if [[ "$script_mode_value_other" == "$local_sas_job" ]]; then
+                if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then
                     run_from_to_job_interactive_mode=2
                 else
                     if  [[ $run_from_to_job_interactive_mode -eq 1 ]]; then
@@ -649,14 +704,14 @@ function run_from_to_job_interactive_mode_check(){
 #------
 function run_from_to_job_interactive_skip_mode_check(){
     if [[ "$script_mode" == "-fuis" ]]; then
-        if [[ "$script_mode_value" == "0" ]] || [[ "$script_mode_value_other" == "0" ]]; then
+        if [[ "$script_mode_value_1" == "0" ]] || [[ "$script_mode_value_2" == "0" ]]; then
             printf "${red}*** ERROR: You launched the script in $script_mode(run-from-to-job-interactive-skip) mode, two job names (separated by spaces) are also required after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            if [[ "$script_mode_value" == "$local_sas_job" ]]; then
+            if [[ "$script_mode_value_1" == "$local_sas_job" ]]; then
                 run_from_to_job_interactive_skip_mode=1
             else
-                if [[ "$script_mode_value_other" == "$local_sas_job" ]]; then
+                if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then
                     run_from_to_job_interactive_skip_mode=2
                 else
                     if  [[ $run_from_to_job_interactive_skip_mode -eq 1 ]]; then
@@ -749,7 +804,6 @@ function print_to_console_debug_only(){
 #  Out: <NA>
 #------
 function send_an_email(){
-
 # Parameters
 email_mode=$1
 email_subject_id=$2
@@ -975,6 +1029,18 @@ function write_current_job_details_on_screen(){
     printf "${white}Job ${white}"
     printf "%02d" $job_counter_for_display
     printf "${white} of $total_no_of_jobs_counter${white}: ${darkgrey_bg}$1${white} is running ${white}"
+}
+#------
+# Name: show_job_hist_runtime_stats()
+# Desc: Print details about last run (if available)
+#   In: jobname
+#  Out: <NA>
+#------
+function show_job_hist_runtime_stats(){
+	get_job_hist_runtime_stats $1
+	if [[ "$hist_job_runtime" != "" ]]; then
+		printf "${white}(~$hist_job_runtime secs last time)${white}"
+	fi
 }
 #------
 # Name: write_skipped_job_details_on_screen()
@@ -1300,7 +1366,12 @@ function runSAS(){
     # Get the PID details
     job_pid=$!
     pid_progress_counter=1
-    printf "${white}with pid $job_pid${white}"
+    printf "${white}with pid $job_pid ${white}"
+	
+	# Runtime (history)
+	show_job_hist_runtime_stats $1
+	
+	# Get PID
     ps cax | grep $job_pid > /dev/null
     printf "${white} ${green}"
 
@@ -1423,7 +1494,7 @@ function runSAS(){
 
         # Fetch cursor position and populate the fillers
         get_current_cursor_position
-        buff_to_fix_col=$((filler_col_begin_pos-cursor_col_pos))
+        buff_to_fix_col=$((filler_col_end_pos-cursor_col_pos))
         printf "\b"
         for (( k=1; k<=$buff_to_fix_col; k++ )); do
             printf "$filler_char"
@@ -1463,8 +1534,9 @@ function runSAS(){
 set_colors_codes
 
 # System parameters
+runsas_allowable_parameter_count=5
 debug_console_print_color=white
-filler_col_begin_pos=100
+filler_col_end_pos=114
 filler_char=.
 log_block_wrapper=-----
 specify_job_number_length_limit=3
@@ -1493,8 +1565,10 @@ job_stats_delta_file=$runsas_tmp_directory/.job_delta.stats.$job_stats_timestamp
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="${1:-0}"
-script_mode_value="${2:-0}"
-script_mode_value_other="${3:-0}"
+script_mode_value_1="${2:-0}"
+script_mode_value_2="${3:-0}"
+script_mode_value_3="${4:-0}"
+script_mode_value_4="${5:-0}"
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
@@ -1547,14 +1621,14 @@ check_if_there_are_any_rogue_runsas_processes
 
 # Check if the user has specified a job number instead of a name (pick the relevant from the list) in any of the modes
 if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "0" ]]; then
-    if [[ "$script_mode_value" != "0" ]] && [[ ${#script_mode_value} -lt $specify_job_number_length_limit ]]; then
+    if [[ "$script_mode_value_1" != "0" ]] && [[ ${#script_mode_value_1} -lt $specify_job_number_length_limit ]]; then
         printf "\n"
-        get_the_job_name_in_the_list $script_mode_value
-        script_mode_value=$job_name_from_the_list
+        get_the_job_name_in_the_list $script_mode_value_1
+        script_mode_value_1=$job_name_from_the_list
     fi
-    if [[ "$script_mode_value_other" != "0" ]] && [[ ${#script_mode_value_other} -lt $specify_job_number_length_limit ]]; then
-        get_the_job_name_in_the_list $script_mode_value_other
-        script_mode_value_other=$job_name_from_the_list
+    if [[ "$script_mode_value_2" != "0" ]] && [[ ${#script_mode_value_2} -lt $specify_job_number_length_limit ]]; then
+        get_the_job_name_in_the_list $script_mode_value_2
+        script_mode_value_2=$job_name_from_the_list
     fi
 fi
 
@@ -1569,6 +1643,9 @@ setterm -cursor off
 
 # Reset the prompt variable
 run_job_with_prompt=N
+
+# Check if user has specified a delayed execution
+process_delayed_execution 
 
 # Send a launch email
 runsas_triggered_email
