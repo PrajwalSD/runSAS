@@ -430,7 +430,7 @@ exit 0
 #------
 function check_for_update_request_from_user(){
     if [[ "$1" == "--update" ]]; then
-        printf "${red}Press Y to confirm: ${white}"
+        printf "${red}The update process will overwrite the runSAS script (user configuration will be preserved), press Y to proceed: ${white}"
         read read_auto_update_confirmation
         if [[ "$read_auto_update_confirmation" == "Y" ]]; then
             runsas_script_auto_update
