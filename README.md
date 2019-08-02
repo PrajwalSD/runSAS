@@ -73,6 +73,6 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   `./runSAS.sh -fuis <name or index> <name or index>` 
   
 # Tips
- To preview the job list use `./runSAS.sh --jobs`
- To skip a job from the list during the run, add `--skip` in front of the job name in the list
- To stop sending email alerts (temporarily, instead of disabling it permanently) for a run, add `--noemail` to the launch e.g.: `./runSAS.sh --jobs`
+* To preview the job list use `./runSAS.sh --jobs`
+* To skip a job from the list during the run, add `--skip` in front of the job name in the list
+* To stop email alerts (temporarily, instead of disabling it) for a run, append `--noemail` to the launch e.g.: `./runSAS.sh --noemail`
