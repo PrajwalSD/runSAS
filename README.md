@@ -35,6 +35,11 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   
   `./runSAS.sh -i`
   
+* ### Adhoc job mode (-j)
+If you want to run any deployed job which is not in the job list, you can run using this mode
+
+`./runSAS.sh -j`
+  
 * ### Run upto mode (-u)
   If you want to run until a specific job, the script will run all the jobs in the list until the specified job.
   
