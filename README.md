@@ -36,9 +36,9 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   `./runSAS.sh -i`
   
 * ### Adhoc job mode (-j)
-If you want to run any deployed job which is not in the job list, you can run using this mode
+  If you want to run any deployed job which is not in the job list, you can run using this mode
 
-`./runSAS.sh -j`
+  `./runSAS.sh -j`
   
 * ### Run upto mode (-u)
   If you want to run until a specific job, the script will run all the jobs in the list until the specified job.
@@ -68,9 +68,11 @@ If you want to run any deployed job which is not in the job list, you can run us
   `./runSAS.sh -fui <name or index> <name or index>` 
   
 * ### Run from a job to a job interactive mode (-fuis)
-  If you want to run from one job to the other job, but in an interactive mode (__skips__ the rest in a non-interactive       mode)" 
+  If you want to run from one job to the other job, but in an interactive mode (__skips__ the rest in a non-interactive mode)" 
   
   `./runSAS.sh -fuis <name or index> <name or index>` 
   
 # Tips
  To preview the job list use `./runSAS.sh --jobs`
+ To skip a job from the list during the run, add `--skip` in front of the job name in the list
+ To stop sending email alerts (temporarily, instead of disabling it permanently) for a run, add `--noemail` to the launch e.g.: `./runSAS.sh --jobs`
