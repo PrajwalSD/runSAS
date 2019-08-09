@@ -150,7 +150,7 @@ function print_the_help_menu(){
         printf "${underline}"
         printf "\n\nDESCRIPTION\n"
         printf "${end}${blue}"
-        printf "\n      There are various [script-mode] in which you can launch runSAS, see below.\n"
+        printf "\n       There are various [script-mode] in which you can launch runSAS, see below.\n"
         printf "\n      -i                          The script will halt after running each job, waiting for an ENTER key to continue"
         printf "\n      -j    <job-name>            The script will run a specified job even if it is not in the job list (adhoc mode, run any job using runSAS)"
         printf "\n      -u    <job-name>            The script will run everything (and including) upto the specified job"
@@ -179,7 +179,7 @@ function print_the_help_menu(){
         printf "${underline}"
         printf "\nGITHUB\n"
         printf "${end}${blue}"
-        printf "\n       $runsas_github_src_url"
+        printf "\n       $runsas_github_src_url "
         printf "(To get the latest version of the runSAS you can use the in place upgrade option: ./runSAS.sh --update)\n\n"
         printf "${white}"
         exit 0;
