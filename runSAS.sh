@@ -1365,6 +1365,11 @@ function display_progressbar_with_offset(){
     # Calculate the scale
     let progressbar_scale=100/$progressbar_width
 
+	# Reset (>100% scenario!)
+	if [[ $progressbar_steps_completed -gt $progressbar_total_steps ]]; then
+		progressbar_steps_completed=$progressbar_total_steps
+	fi
+
 	# Calculate the perecentage completed
     progress_bar_pct_completed=`bc <<< "scale = 0; ($progressbar_steps_completed + $progressbar_offset) * 100 / $progressbar_total_steps / $progressbar_scale"`
 
