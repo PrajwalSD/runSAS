@@ -954,7 +954,7 @@ function terminate_running_processes(){
                 fi
                 stty -igncr < /dev/tty
             else
-                printf "${yellow}\nWARNING: The last process launched by runSAS with pid $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
+                printf "${yellow}WARNING: The last process launched by runSAS with pid $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
             fi
         fi
     fi
