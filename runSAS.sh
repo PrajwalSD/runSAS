@@ -36,13 +36,16 @@
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
 # 1/4: Set SAS 9.x environment related parameters.
-#      Ideally, setting just the first parameter should work but amend the rest if needed as per the environment
+#      Ideally, setting just the first two parameters should work but amend the rest if needed as per the environment
+#      Always enclose the value with double-quotes (NOT single-quotes)
 #
-sas_app_root_directory="/opt/sas/9.4/config/Lev1/SASApp"
+sas_app_server_name="SASApp"
+sas_lev="Lev1"
+sas_sh="sasbatch.sh"
+sas_app_root_directory="/SASInside/SAS/${sas_lev}/${sas_app_server_name}"
 sas_batch_server_root_directory="${sas_app_root_directory}/BatchServer"
 sas_logs_root_directory="${sas_app_root_directory}/BatchServer/Logs"
 sas_deployed_jobs_root_directory="${sas_app_root_directory}/SASEnvironment/SASCode/Jobs"
-sas_sh="sasbatch.sh"
 #
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
@@ -62,17 +65,17 @@ job_error_display_count=1                                               # Defaul
 job_error_display_steps=N                                               # Default is N        ---> This will show more details when a job fails, it can be a page long output.
 job_error_display_lines_around_count=1                                  # Default is 1        ---> This will allow you to increase or decrease how much is shown from the log.
 job_error_display_lines_around_mode=a                                   # Default is a        ---> These are grep arguements, a=after error, b=before error, c=after & before.
-kill_process_on_user_abort=N                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
+kill_process_on_user_abort=Y                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
 program_type_ext=sas                                                    # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"                                         # Default is "^ERROR" ---> Change this to the locale setting.
 check_for_step_string="Step:"                                           # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=Y                                             # Default is N        ---> Set to Y to capture runSAS run history
+enable_runsas_run_history=Y                                             # Default is Y        ---> Set to Y to capture runSAS run history
 #
 # 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email. 
 #      If you don't receive emails from the server, add <logged-in-user>@<server-full-name> (e.g.: sas@sasserver.demo.com) to your email client whitelist.
 #
-email_alerts=N                                     	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
+email_alerts=N                                  	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
 email_alert_to_address=""                                               # Default is ""       ---> Provide email addresses separated by a semi-colon
 email_alert_user_name="runSAS"                                          # Default is "runSAS" ---> This is used as FROM address for the email alerts
 #                                                                       
@@ -142,7 +145,7 @@ function print_the_help_menu(){
         printf "${underline}"
         printf "\nNAME\n"
         printf "${end}${blue}"
-        printf "\n       runSAS.sh                  This script can run (and monitor) single (or batch) of SAS program(s)/Data Integration (DI) job(s)."
+        printf "\n       runSAS.sh"
         printf "${underline}"
         printf "\n\nSYNOPSIS\n"
         printf "${end}${blue}"
@@ -168,6 +171,7 @@ function print_the_help_menu(){
         printf "\n       Tip #2: You can add --prompt option against job(s) when you provide a list, this will halt the script during runtime for the user confirmation."
 		printf "\n       Tip #3: You can add --skip option against job(s) when you provide a list, this will skip the job in every run."
         printf "\n       Tip #4: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
+		printf "\n       Tip #5: You can add --server option followed by specific parameters to override the defaults for a job (format: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
         printf "${underline}"
         printf "\n\nVERSION\n"
         printf "${end}${blue}"
@@ -327,7 +331,7 @@ function runsas_script_auto_update(){
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
 
 # Create backup folder
-create_a_new_directory backups
+create_a_new_directory -p backups
 
 # Create a backup of the existing script
 if ! cp runSAS.sh backups/$runsas_backup_script_name; then
@@ -523,7 +527,7 @@ function process_delayed_execution(){
 #------
 function move_files_to_a_directory(){
     if [ `ls -1 $1 2>/dev/null | wc -l` -gt 0 ]; then
-      mv -f $1 $2
+        mv -f $1 $2
     fi
 }
 #------
@@ -578,12 +582,24 @@ function check_if_the_file_exists(){
 #  Out: <NA>
 #------
 function create_a_new_directory(){
+    mkdir_mode=""
     for dir in "$@"
     do
-        if [[ ! -d "$dir" ]]; then
-            printf "${green}NOTE: Creating a directory named $dir in `pwd`...${white}"
-            mkdir -p $dir
-            printf "${green}DONE\n${white}"
+        if [[ "$dir" == "-p" ]]; then
+            mkdir_mode="-p"
+        else 
+            if [[ ! -d "$dir" ]]; then
+                printf "${green}\nNOTE: Creating a directory named $dir...${white}"
+                mkdir $mkdir_mode $dir
+                # See if the directory creation was successfull
+                if [[ -d "$dir" ]]; then
+                    printf "${green}DONE\n${white}"
+                else
+                    printf "${red}\n*** ERROR: Directory ${black}${red_bg}$dir${white}${red} cannot be created under the path specified ***${white}"
+                    printf "${red}\n*** ERROR: It is likely that one of the parent folder in the directory tree does't exist or the folder permission is restricting the creation of new object under it ***${white}"
+                    clear_session_and_exit
+                fi
+            fi
         fi
     done
 }
@@ -632,6 +648,17 @@ function remove_a_line_from_file(){
 function backup_directory(){
 	curr_timestamp=`date +%Y%m%d`
 	tar -zcf $2/$3_${curr_timestamp}.tar.gz $1
+}
+#------
+# Name: add_a_newline_char_to_eof()
+# Desc: This function will add a new line character to the end of file (only if it doesn't exists)
+#   In: file-name
+#  Out: <NA>
+#------
+function add_a_newline_char_to_eof(){
+    if [ "$(tail -c1 "$1"; echo x)" != $'\nx' ]; then     
+        echo "" >> "$1"; 
+    fi
 }
 #------
 # Name: run_in_interactive_mode_check()
@@ -745,15 +772,26 @@ function run_a_single_job_mode_check(){
 #  Out: <NA>
 #------
 function run_a_job_mode_check(){
-    if [[ "$script_mode" == "-j" ]]; then
-        if [[ "$script_mode_value_1" == "" ]]; then
-            printf "${red}*** ERROR: You launched the script in $script_mode(run-a-job) mode, a job name is also required (without the .sas extension) after $script_mode option ***${white}"
+    # Set defaults if nothing is specified (i.e. just a job name is specified)
+    rjmode_script_mode="$1"
+    rjmode_sas_job="$2"
+    rjmode_sas_opt="$3"
+    rjmode_sas_subopt="$4"
+    rjmode_sas_app_root_directory="${5:-$sas_app_root_directory}"
+    rjmode_sas_batch_server_root_directory="${6:-$sas_batch_server_root_directory}"
+    rjmode_sas_sh="${7:-$sas_sh}"
+    rjmode_sas_logs_root_directory="${8:-$sas_logs_root_directory}"
+    rjmode_sas_deployed_jobs_root_directory="${9:-$sas_deployed_jobs_root_directory}"
+      
+    if [[ "$rjmode_script_mode" == "-j" ]]; then
+        if [[ "$rjmode_sas_job" == "" ]]; then
+            printf "${red}*** ERROR: You launched the script in $rjmode_script_mode(run-a-job) mode, a job name is also required (without the .sas extension) after $script_mode option ***${white}"
             clear_session_and_exit
         else
-            check_if_the_file_exists $sas_deployed_jobs_root_directory/$script_mode_value_1.$program_type_ext
+            check_if_the_file_exists $rjmode_sas_deployed_jobs_root_directory/$rjmode_sas_job.$program_type_ext
 			printf "\n"
 			total_no_of_jobs_counter=1
-			runSAS $script_mode_value_1
+			runSAS $rjmode_sas_job $rjmode_sas_opt $rjmode_sas_subopt $rjmode_sas_app_root_directory $rjmode_sas_batch_server_root_directory $rjmode_sas_sh $rjmode_sas_logs_root_directory $rjmode_sas_deployed_jobs_root_directory
 			clear_session_and_exit
         fi
     fi
@@ -910,9 +948,9 @@ function terminate_running_processes(){
                 printf "${green}\nCleaning up, please wait...${white}"
                 sleep 2
                 if [[ -z `ps -p $1 -o comm=` ]]; then
-                    printf "${green}\n\nThe last job process launched by runSAS with pid $1 has been terminated successfully!\n\n${white}"
+                    printf "${green}\nThe last job process launched by runSAS with pid $1 has been terminated successfully!\n\n${white}"
                 else
-                    printf "${red}\n\n*** ERROR: Attempt to kill the last job process launched by runSAS with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already *** \n\n${white}"
+                    printf "${red}\n*** ERROR: Attempt to kill the last job process launched by runSAS with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already *** \n\n${white}"
                 fi
                 stty -igncr < /dev/tty
             else
@@ -924,11 +962,11 @@ function terminate_running_processes(){
 #------
 # Name: check_if_there_are_any_rogue_runsas_processes()
 # Desc: Check if there are any rogue runSAS processes, display a warning and abort the script based on the user input
-#   In: <NA>
+#   In: logs-directory
 #  Out: <NA>
 #------
 function check_if_there_are_any_rogue_runsas_processes(){
-    process_srch_str=`echo "$sas_logs_root_directory" | sed "s/^.\(.*\)/[\/]\1/"`
+    process_srch_str=`echo "$1" | sed "s/^.\(.*\)/[\/]\1/"` # Using log directory path to identify process
     if [ `ps -ef | grep $process_srch_str | wc -l` -gt 0 ]; then
         printf "${yellow}\nWARNING: There is a server process that has not completed/terminated, proceeding without terminating these processes may cause issues in current run.\n${white}"
         printf "${yellow}---\n${green}"
@@ -1151,9 +1189,9 @@ function runsas_error_email(){
         # Send email
         echo "$log_block_wrapper" >> $email_body_msg_file
         echo "Job: $(<$job_that_errored_file)" >> $email_body_msg_file
-        echo "Log: $sas_logs_root_directory/$current_log_name" >> $email_body_msg_file
+        echo "Log: $local_sas_logs_root_directory/$current_log_name" >> $email_body_msg_file
         add_html_color_tags_for_keywords $email_body_msg_file
-        send_an_email -v "" "Job $1 (of $2) has failed!" $email_alert_to_address $email_body_msg_file $sas_logs_root_directory $current_log_name 
+        send_an_email -v "" "Job $1 (of $2) has failed!" $email_alert_to_address $email_body_msg_file $local_sas_logs_root_directory $current_log_name 
     fi
 }
 #------
@@ -1258,7 +1296,7 @@ function clear_session_and_exit(){
         reset
     fi
     terminate_running_processes $job_pid
-    printf "${green}*** runSAS is exiting now ***${white}\n"
+    printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
 #------
@@ -1282,8 +1320,10 @@ function get_current_cursor_position() {
 #  Out: enter_to_continue_user_input
 #------
 function press_enter_key_to_continue(){
-    printf "\n"
-    printf "${green}Press the ENTER key to continue or CTRL+C to abort the session...${white}"
+    # Enable carriage return (ENTER key) during the script run
+    stty -igncr < /dev/tty
+    # Show message
+    printf "${green}\nPress ENTER key to continue...${white}"
     read enter_to_continue_user_input
     # See if a newline is requested
     if [[ "$1" != "" ]]; then
@@ -1291,6 +1331,8 @@ function press_enter_key_to_continue(){
             printf "\n"
         done
     fi
+    # Disable carriage return (ENTER key) during the script run
+    stty -igncr < /dev/tty
 }
 #------
 # Name: check_for_multiple_instances_of_job()
@@ -1313,20 +1355,59 @@ function check_for_multiple_instances_of_job(){
 #------
 # Name: validate_job_list()
 # Desc: This function checks if the specified job's .sas file in server directory
-#   In: job-list-filename, job-directory, file-extension
+#   In: job-list-filename
 #  Out: <NA>
 #------
 function validate_job_list(){
 	job_counter=0
-	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j (run-a-job) mode
-		while IFS=' ' read -r j o; do
+	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j(run-a-job) mode
+		while IFS=' ' read -r j o so bservdir bsh blogdir bjobdir; do
 			let job_counter+=1
-			if [[ "$o" != "--skip" ]] && [ ! -f "$1/$j.$3" ]; then
-				printf "\n${red}*** ERROR: Job #$job_counter ${black}${red_bg}$j${white}${red} has not been deployed or mispelled because $j.sas was not found in $1 *** ${white}"
+            # Set defaults if nothing is specified
+            vjmode_sas_deployed_jobs_root_directory="${bjobdir:-$sas_deployed_jobs_root_directory}"
+            # If user has specified a different server context, switch it here
+            if [[ "$o" == "--server" ]]; then
+                if [[ "$so" != "" ]]; then
+                    if [[ "$bjobdir" == "" ]]; then 
+                        vjmode_sas_deployed_jobs_root_directory=`echo "${vjmode_sas_deployed_jobs_root_directory/$sas_app_server_name/$so}"`
+                    fi
+                else
+                    printf "${yellow}WARNING: $so was specified for $j in the list without the server context name, defaulting to $sas_app_server_name${white}"
+                fi
+            fi
+			if [[ "$o" != "--skip" ]] && [ ! -f "$vjmode_sas_deployed_jobs_root_directory/$j.$program_type_ext" ]; then
+				printf "\n${red}*** ERROR: Job #$job_counter ${black}${red_bg}$j${white}${red} has not been deployed or mispelled because $j.$program_type_ext was not found in $vjmode_sas_deployed_jobs_root_directory *** ${white}"
                 clear_session_and_exit
 			fi
-		done < $2
-		printf "\n${white}Checks complete, all jobs have corresponding SAS files in $sas_deployed_jobs_root_directory${white}\n"
+		done < $1
+	fi
+}
+#------
+# Name: archive_all_job_logs()
+# Desc: This function archives all logs in the directory in preparation for a fresh batch run
+#   In: job-list-filename, archive-folder-name
+#  Out: <NA>
+#------
+function archive_all_job_logs(){
+    job_counter=0
+    ajmode_logs_archive_directory_name="$2"
+	if [[ "$script_mode" != "-j" ]]; then  # Skip the archiving process in -j(run-a-job) mode
+		while IFS=' ' read -r j o so bservdir bsh blogdir bjobdir; do
+			let job_counter+=1
+            # Set defaults if nothing is specified 
+            ajmode_sas_logs_root_directory="${blogdir:-$sas_logs_root_directory}"
+            # If user has specified a different server context, switch it here
+            if [[ "$o" == "--server" ]]; then
+                if [[ "$so" != "" ]]; then
+                    ajmode_sas_logs_root_directory=`echo "${ajmode_sas_logs_root_directory/$sas_app_server_name/$so}"`
+                else
+                    printf "${yellow}WARNING: $so was specified for $j in the list without the server context name, defaulting to $sas_app_server_name${white}"
+                fi
+            fi
+            # Archive all old logs
+            create_a_new_directory "$ajmode_sas_logs_root_directory/$ajmode_logs_archive_directory_name"
+            move_files_to_a_directory "$ajmode_sas_logs_root_directory/*.log" "$ajmode_sas_logs_root_directory/$ajmode_logs_archive_directory_name"
+		done < $1
 	fi
 }
 #------
@@ -1364,8 +1445,8 @@ function display_progressbar_with_offset(){
 
     # Calculate the scale
     let progressbar_scale=100/$progressbar_width
-
-	# Reset (>100% scenario!)
+    
+  	# Reset (>100% scenario!)
 	if [[ $progressbar_steps_completed -gt $progressbar_total_steps ]]; then
 		progressbar_steps_completed=$progressbar_total_steps
 	fi
@@ -1463,10 +1544,33 @@ function runSAS(){
 
     # Set defaults if nothing is specified (i.e. just a job name is specified)
     local_sas_job="$1"
-    local_sas_batch_server_root_directory="${2:-$sas_batch_server_root_directory}"
-    local_sas_batch_sh="${3:-$sas_sh}"
-    local_sas_logs_root_directory="${4:-$sas_logs_root_directory}"
-    local_sas_deployed_jobs_root_directory="${5:-$sas_deployed_jobs_root_directory}"
+    local_sas_opt="$2"
+    local_sas_subopt="$3"
+    local_sas_app_root_directory="${4:-$sas_app_root_directory}"
+    local_sas_batch_server_root_directory="${5:-$sas_batch_server_root_directory}"
+    local_sas_sh="${6:-$sas_sh}"
+    local_sas_logs_root_directory="${7:-$sas_logs_root_directory}"
+    local_sas_deployed_jobs_root_directory="${8:-$sas_deployed_jobs_root_directory}"
+
+    # If user has specified a different server context, switch it here
+    if [[ "$local_sas_opt" == "--server" ]]; then
+        if [[ "$local_sas_subopt" != "" ]]; then
+            if [[ "$4" == "" ]]; then
+                local_sas_app_root_directory=`echo "${local_sas_app_root_directory/$sas_app_server_name/$local_sas_subopt}"`
+            fi
+            if [[ "$5" == "" ]]; then
+                local_sas_batch_server_root_directory=`echo "${local_sas_batch_server_root_directory/$sas_app_server_name/$local_sas_subopt}"`
+            fi
+            if [[ "$7" == "" ]]; then
+                local_sas_logs_root_directory=`echo "${local_sas_logs_root_directory/$sas_app_server_name/$local_sas_subopt}"`
+            fi
+            if [[ "$8" == "" ]]; then
+                local_sas_deployed_jobs_root_directory=`echo "${local_sas_deployed_jobs_root_directory/$sas_app_server_name/$local_sas_subopt}"`
+            fi
+        else
+            printf "${yellow}WARNING: $local_sas_opt was specified for $local_sas_job job in the list without the server context name, defaulting to ${white}"
+        fi
+    fi
 
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
@@ -1507,7 +1611,7 @@ function runSAS(){
     fi
 
     # Check if the prompt option is set by the user for the job
-    if [[ "$opt" == "--prompt" ]] || [[ "$opt" == "-p" ]]; then
+    if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
         printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
         stty -igncr < /dev/tty
         read run_job_with_prompt < /dev/tty
@@ -1521,7 +1625,7 @@ function runSAS(){
     fi
 
     # Check if the prompt option is set by the user for the job
-    if [[ "$opt" == "--skip" ]]; then
+    if [[ "$local_sas_opt" == "--skip" ]]; then
 		write_skipped_job_details_on_screen $1
 		continue
     fi
@@ -1529,12 +1633,19 @@ function runSAS(){
     # Display current job details on console, jobname is passed to the function
     write_current_job_details_on_screen $1
 
+    # Check if the directory exists (specified by the user as configuration)
+    check_if_the_dir_exists $local_sas_app_root_directory $local_sas_batch_server_root_directory $local_sas_logs_root_directory $local_sas_deployed_jobs_root_directory
+    check_if_the_file_exists "$local_sas_batch_server_root_directory/$local_sas_sh" "$local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext"
+
+    # Check if there are rogue processes from last run, show the warning.
+    check_if_there_are_any_rogue_runsas_processes $local_sas_logs_root_directory
+
     # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
-    nice -n 20 $local_sas_batch_server_root_directory/$local_sas_batch_sh -log $local_sas_logs_root_directory/${local_sas_job}_#Y.#m.#d_#H.#M.#s.log \
-                                                                          -batch \
-                                                                          -noterminal \
-                                                                          -logparm "rollover=session" \
-                                                                          -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext &
+    nice -n 20 $local_sas_batch_server_root_directory/$local_sas_sh -log $local_sas_logs_root_directory/${local_sas_job}_#Y.#m.#d_#H.#M.#s.log \
+                                                                    -batch \
+                                                                    -noterminal \
+                                                                    -logparm "rollover=session" \
+                                                                    -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext &
 
     # Count the no. of steps in the job
     total_no_of_steps_in_a_job=`grep -o 'Step:' $local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext | wc -l`
@@ -1555,7 +1666,7 @@ function runSAS(){
     sleep 0.5
 
     # Get the current job log filename (absolute path)
-    current_log_name=`ls -tr $sas_logs_root_directory | tail -1`
+    current_log_name=`ls -tr $local_sas_logs_root_directory | tail -1`
 
     # Show current status of the run, poll for the PID and display the progress bar.
     while [ $? -eq 0 ]; do
@@ -1563,7 +1674,7 @@ function runSAS(){
         stty igncr < /dev/tty
 
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
-        no_of_steps_completed_in_log=`grep -o 'Step:'  $sas_logs_root_directory/$current_log_name | wc -l`
+        no_of_steps_completed_in_log=`grep -o 'Step:'  $local_sas_logs_root_directory/$current_log_name | wc -l`
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1
 
         # Get runtime stats of the job
@@ -1597,12 +1708,12 @@ function runSAS(){
     done
 
     # Suppress unwanted lines in the log (typical SAS errors!)
-    remove_a_line_from_file "ERROR: Errors printed on pages" "$sas_logs_root_directory/$current_log_name"
+    remove_a_line_from_file "ERROR: Errors printed on pages" "$local_sas_logs_root_directory/$current_log_name"
 
     # Check if there are any errors in the logs
     let job_error_display_count_for_egrep=job_error_display_count+1
-    grep -m${job_error_display_count} "$check_for_error_string" $sas_logs_root_directory/$current_log_name > $tmp_log_file
-    egrep -m${job_error_display_count_for_egrep} -E --color "* $check_for_step_string|$check_for_error_string" -$job_error_display_lines_around_mode$job_error_display_lines_around_count $sas_logs_root_directory/$current_log_name > $tmp_log_w_steps_file
+    grep -m${job_error_display_count} "$check_for_error_string" $local_sas_logs_root_directory/$current_log_name > $tmp_log_file
+    egrep -m${job_error_display_count_for_egrep} -E --color "* $check_for_step_string|$check_for_error_string" -$job_error_display_lines_around_mode$job_error_display_lines_around_count $local_sas_logs_root_directory/$current_log_name > $tmp_log_w_steps_file
 
     # Return code check
     job_rc=$?
@@ -1614,7 +1725,7 @@ function runSAS(){
     # Check return code, abort if there's an error
     if [ $script_rc -gt 4 ]; then
         # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS)
-        sed -n '1,/^ERROR:/ p' $sas_logs_root_directory/$current_log_name | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $job_that_errored_file
+        sed -n '1,/^ERROR:/ p' $local_sas_logs_root_directory/$current_log_name | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $job_that_errored_file
 
         # Format the job name for display
         sed -i 's/  \+/ /g' $job_that_errored_file
@@ -1641,7 +1752,7 @@ function runSAS(){
 
         # Print the log filename
         printf "\n${white}${white}"
-        printf "${red}Log: ${red}$sas_logs_root_directory/$current_log_name${white}\n" 
+        printf "${red}Log: ${red}$local_sas_logs_root_directory/$current_log_name${white}\n" 
 
         # Line separator
         printf "${red}$log_block_wrapper${white}"
@@ -1654,7 +1765,7 @@ function runSAS(){
     else
         # Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
-        no_of_steps_completed_in_log=`grep -o 'Step:'  $sas_logs_root_directory/$current_log_name | wc -l`
+        no_of_steps_completed_in_log=`grep -o 'Step:' $local_sas_logs_root_directory/$current_log_name | wc -l`
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0
 
         # Capture job runtimes
@@ -1709,7 +1820,7 @@ runsas_github_src_url=http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
 set_colors_codes
 
 # System parameters
-runsas_allowable_parameter_count=5
+runsas_allowable_parameter_count=8
 debug_console_print_color=white
 filler_col_end_pos=114
 filler_char=.
@@ -1730,7 +1841,7 @@ start_datetime_of_session=`date +%s`
 job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
 
 # Initialization
-create_a_new_directory $runsas_tmp_directory
+create_a_new_directory -p $runsas_tmp_directory
 
 # Files
 job_stats_file=$runsas_tmp_directory/.job.stats
@@ -1747,6 +1858,9 @@ script_mode_value_1="$2"
 script_mode_value_2="$3"
 script_mode_value_3="$4"
 script_mode_value_4="$5"
+script_mode_value_5="$6"
+script_mode_value_6="$7"
+script_mode_value_7="$8"
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
@@ -1772,33 +1886,21 @@ display_welcome_ascii_banner
 # Dependency checks on each launch
 check_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf
 
-# Check if the directory exists (specified by the user as configuration)
-check_if_the_dir_exists $sas_app_root_directory $sas_batch_server_root_directory $sas_logs_root_directory $sas_deployed_jobs_root_directory
-
 # User messages (info)
 display_post_banner_messages
 
 # Housekeeping
 create_a_new_file $job_stats_file
-move_files_to_a_directory $sas_logs_root_directory/*.log $sas_logs_root_directory/archives
+archive_all_job_logs .job.list archives
 
 # Print session details on console
 show_server_and_user_details $1
 
-# Print job(s) list on console
-print_file_content_with_index .job.list jobs
-
 # Check for CTRL+C and clear the session
 trap clear_session_and_exit INT
 
-# Validate the jobs in list
-validate_job_list $sas_deployed_jobs_root_directory .job.list $program_type_ext
-
 # Show a warning if logged in user is root (typically "sas" must be the user for running a jobs)
 check_if_logged_in_user_is_root
-
-# Check if there are rogue processes from last run, show the warning.
-check_if_there_are_any_rogue_runsas_processes
 
 # Check if the user has specified a --nomail or --noemail option anywhere to override the email setting.
 if [[ ${#@} -ne 0 ]]; then
@@ -1812,6 +1914,12 @@ fi
 
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
 run_a_job_mode_check
+
+# Print job(s) list on console
+print_file_content_with_index .job.list jobs
+
+# Validate the jobs in list
+validate_job_list .job.list
 
 # Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different modes
 if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" ]] && [[ "$script_mode" != "--delay" ]] && [[ "$script_mode" != "--nomail" ]] && [[ "$script_mode" != "--noemail" ]] && [[ "$script_mode" != "--update" ]]; then
@@ -1858,8 +1966,8 @@ process_delayed_execution
 runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4
 
 # Run the jobs from the list one at a time (here's where everything is brought together!)
-while IFS=' ' read -r job opt; do
-    runSAS $job
+while IFS=' ' read -r job opt subopt sappdir bservdir bsh blogdir bjobdir; do
+    runSAS $job $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
 done < .job.list
 
 # Capture session runtimes
