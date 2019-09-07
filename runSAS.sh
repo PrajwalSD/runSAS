@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.0                                                                                                  #
+#     Version: 10.1                                                                                                  #
 #                                                                                                                    #
-#        Date: 26/07/2019                                                                                            #
+#        Date: 06/09/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -35,22 +35,25 @@
 #<
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
-# 1/4: Set SAS 9.x environment related parameters.
-#      Ideally, setting just the first two parameters should work but amend the rest if needed as per the environment
-#      Always enclose the value with double-quotes (NOT single-quotes)
+# 1/4: Set SAS 9.x environment related parameters (case sensitive, avoid unnecessary whitespaces/blanks)
+#      Ideally setting just the first parameter should be enough but review the rest and adjust as per the environment
+#      Always enclose the value with double-quotes (not with single-quotes)
 #
+sas_installation_root_directory="/SASInside/SAS/"
 sas_app_server_name="SASApp"
 sas_lev="Lev1"
-sas_sh="sasbatch.sh"
-sas_app_root_directory="/SASInside/SAS/${sas_lev}/${sas_app_server_name}"
-sas_batch_server_root_directory="${sas_app_root_directory}/BatchServer"
-sas_logs_root_directory="${sas_app_root_directory}/BatchServer/Logs"
-sas_deployed_jobs_root_directory="${sas_app_root_directory}/SASEnvironment/SASCode/Jobs"
+sas_default_sh="sasbatch.sh"
+sas_app_root_directory="$sas_installation_root_directory/$sas_lev/$sas_app_server_name"
+sas_batch_server_root_directory="$sas_app_root_directory/BatchServer"
+sas_logs_root_directory="$sas_app_root_directory/BatchServer/Logs"
+sas_deployed_jobs_root_directory="$sas_app_root_directory/SASEnvironment/SASCode/Jobs"
 #
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
-#      You can optionally add "--prompt" after the job to halt/pause the run and --skip to skip the job run.
-#
+#      Tip: Add "--prompt" after the job name to halt/pause the run 
+#           Add "--skip" to skip the job during the run 
+#           Add "--server" followed by optional job execution server context parameters to override the defaults (see --help menu for more details)
+#  
 cat << EOF > .job.list
 XXXXX --prompt
 YYYYY
@@ -59,7 +62,7 @@ EOF
 # 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs.
 #
 run_in_debug_mode=N                                                     # Default is N        ---> Set this to Y to turn on debugging mode.
-runtime_comparsion_routine=N                                            # Default is Y        ---> Set this N to turn off job runtime checks.
+runtime_comparsion_routine=Y                                            # Default is Y        ---> Set this N to turn off job runtime checks.
 increase_in_runtime_factor=50                                           # Default is 50       ---> This is used in determining the runtime changes between runs (to a last successful run only).
 job_error_display_count=1                                               # Default is 1        ---> This will restrict the error log display to the x no. of error(s) in the log.
 job_error_display_steps=N                                               # Default is N        ---> This will show more details when a job fails, it can be a page long output.
@@ -69,16 +72,16 @@ kill_process_on_user_abort=Y                                            # Defaul
 program_type_ext=sas                                                    # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"                                         # Default is "^ERROR" ---> Change this to the locale setting.
 check_for_step_string="Step:"                                           # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=Y                                             # Default is Y        ---> Set to Y to capture runSAS run history
+enable_runsas_run_history=Y                                             # Default is N        ---> Set to Y to capture runSAS run history
 #
 # 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email. 
-#      If you don't receive emails from the server, add <logged-in-user>@<server-full-name> (e.g.: sas@sasserver.demo.com) to your email client whitelist.
+#      Tip: If you don't receive emails from the server, add <logged-in-user>@<server-full-name> email address (e.g.: sas@sasserver.demo.com) to your email client whitelist.
 #
 email_alerts=N                                  	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
-email_alert_to_address=""                                               # Default is ""       ---> Provide email addresses separated by a semi-colon
-email_alert_user_name="runSAS"                                          # Default is "runSAS" ---> This is used as FROM address for the email alerts
-#                                                                       
+email_alert_to_address=""                                               # Default is ""       ---> Provide email address(es) separated by a semi-colon (with no spaces)
+email_alert_user_name="runSAS"                                          # Default is "runSAS" ---> This is used as FROM address for the email alerts, make sure the email address is in the whitelist of the email client/server.
+#                                                                             
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
 # FUNCTIONS: User defined functions are kept here, not all are "pure" functions.
@@ -94,7 +97,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|0|
+|r|u|n|S|A|S| |v|1|0|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -109,8 +112,8 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     # Script version
-    runsas_version=10.0
-    runsas_in_place_upgrade_compatible_version=9.8
+    runsas_version=10.1
+    runsas_in_place_upgrade_compatible_version=10.0
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$runsas_version"
@@ -171,7 +174,7 @@ function print_the_help_menu(){
         printf "\n       Tip #2: You can add --prompt option against job(s) when you provide a list, this will halt the script during runtime for the user confirmation."
 		printf "\n       Tip #3: You can add --skip option against job(s) when you provide a list, this will skip the job in every run."
         printf "\n       Tip #4: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
-		printf "\n       Tip #5: You can add --server option followed by specific parameters to override the defaults for a job (format: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
+		printf "\n       Tip #5: You can add --server option followed by specific parameters to override the defaults for a job (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
         printf "${underline}"
         printf "\n\nVERSION\n"
         printf "${end}${blue}"
@@ -271,6 +274,9 @@ function set_colors_codes(){
     bold=$'\e[1m'
     italic=$'\e[3m'
     underline=$'\e[4m'
+
+    # Reset text attributes to normal without clearing screen.
+    alias reset_colors="tput sgr0" 
 }
 #------
 # Name: display_post_banner_messages()
@@ -279,7 +285,7 @@ function set_colors_codes(){
 #  Out: <NA>
 #------
 function display_post_banner_messages(){
-    printf "${white}The script has many modes of execution, ./runSAS.sh --help to see more details.${white}\n"
+    printf "${white}The script has many modes of execution, ./runSAS.sh --help to see more details.${end}\n"
 }
 #------
 # Name: check_dependencies()
@@ -779,7 +785,7 @@ function run_a_job_mode_check(){
     rjmode_sas_subopt="$4"
     rjmode_sas_app_root_directory="${5:-$sas_app_root_directory}"
     rjmode_sas_batch_server_root_directory="${6:-$sas_batch_server_root_directory}"
-    rjmode_sas_sh="${7:-$sas_sh}"
+    rjmode_sas_sh="${7:-$sas_default_sh}"
     rjmode_sas_logs_root_directory="${8:-$sas_logs_root_directory}"
     rjmode_sas_deployed_jobs_root_directory="${9:-$sas_deployed_jobs_root_directory}"
       
@@ -954,7 +960,7 @@ function terminate_running_processes(){
                 fi
                 stty -igncr < /dev/tty
             else
-                printf "${yellow}WARNING: The last process launched by runSAS with pid $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white} command.\n\n${white}"
+                printf "${yellow}WARNING: The last process launched by runSAS with pid $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white}${yellow} command.\n\n${white}"
             fi
         fi
     fi
@@ -1314,6 +1320,54 @@ function get_current_cursor_position() {
     printf "${white}"
 }
 #------
+# Name: display_message_fillers_on_console()
+# Desc: Fetch cursor position and populate the fillers
+#   In: filler-character-upto-column, filler-character, optional-backspace-counts
+#  Out: <NA>
+#------
+function display_message_fillers_on_console(){
+    # Get the current cursor position
+    get_current_cursor_position
+
+    # Set the parameters
+    filler_char_upto_col=$1
+    filler_char_to_display=$2
+    pre_filler_backspace_char_count=$3
+    use_preserved_filler_char_count=$4
+    post_filler_backspace_char_count=$5
+
+    # Calculate no of fillers required to reach the specified column
+    filler_char_count=$((filler_char_upto_col-cursor_col_pos))
+
+    # See if a backspace is requested (pre filler)
+    if [[ "$pre_filler_backspace_char_count" != "0" ]] && [[ "$pre_filler_backspace_char_count" != "" ]]; then
+        for (( i=1; i<=$pre_filler_backspace_char_count; i++ )); do
+            printf "\b"
+        done
+    fi
+
+    # Display fillers
+    if [[ "$use_preserved_filler_char_count" != "N" ]] && [[ "$use_preserved_filler_char_count" != "" ]]; then
+        for (( i=1; i<=$filler_char_count_prev; i++ )); do
+            printf "$filler_char_to_display" 
+        done   
+    else
+        for (( i=1; i<=$filler_char_count; i++ )); do
+            printf "$filler_char_to_display" 
+        done   
+    fi
+
+    # See if a backspace is requested (post filler)
+    if [[ "$post_filler_backspace_char_count" != "0" ]] && [[ "$post_filler_backspace_char_count" != "" ]]; then
+        for (( i=1; i<=$post_filler_backspace_char_count; i++ )); do
+            printf "\b"
+        done
+    fi
+
+    # Preserve the last count
+    filler_char_count_prev=$filler_char_count
+}
+#------
 # Name: press_enter_key_to_continue()
 # Desc: This function will pause the script and wait for the ENTER key to be pressed
 #   In: newline-count (e.g. 2 for 2 newlines)
@@ -1548,7 +1602,7 @@ function runSAS(){
     local_sas_subopt="$3"
     local_sas_app_root_directory="${4:-$sas_app_root_directory}"
     local_sas_batch_server_root_directory="${5:-$sas_batch_server_root_directory}"
-    local_sas_sh="${6:-$sas_sh}"
+    local_sas_sh="${6:-$sas_default_sh}"
     local_sas_logs_root_directory="${7:-$sas_logs_root_directory}"
     local_sas_deployed_jobs_root_directory="${8:-$sas_deployed_jobs_root_directory}"
 
@@ -1719,7 +1773,7 @@ function runSAS(){
     job_rc=$?
     script_rc=$job_rc
     if [ -s $tmp_log_file ]; then
-        script_rc=900
+        script_rc=9
     fi
 
     # Check return code, abort if there's an error
@@ -1732,8 +1786,15 @@ function runSAS(){
         sed -i 's/^[1-9][0-9]* \* Job: //g' $job_that_errored_file
         sed -i 's/[A0-Z9]*\.[A0-Z9]* \*//g' $job_that_errored_file
 
+        # Display fillers (tabularized console output)
+        display_message_fillers_on_console $filler_col_end_pos $filler_char 0 N 1
+
         # Print error(s)
-        printf "${white}${red} *** ERROR: Job has failed with rc=$job_rc-$script_rc. Failed on `date '+%Y-%m-%d %H:%M:%S'` ***${white}\n"
+        printf "\b${white}${red}(FAILED rc=$job_rc-$script_rc, it took "
+        printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
+        printf " secs. Failed on $end_datetime_of_job_timestamp)${white}\n"
+
+        # Wrappers
         printf "${red}$log_block_wrapper${white}\n"
 
         # Depending on user setting show the log details
@@ -1775,13 +1836,8 @@ function runSAS(){
         # Store the stats for the next time
         store_job_runtime_stats $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $current_log_name $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
-        # Fetch cursor position and populate the fillers
-        get_current_cursor_position
-        buff_to_fix_col=$((filler_col_end_pos-cursor_col_pos))
-        printf "\b"
-        for (( k=1; k<=$buff_to_fix_col; k++ )); do
-            printf "$filler_char"
-        done
+        # Display fillers (tabularized console output)
+        display_message_fillers_on_console $filler_col_end_pos $filler_char 1
 
         # Success (DONE) message
         printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, it took "
