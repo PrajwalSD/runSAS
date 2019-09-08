@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.1                                                                                                  #
+#     Version: 10.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 06/09/2019                                                                                            #
 #                                                                                                                    #
@@ -72,7 +72,7 @@ kill_process_on_user_abort=Y                                            # Defaul
 program_type_ext=sas                                                    # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"                                         # Default is "^ERROR" ---> Change this to the locale setting.
 check_for_step_string="Step:"                                           # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=Y                                             # Default is N        ---> Set to Y to capture runSAS run history
+enable_runsas_run_history=N                                             # Default is N        ---> Set to Y to capture runSAS run history
 #
 # 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email. 
@@ -97,7 +97,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|1|
+|r|u|n|S|A|S| |v|1|0|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     # Script version
-    runsas_version=10.1
+    runsas_version=10.2
     runsas_in_place_upgrade_compatible_version=10.0
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -553,7 +553,7 @@ function check_if_the_dir_exists(){
 }
 #------
 # Name: create_a_new_file()
-# Desc: This function will create a new file, that's all.
+# Desc: This function will create a new file if it doesn't exist, that's all.
 #   In: file-name (multiple files can be provided)
 #  Out: <NA>
 #------
@@ -937,30 +937,59 @@ function run_from_to_job_interactive_skip_mode_check(){
     fi
 }
 #------
-# Name: terminate_running_processes()
+# Name: kill_a_pid()
 # Desc: Terminate the process using kill command
 #   In: pid
 #  Out: <NA>
 #------
-function terminate_running_processes(){
+function kill_a_pid(){
+    if [[ ! -z `ps -p $1 -o comm=` ]]; then
+        kill -9 $1
+        printf "${red}\n\nCleaning up the background process (pid $1), please wait...${white}"
+        sleep 2
+        if [[ -z `ps -p $1 -o comm=` ]]; then
+            printf "${green}DONE${white}\n\n${white}"
+        else
+            printf "${red}\n\n*** ERROR: Attempt to terminate the pid $1 using kill command kill -9 command failed. It is likely due to user permissions (try sudo kill?), see details below. ***\n${white}"
+            show_pid_details $1
+            printf "\n"
+        fi
+    else
+        printf "${red} (pid is missing anyway, no action taken)${white}\n\n"
+    fi
+}
+#------
+# Name: show_pid_details()
+# Desc: Show PID details
+#   In: pid
+#  Out: <NA>
+#------
+function show_pid_details(){
+    if [[ ! -z `ps -p $1 -o comm=` ]]; then
+        printf "${yellow}$console_message_line_wrappers\n"
+        ps $1 # Show process details
+        printf "${yellow}$console_message_line_wrappers\n${white}"
+    fi
+}
+#------
+# Name: running_processes_housekeeping()
+# Desc: Housekeeping for background process, terminate it if required (based on the kill_process_on_user_abort parameter)
+#   In: pid 
+#  Out: <NA>
+#------
+function running_processes_housekeeping(){
     if [[ ! -z ${1} ]]; then
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$kill_process_on_user_abort" ==  "Y" ]]; then
                 stty igncr < /dev/tty
-                printf "${yellow}---\n"
-                ps $1 # Show process details
-                printf "${yellow}---\n${white}"
-                kill -9 $1
-                printf "${green}\nCleaning up, please wait...${white}"
-                sleep 2
-                if [[ -z `ps -p $1 -o comm=` ]]; then
-                    printf "${green}\nThe last job process launched by runSAS with pid $1 has been terminated successfully!\n\n${white}"
-                else
-                    printf "${red}\n*** ERROR: Attempt to kill the last job process launched by runSAS with pid $1 did not go very well. It is likely to be the permission issue (sudo?) or the process has terminated already *** \n\n${white}"
-                fi
+                printf "${yellow}PID details for the active job:\n${white}"
+                # PID show & kill
+                show_pid_details $1
+                kill_a_pid $1               
                 stty -igncr < /dev/tty
             else
-                printf "${yellow}WARNING: The last process launched by runSAS with pid $1 is still running in the background, terminate it manually using ${green}kill -9 $1${white}${yellow} command.\n\n${white}"
+                echo $1 > $runsas_last_job_pid_file
+                printf "${red}WARNING: The last job submitted by runSAS with pid $1 is still running/active in the background, terminate it manually using ${green}kill -9 $1${white}${red} command.\n\n${white}"
             fi
         fi
     fi
@@ -968,22 +997,29 @@ function terminate_running_processes(){
 #------
 # Name: check_if_there_are_any_rogue_runsas_processes()
 # Desc: Check if there are any rogue runSAS processes, display a warning and abort the script based on the user input
-#   In: logs-directory
+#   In: <NA>
 #  Out: <NA>
 #------
 function check_if_there_are_any_rogue_runsas_processes(){
-    process_srch_str=`echo "$1" | sed "s/^.\(.*\)/[\/]\1/"` # Using log directory path to identify process
-    if [ `ps -ef | grep $process_srch_str | wc -l` -gt 0 ]; then
-        printf "${yellow}\nWARNING: There is a server process that has not completed/terminated, proceeding without terminating these processes may cause issues in current run.\n${white}"
-        printf "${yellow}---\n${green}"
-        ps -ef | grep $process_srch_str
-        printf "${yellow}---\n\n${white}"
-        printf "${yellow}Do you want to ignore this and continue...? (Press N or CTRL+C to abort this session) ${white}"
-        read ignore_process_warning
-        if [[ "$ignore_process_warning" == "N" ]]; then
-            printf "${red}runSAS session has been terminated by the user.${white}"
-            clear_session_and_exit
+    # Create an empty file it it doesn't exist already
+    create_a_new_file $runsas_last_job_pid_file
+
+    # Get the last known PID launched by runSAS
+    runsas_last_job_pid="$(<$runsas_last_job_pid_file)"
+
+    # Check if the PID is still active
+    if ! [[ -z `ps -p ${runsas_last_job_pid:-"999"} -o comm=` ]]; then
+        printf "${yellow}WARNING: There is a job (pid $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
+        show_pid_details $runsas_last_job_pid
+        printf "${red}\nDo you want to kill this process and continue? (Type Y to kill and N to ingore this warning): ${white}"
+        stty igncr < /dev/tty
+        read -n1 ignore_process_warning
+        if [[ "$ignore_process_warning" == "Y" ]] || [[ "$ignore_process_warning" == "y" ]]; then
+            kill_a_pid $runsas_last_job_pid
+        else
+            printf "\n\n"
         fi
+        stty -igncr < /dev/tty
     fi
 }
 #------
@@ -1185,7 +1221,7 @@ function runsas_job_completed_email(){
 function runsas_error_email(){
     if [[ "$email_alerts" == "Y" ]] || [[ "${email_alerts:2:1}" == "Y" ]]; then
         printf "\n\n"
-        echo "$log_block_wrapper" > $email_body_msg_file
+        echo "$console_message_line_wrappers" > $email_body_msg_file
         # See if the steps are displayed
         if [[ "$job_error_display_steps" == "Y" ]]; then
             cat $tmp_log_w_steps_file | awk '{print $0}' >> $email_body_msg_file
@@ -1193,7 +1229,7 @@ function runsas_error_email(){
             cat $tmp_log_file | awk '{print $0}' >> $email_body_msg_file
         fi
         # Send email
-        echo "$log_block_wrapper" >> $email_body_msg_file
+        echo "$console_message_line_wrappers" >> $email_body_msg_file
         echo "Job: $(<$job_that_errored_file)" >> $email_body_msg_file
         echo "Log: $local_sas_logs_root_directory/$current_log_name" >> $email_body_msg_file
         add_html_color_tags_for_keywords $email_body_msg_file
@@ -1301,7 +1337,7 @@ function clear_session_and_exit(){
     if [[ $interactive_mode == 1 ]]; then
         reset
     fi
-    terminate_running_processes $job_pid
+    running_processes_housekeeping $job_pid
     printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
@@ -1691,8 +1727,6 @@ function runSAS(){
     check_if_the_dir_exists $local_sas_app_root_directory $local_sas_batch_server_root_directory $local_sas_logs_root_directory $local_sas_deployed_jobs_root_directory
     check_if_the_file_exists "$local_sas_batch_server_root_directory/$local_sas_sh" "$local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext"
 
-    # Check if there are rogue processes from last run, show the warning.
-    check_if_there_are_any_rogue_runsas_processes $local_sas_logs_root_directory
 
     # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
     nice -n 20 $local_sas_batch_server_root_directory/$local_sas_sh -log $local_sas_logs_root_directory/${local_sas_job}_#Y.#m.#d_#H.#M.#s.log \
@@ -1795,7 +1829,7 @@ function runSAS(){
         printf " secs. Failed on $end_datetime_of_job_timestamp)${white}\n"
 
         # Wrappers
-        printf "${red}$log_block_wrapper${white}\n"
+        printf "${red}$console_message_line_wrappers${white}\n"
 
         # Depending on user setting show the log details
         if [[ "$job_error_display_steps" == "Y" ]]; then
@@ -1805,7 +1839,7 @@ function runSAS(){
         fi
 
         # Line separator
-        printf "\n${red}$log_block_wrapper${white}\n"
+        printf "\n${red}$console_message_line_wrappers${white}\n"
 
         # Print last job
         printf "${red}Job: ${red}"
@@ -1816,7 +1850,7 @@ function runSAS(){
         printf "${red}Log: ${red}$local_sas_logs_root_directory/$current_log_name${white}\n" 
 
         # Line separator
-        printf "${red}$log_block_wrapper${white}"
+        printf "${red}$console_message_line_wrappers${white}"
 		
 		# Send an error email
         runsas_error_email $job_counter_for_display $total_no_of_jobs_counter
@@ -1880,7 +1914,7 @@ runsas_allowable_parameter_count=8
 debug_console_print_color=white
 filler_col_end_pos=114
 filler_char=.
-log_block_wrapper=-----
+console_message_line_wrappers=-----
 specify_job_number_length_limit=3
 check_for_dependencies=Y
 runsas_tmp_directory=.tmp
@@ -1907,6 +1941,7 @@ job_that_errored_file=$runsas_tmp_directory/.errored_job.log
 email_body_msg_file=$runsas_tmp_directory/.email_body_msg.html
 email_console_print_file=$runsas_tmp_directory/.email_console_print.html
 job_stats_delta_file=$runsas_tmp_directory/.job_delta.stats.$job_stats_timestamp
+runsas_last_job_pid_file=$runsas_tmp_directory/.runsas_last_job.pid
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
@@ -2008,6 +2043,9 @@ print_to_console_debug_only "runSAS session variables"
 
 # Get the consent from the user to trigger the batch 
 press_enter_key_to_continue 1
+
+# Check for rogue process(es), the last known pid is checked here
+check_if_there_are_any_rogue_runsas_processes
 
 # Hide the cursor
 setterm -cursor off
