@@ -113,7 +113,7 @@ printf "\n${white}"
 function show_the_script_version_number(){
     # Script version
     runsas_version=10.3
-    runsas_in_place_upgrade_compatible_version=10.0
+    runsas_in_place_upgrade_compatible_version=10.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$runsas_version"
