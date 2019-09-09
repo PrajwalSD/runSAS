@@ -242,7 +242,7 @@ function show_first_launch_intro_message(){
         printf "${blue}Welcome, it looks like a first launch of the runSAS script, let's quickly go through some basics. \n${end}" 
         printf "${blue}\nrunSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
         printf "${blue}    (a) SAS environment parameters and, ${end}\n"
-        printf "${blue}    (b) List of SAS jobs ${end}\n\n" 
+        printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n${end}"
         printf "${blue}\nTo know more about runSAS see the help menu (i.e. ./runSAS.sh --help) or go to ${underline}$runsas_github_page${end}${blue} for detailed documentation. \n${end}"
         press_enter_key_to_continue 
