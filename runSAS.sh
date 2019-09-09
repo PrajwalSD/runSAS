@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.2                                                                                                  #
+#     Version: 10.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 06/09/2019                                                                                            #
 #                                                                                                                    #
@@ -68,17 +68,17 @@ job_error_display_count=1                                               # Defaul
 job_error_display_steps=N                                               # Default is N        ---> This will show more details when a job fails, it can be a page long output.
 job_error_display_lines_around_count=1                                  # Default is 1        ---> This will allow you to increase or decrease how much is shown from the log.
 job_error_display_lines_around_mode=a                                   # Default is a        ---> These are grep arguements, a=after error, b=before error, c=after & before.
-kill_process_on_user_abort=Y                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
+kill_process_on_user_abort=N                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
 program_type_ext=sas                                                    # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"                                         # Default is "^ERROR" ---> Change this to the locale setting.
 check_for_step_string="Step:"                                           # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=N                                             # Default is N        ---> Set to Y to capture runSAS run history
+enable_runsas_run_history=Y                                             # Default is Y        ---> Set to Y to capture runSAS run history
 #
 # 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email. 
 #      Tip: If you don't receive emails from the server, add <logged-in-user>@<server-full-name> email address (e.g.: sas@sasserver.demo.com) to your email client whitelist.
 #
-email_alerts=N                                  	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
+email_alerts=N                                  	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format,<trigger-alert><job-alert><error-alert><completion-alert>)
 email_alert_to_address=""                                               # Default is ""       ---> Provide email address(es) separated by a semi-colon (with no spaces)
 email_alert_user_name="runSAS"                                          # Default is "runSAS" ---> This is used as FROM address for the email alerts, make sure the email address is in the whitelist of the email client/server.
 #                                                                             
@@ -97,7 +97,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|2|
+|r|u|n|S|A|S| |v|1|0|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     # Script version
-    runsas_version=10.2
+    runsas_version=10.3
     runsas_in_place_upgrade_compatible_version=10.0
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -230,6 +230,26 @@ function validate_parameters_passed_to_script(){
         esac
         shift
     done
+}
+#------
+# Name: show_first_launch_intro_message()
+# Desc: Just displays some useful information for the first time users of the script
+#   In: <NA>
+#  Out: <NA>
+#------
+function show_first_launch_intro_message(){
+     if [[ ! -f $runsas_first_use_intro_file ]]; then
+        printf "${blue}Welcome, it looks like a first launch of the runSAS script, let's quickly go through some basics. \n${end}" 
+        printf "${blue}\nrunSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
+        printf "${blue}    (a) SAS environment parameters and, ${end}\n"
+        printf "${blue}    (b) List of SAS jobs ${end}\n\n" 
+        printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n${end}"
+        printf "${blue}\nTo know more about runSAS see the help menu (i.e. ./runSAS.sh --help) or go to ${underline}$runsas_github_page${end}${blue} for detailed documentation. \n${end}"
+        press_enter_key_to_continue 
+        printf "\n"
+        # Do not show the message again, so create a file to indicate that
+        create_a_new_file $runsas_first_use_intro_file  
+    fi
 }
 #------
 # Name: show_the_list()
@@ -1904,7 +1924,8 @@ function runSAS(){
 # BEGIN: The script execution begins from here.
 
 # Github URL
-runsas_github_src_url=http://github.com/PrajwalSD/runSAS/raw/master/runSAS.sh
+runsas_github_page=http://github.com/PrajwalSD/runSAS
+runsas_github_src_url=$runsas_github_page/raw/master/runSAS.sh
 
 # Bash color codes for the console
 set_colors_codes
@@ -1942,6 +1963,7 @@ email_body_msg_file=$runsas_tmp_directory/.email_body_msg.html
 email_console_print_file=$runsas_tmp_directory/.email_console_print.html
 job_stats_delta_file=$runsas_tmp_directory/.job_delta.stats.$job_stats_timestamp
 runsas_last_job_pid_file=$runsas_tmp_directory/.runsas_last_job.pid
+runsas_first_use_intro_file=$runsas_tmp_directory/.runsas_intro.done
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
@@ -1976,6 +1998,9 @@ display_welcome_ascii_banner
 
 # Dependency checks on each launch
 check_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf
+
+# Show intro message (only shown once)
+show_first_launch_intro_message
 
 # User messages (info)
 display_post_banner_messages
