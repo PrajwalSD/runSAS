@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.3                                                                                                  #
+#     Version: 10.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 06/09/2019                                                                                            #
+#        Date: 09/09/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -35,7 +35,7 @@
 #<
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
-# 1/4: Set SAS 9.x environment related parameters (case sensitive, avoid unnecessary whitespaces/blanks)
+# 1/4: Set SAS 9.x environment related parameters (case sensitive, avoid unnecessary whitespace/blanks)
 #      Ideally setting just the first parameter should be enough but review the rest and adjust as per the environment
 #      Always enclose the value with double-quotes (not with single-quotes)
 #
@@ -97,7 +97,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|3|
+|r|u|n|S|A|S| |v|1|0|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     # Script version
-    runsas_version=10.3
+    runsas_version=10.4
     runsas_in_place_upgrade_compatible_version=10.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -238,17 +238,17 @@ function validate_parameters_passed_to_script(){
 #  Out: <NA>
 #------
 function show_first_launch_intro_message(){
-     if [[ ! -f $runsas_first_use_intro_file ]]; then
-        printf "${blue}Welcome, it looks like a first launch of the runSAS script, let's quickly go through some basics. \n${end}" 
-        printf "${blue}\nrunSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
+     if [[ ! -f $runsas_first_use_intro_done_file ]]; then
+        printf "${blue}Welcome, it looks like a first launch of the runSAS script, let's quickly go through some basics. \n\n${end}" 
+        printf "${blue}runSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
         printf "${blue}    (a) SAS environment parameters and, ${end}\n"
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
-        printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n${end}"
-        printf "${blue}\nTo know more about runSAS see the help menu (i.e. ./runSAS.sh --help) or go to ${underline}$runsas_github_page${end}${blue} for detailed documentation. \n${end}"
-        press_enter_key_to_continue 
+        printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
+        printf "${blue}To know more about runSAS see the help menu (i.e. ./runSAS.sh --help) or go to ${underline}$runsas_github_page${end}${blue} for detailed documentation. \n${end}"
+        press_enter_key_to_continue
         printf "\n"
-        # Do not show the message again, so create a file to indicate that
-        create_a_new_file $runsas_first_use_intro_file  
+        # Do not show the message again
+        create_a_new_file $runsas_first_use_intro_done_file  
     fi
 }
 #------
@@ -294,7 +294,7 @@ function set_colors_codes(){
     bold=$'\e[1m'
     italic=$'\e[3m'
     underline=$'\e[4m'
-
+	
     # Reset text attributes to normal without clearing screen.
     alias reset_colors="tput sgr0" 
 }
@@ -617,7 +617,7 @@ function create_a_new_directory(){
             if [[ ! -d "$dir" ]]; then
                 printf "${green}\nNOTE: Creating a directory named $dir...${white}"
                 mkdir $mkdir_mode $dir
-                # See if the directory creation was successfull
+                # See if the directory creation was successful
                 if [[ -d "$dir" ]]; then
                     printf "${green}DONE\n${white}"
                 else
@@ -667,7 +667,7 @@ function remove_a_line_from_file(){
 }
 #------
 # Name: backup_directory()
-# Desc: Backup a directory to a folder as tar zip with timestamp (filename_YYYYMMDD.tar.gz)
+# Desc: Backup a directory to a folder as tar zip with timestamps (filename_YYYYMMDD.tar.gz)
 #   In: source-dir, target-dir, target-zip-file-name
 #  Out: <NA>
 #------
@@ -1064,7 +1064,7 @@ function print_to_console_debug_only(){
 # Name: send_an_email()
 # Desc: This routine will send an email alert to the intended recipient(s)
 #   In: email-mode, subject-identifier, subject, to-address (separated by semi-colon), email-body-msg-html-file, 
-#       optional-email-attachement-dir, optional-email-attachment, optional-from-address (separated by semi-colon), optional-to-distribution-list (separated by semi-colon)
+#       optional-email-attachment-dir, optional-email-attachment, optional-from-address (separated by semi-colon), optional-to-distribution-list (separated by semi-colon)
 #  Out: <NA>
 #------
 function send_an_email(){
@@ -1183,7 +1183,7 @@ if [[ "$email_mode" != "-s" ]]; then
 fi
 cd $curr_directory
 
-# Clear the tmp files
+# Clear the temporary files
 rm -rf $email_header_file $email_body_file $email_footer_file
 }
 #------
@@ -1287,7 +1287,7 @@ function store_job_runtime_stats(){
 }
 #------
 # Name: get_job_hist_runtime_stats()
-# Desc: Check job runtimes for the last batch run
+# Desc: Check job runtime for the last batch run
 #   In: job-name
 #  Out: <NA>
 #------
@@ -1561,7 +1561,7 @@ function display_progressbar_with_offset(){
 		progressbar_steps_completed=$progressbar_total_steps
 	fi
 
-	# Calculate the perecentage completed
+	# Calculate the percentage completed
     progress_bar_pct_completed=`bc <<< "scale = 0; ($progressbar_steps_completed + $progressbar_offset) * 100 / $progressbar_total_steps / $progressbar_scale"`
 
     # Reset the console, backspacing operation defined by the length of the progress bar and the percentage string length
@@ -1585,7 +1585,7 @@ function display_progressbar_with_offset(){
     # Get the length of the current percentage
     progress_bar_pct_completed_charlength=${#progress_bar_pct_completed_x_scale}
 
-    # Show the percentage on console, right justfied
+    # Show the percentage on console, right justified
     printf "${green_bg}${black}$progress_bar_pct_completed_x_scale%%${white}"
 
     # Reset if the variable goes beyond the boundary values
@@ -1634,10 +1634,13 @@ function display_progressbar_with_offset(){
 # Name: runSAS()
 # Desc: This function implements the SAS job execution routine, quite an important one
 #   In: (1) A SAS deployed job name        (e.g.: 99_Run_Marketing_Jobs)
-#       (2) SAS BatchServer directory name (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer)
-#       (3) SAS BatchServer shell script   (e.g.: sasbatch.sh)
-#       (4) SAS BatchServer logs directory (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer/Logs)
-#       (5) SAS deployed jobs directory    (e.g.: /SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs)
+#       (2) runSAS job option              (e.g.: --server)
+#       (3) runSAS job sub-option          (e.g.: SASAppX)
+#       (4) SASApp root directory 		   (e.g.: /SASInside/SAS/Lev1/SASApp)
+#       (5) SAS BatchServer directory name (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer)
+#       (6) SAS BatchServer shell script   (e.g.: sasbatch.sh)
+#       (7) SAS BatchServer logs directory (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer/Logs)
+#       (8) SAS deployed jobs directory    (e.g.: /SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs)
 #  Out: <NA>
 #------
 function runSAS(){
@@ -1648,7 +1651,7 @@ function runSAS(){
     # Increment the job counter for console display
     let job_counter_for_display+=1
 
-    # Capture job runtimes
+    # Capture job runtime
 	start_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
     start_datetime_of_job=`date +%s`
 
@@ -1789,13 +1792,13 @@ function runSAS(){
 		get_job_hist_runtime_stats $local_sas_job
         hist_job_runtime_for_current_job="${hist_job_runtime:-0}"
 
-        # Check if the runtime is exceeding the given factor
+        # Optional feature, check if the runtime is exceeding the given factor
         if [[ "$runtime_comparsion_routine" == "Y" ]] && [[ "$hist_job_runtime_for_current_job" -gt "0" ]]; then
             # Multiply the factor and see if the runtime is exceeding the runtime
             let hist_job_runtime_for_current_job_x_factor=$hist_job_runtime_for_current_job*$increase_in_runtime_factor
             current_end_datetime_of_job=`date +%s`
             let current_runtime_of_job=$current_end_datetime_of_job-$start_datetime_of_job
-            # If the runtimes are higher by the given factor show the warning
+            # If the runtime is higher by the given factor show the warning to the user
             if [[ "$current_runtime_of_job" -gt "$hist_job_runtime_for_current_job_x_factor" ]]; then
                 if [[ "$long_running_job_msg_shown" == "0" ]]; then
                     printf "${red}\nNOTE: The job is taking a bit more time than usual (previously it took $hist_job_runtime secs, it is $current_runtime_of_job secs already), Press ENTER key to continue or CTRL+C to abort this run.${white}"
@@ -1840,7 +1843,7 @@ function runSAS(){
         sed -i 's/^[1-9][0-9]* \* Job: //g' $job_that_errored_file
         sed -i 's/[A0-Z9]*\.[A0-Z9]* \*//g' $job_that_errored_file
 
-        # Display fillers (tabularized console output)
+        # Display fillers (tabulated console output)
         display_message_fillers_on_console $filler_col_end_pos $filler_char 0 N 1
 
         # Print error(s)
@@ -1883,14 +1886,14 @@ function runSAS(){
         no_of_steps_completed_in_log=`grep -o 'Step:' $local_sas_logs_root_directory/$current_log_name | wc -l`
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0
 
-        # Capture job runtimes
+        # Capture job runtime
 		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
         end_datetime_of_job=`date +%s`
 
         # Store the stats for the next time
         store_job_runtime_stats $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $current_log_name $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
-        # Display fillers (tabularized console output)
+        # Display fillers (tabulated console output)
         display_message_fillers_on_console $filler_col_end_pos $filler_char 1
 
         # Success (DONE) message
@@ -1902,14 +1905,14 @@ function runSAS(){
         runsas_job_completed_email $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $job_counter_for_display $total_no_of_jobs_counter
     fi
 
-    # Forece to run in interactive mode if in run-from-to-job-interactive (-fui) mode
+    # Force to run in interactive mode if in run-from-to-job-interactive (-fui) mode
     if [[ "$run_from_to_job_interactive_mode" -ge "1" ]]; then
         script_mode="-i"
         run_in_interactive_mode_check
         script_mode="-fui"
     fi
 
-    # Forece to run in interactive mode if in run-from-to-job-interactive (-fuis) mode
+    # Force to run in interactive mode if in run-from-to-job-interactive (-fuis) mode
     if [[ "$run_from_to_job_interactive_skip_mode" -eq "1" ]] || [[ "$run_from_to_job_interactive_skip_mode" -eq "2" ]]; then
         script_mode="-i"
         run_in_interactive_mode_check
@@ -1963,7 +1966,7 @@ email_body_msg_file=$runsas_tmp_directory/.email_body_msg.html
 email_console_print_file=$runsas_tmp_directory/.email_console_print.html
 job_stats_delta_file=$runsas_tmp_directory/.job_delta.stats.$job_stats_timestamp
 runsas_last_job_pid_file=$runsas_tmp_directory/.runsas_last_job.pid
-runsas_first_use_intro_file=$runsas_tmp_directory/.runsas_intro.done
+runsas_first_use_intro_done_file=$runsas_tmp_directory/.runsas_intro.done
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
