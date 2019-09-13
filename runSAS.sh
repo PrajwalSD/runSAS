@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.4                                                                                                  #
+#     Version: 10.6                                                                                                  #
 #                                                                                                                    #
-#        Date: 09/09/2019                                                                                            #
+#        Date: 13/09/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -35,9 +35,9 @@
 #<
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
-# 1/4: Set SAS 9.x environment related parameters (case sensitive, avoid unnecessary whitespace/blanks)
-#      Ideally setting just the first parameter should be enough but review the rest and adjust as per the environment
-#      Always enclose the value with double-quotes (not with single-quotes)
+# 1/4: Set SAS 9.x environment related parameters.
+#      Ideally, setting just the first two parameters should work but amend the rest if needed as per the environment
+#      Always enclose the value with double-quotes (NOT single-quotes)
 #
 sas_installation_root_directory="/SASInside/SAS/"
 sas_app_server_name="SASApp"
@@ -50,10 +50,8 @@ sas_deployed_jobs_root_directory="$sas_app_root_directory/SASEnvironment/SASCode
 #
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
-#      Tip: Add "--prompt" after the job name to halt/pause the run 
-#           Add "--skip" to skip the job during the run 
-#           Add "--server" followed by optional job execution server context parameters to override the defaults (see --help menu for more details)
-#  
+#      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters
+#
 cat << EOF > .job.list
 XXXXX --prompt
 YYYYY
@@ -62,25 +60,26 @@ EOF
 # 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs.
 #
 run_in_debug_mode=N                                                     # Default is N        ---> Set this to Y to turn on debugging mode.
-runtime_comparsion_routine=Y                                            # Default is Y        ---> Set this N to turn off job runtime checks.
+runtime_comparsion_routine=N                                            # Default is Y        ---> Set this N to turn off job runtime checks.
 increase_in_runtime_factor=50                                           # Default is 50       ---> This is used in determining the runtime changes between runs (to a last successful run only).
 job_error_display_count=1                                               # Default is 1        ---> This will restrict the error log display to the x no. of error(s) in the log.
 job_error_display_steps=N                                               # Default is N        ---> This will show more details when a job fails, it can be a page long output.
 job_error_display_lines_around_count=1                                  # Default is 1        ---> This will allow you to increase or decrease how much is shown from the log.
 job_error_display_lines_around_mode=a                                   # Default is a        ---> These are grep arguements, a=after error, b=before error, c=after & before.
-kill_process_on_user_abort=N                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
+kill_process_on_user_abort=Y                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
 program_type_ext=sas                                                    # Default is sas      ---> Do not change this. 
 check_for_error_string="^ERROR"                                         # Default is "^ERROR" ---> Change this to the locale setting.
 check_for_step_string="Step:"                                           # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=Y                                             # Default is Y        ---> Set to Y to capture runSAS run history
+enable_runsas_run_history=Y                                             # Default is N        ---> Set to Y to capture runSAS run history
+abort_on_error=N                                                        # Default is N        ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 #
 # 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email. 
-#      Tip: If you don't receive emails from the server, add <logged-in-user>@<server-full-name> email address (e.g.: sas@sasserver.demo.com) to your email client whitelist.
+#      If you don't receive emails from the server, add <logged-in-user>@<server-full-name> (e.g.: sas@sasserver.demo.com) to your email client whitelist.
 #
-email_alerts=N                                  	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format,<trigger-alert><job-alert><error-alert><completion-alert>)
-email_alert_to_address=""                                               # Default is ""       ---> Provide email address(es) separated by a semi-colon (with no spaces)
-email_alert_user_name="runSAS"                                          # Default is "runSAS" ---> This is used as FROM address for the email alerts, make sure the email address is in the whitelist of the email client/server.
+email_alerts=N                                  	                    # Default is N        ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
+email_alert_to_address=""                                               # Default is ""       ---> Provide email addresses separated by a semi-colon
+email_alert_user_name="runSAS"                                          # Default is "runSAS" ---> This is used as FROM address for the email alerts
 #                                                                             
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -97,7 +96,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|4|
+|r|u|n|S|A|S| |v|1|0|.|6|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -112,8 +111,8 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     # Script version
-    runsas_version=10.4
-    runsas_in_place_upgrade_compatible_version=10.3
+    runsas_version=10.6
+    runsas_in_place_upgrade_compatible_version=10.6
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$runsas_version"
@@ -1295,17 +1294,6 @@ function get_job_hist_runtime_stats(){
     hist_job_runtime=`awk -v pat="$1" -F" " '$0~pat { print $2 }' $job_stats_file`
 }
 #------
-# Name: write_current_job_details_on_screen()
-# Desc: Print details about the currently running job on the console
-#   In: job-name
-#  Out: <NA>
-#------
-function write_current_job_details_on_screen(){
-    printf "${white}Job ${white}"
-    printf "%02d" $job_counter_for_display
-    printf "${white} of $total_no_of_jobs_counter${white}: ${darkgrey_bg}$1${white} is running ${white}"
-}
-#------
 # Name: show_job_hist_runtime_stats()
 # Desc: Print details about last run (if available)
 #   In: job-name
@@ -1316,6 +1304,17 @@ function show_job_hist_runtime_stats(){
 	if [[ "$hist_job_runtime" != "" ]]; then
 		printf "${white} (took ~$hist_job_runtime secs last time)${white}"
 	fi
+}
+#------
+# Name: write_current_job_details_on_screen()
+# Desc: Print details about the currently running job on the console
+#   In: job-name
+#  Out: <NA>
+#------
+function write_current_job_details_on_screen(){
+    printf "${white}Job ${white}"
+    printf "%02d" $job_counter_for_display
+    printf "${white} of $total_no_of_jobs_counter${white}: ${darkgrey_bg}$1${white} is running ${white}"
 }
 #------
 # Name: write_skipped_job_details_on_screen()
@@ -1543,6 +1542,7 @@ function display_progressbar_with_offset(){
     progressbar_sleep_interval_in_secs=0.5
     progressbar_color_unicode_char=" "
     progressbar_grey_unicode_char=" "
+    progressbar_default_active_color=$default_progressbar_color
 
     # Defaults for percentages shown on the console
     progress_bar_pct_symbol_length=1
@@ -1552,6 +1552,7 @@ function display_progressbar_with_offset(){
     progressbar_steps_completed=$1
 	progressbar_total_steps=$2
     progressbar_offset=$3
+    progressbar_color=${4:-$progressbar_default_active_color}
 
     # Calculate the scale
     let progressbar_scale=100/$progressbar_width
@@ -1586,7 +1587,7 @@ function display_progressbar_with_offset(){
     progress_bar_pct_completed_charlength=${#progress_bar_pct_completed_x_scale}
 
     # Show the percentage on console, right justified
-    printf "${green_bg}${black}$progress_bar_pct_completed_x_scale%%${white}"
+    printf "${!progressbar_color}${black}$progress_bar_pct_completed_x_scale%%${white}"
 
     # Reset if the variable goes beyond the boundary values
     if [[ $progress_bar_pct_completed -lt 0 ]]; then
@@ -1602,7 +1603,7 @@ function display_progressbar_with_offset(){
 
     # Show the completed "green" block
     if [[ $progress_bar_pct_completed -ne 0 ]]; then
-        printf "${green_bg}"
+        printf "${!progressbar_color}"
         printf "%0.s$progressbar_color_unicode_char" $(seq 1 $progress_bar_pct_completed)
     fi
 
@@ -1778,7 +1779,7 @@ function runSAS(){
 
     # Get the current job log filename (absolute path)
     current_log_name=`ls -tr $local_sas_logs_root_directory | tail -1`
-
+	
     # Show current status of the run, poll for the PID and display the progress bar.
     while [ $? -eq 0 ]; do
         # Disable carriage return (ENTER key) during the script run
@@ -1786,7 +1787,7 @@ function runSAS(){
 
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:'  $local_sas_logs_root_directory/$current_log_name | wc -l`
-        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 $progressbar_color
 
         # Get runtime stats of the job
 		get_job_hist_runtime_stats $local_sas_job
@@ -1813,28 +1814,47 @@ function runSAS(){
                 fi
             fi
         fi
+        
+        # Check if there are any errors in the logs (as it updates, in real-time)
+        grep -m${job_error_display_count} "$check_for_error_string" $local_sas_logs_root_directory/$current_log_name > $tmp_log_file
 
-        # Get the PID again for the next iteration
+        # Return code check
+        if [ -s $tmp_log_file ]; then
+            script_rc=9
+        fi
+
+        # Check return code, abort if there's an error in the job run
+        if [ $script_rc -gt 4 ]; then
+            progressbar_color=red_bg
+            # Refresh the progress bar
+    		display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 $progressbar_color
+            # Optionally, abort the job run on seeing an error
+            if [[ "$abort_on_error" == "Y" ]]; then
+				kill $job_pid
+				wait $job_pid 2>/dev/null
+                break
+            fi
+        else
+            # Reset it to the default
+            progressbar_color=$default_progressbar_color
+        fi
+		
+		# Get the PID again for the next iteration
         ps cax | grep -w $job_pid > /dev/null
     done
 
-    # Suppress unwanted lines in the log (typical SAS errors!)
+    # Again, suppress unwanted lines in the log (typical SAS errors!)
     remove_a_line_from_file "ERROR: Errors printed on pages" "$local_sas_logs_root_directory/$current_log_name"
 
     # Check if there are any errors in the logs
     let job_error_display_count_for_egrep=job_error_display_count+1
-    grep -m${job_error_display_count} "$check_for_error_string" $local_sas_logs_root_directory/$current_log_name > $tmp_log_file
     egrep -m${job_error_display_count_for_egrep} -E --color "* $check_for_step_string|$check_for_error_string" -$job_error_display_lines_around_mode$job_error_display_lines_around_count $local_sas_logs_root_directory/$current_log_name > $tmp_log_w_steps_file
 
-    # Return code check
+    # Job return code check (process rc)
     job_rc=$?
-    script_rc=$job_rc
-    if [ -s $tmp_log_file ]; then
-        script_rc=9
-    fi
 
-    # Check return code, abort if there's an error
-    if [ $script_rc -gt 4 ]; then
+    # ERROR: Check return code, abort if there's an error in the job run
+    if [ $script_rc -gt 4 ] || [ $job_rc -gt 4 ]; then
         # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS)
         sed -n '1,/^ERROR:/ p' $local_sas_logs_root_directory/$current_log_name | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $job_that_errored_file
 
@@ -1845,6 +1865,10 @@ function runSAS(){
 
         # Display fillers (tabulated console output)
         display_message_fillers_on_console $filler_col_end_pos $filler_char 0 N 1
+		
+		# Capture job runtime
+		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
+        end_datetime_of_job=`date +%s`
 
         # Print error(s)
         printf "\b${white}${red}(FAILED rc=$job_rc-$script_rc, it took "
@@ -1881,7 +1905,7 @@ function runSAS(){
         # Clear the session
         clear_session_and_exit
     else
-        # Complete the progress bar with offset 0 (fill the last bit after the step is complete)
+        # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:' $local_sas_logs_root_directory/$current_log_name | wc -l`
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0
@@ -1947,7 +1971,8 @@ long_running_job_msg_shown=0
 total_no_of_jobs_counter=`cat .job.list | wc -l`
 index_mode_first_job_number=-1
 index_mode_second_job_number=-1
-email_attachment_size_limit_in_bytes=10000000 
+email_attachment_size_limit_in_bytes=8000000
+default_progressbar_color="green_bg"
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
