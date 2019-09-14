@@ -73,7 +73,7 @@ STEP_CHECK_SEARCH_STRING="Step:"                                        # Defaul
 SASTRACE_SEARCH_STRING="^options sastrace"                              # Default is "^options sastrace"  ---> Change this to the locale setting.
 ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is N                    ---> Set to Y to capture runSAS run history
 ABORT_ON_ERROR=Y                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
-ENABLE_SASTRACE_IN_JOB_CHECK=Y                                    	    # Default is Y                    ---> Set to N to turn off the warnings on sastrace
+ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
 #
 # 4/5: Email alerts, set the first parameter to N to turn off this feature.
