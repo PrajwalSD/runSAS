@@ -145,8 +145,8 @@ function show_the_update_compatible_script_version_number(){
 function print_the_help_menu(){
     if [[ ${#@} -ne 0 ]] && [[ "${@#"--help"}" = "" ]]; then
 		# Set the script version numbers for the help menu
-		show_the_script_version_number
-		show_the_update_compatible_script_version_number
+        show_the_script_version_number
+        show_the_update_compatible_script_version_number
 		# Print help menu
         printf "${blue}"
         printf "${underline}"
