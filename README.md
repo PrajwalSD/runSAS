@@ -58,9 +58,9 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   `./runSAS.sh -o <name or index>`
   
  * ### Run a single adhoc job mode (-j)
-  If you want to run a specific job which is not in the list (adhoc run)
+   If you want to run a specific job which is not in the list (adhoc run)
   
-  `./runSAS.sh -j <name or index>`
+   `./runSAS.sh -j <name or index>`
   
 * ### Run from a job up to a job mode (-fu)
   If you want to run a bunch of jobs from one point to the other.
@@ -83,6 +83,8 @@ The script can send email alerts on different scenarios, to enable it set `EMAIL
 * Sends an email when a job has finished
 * Sends an email when a job has failed (with log and error snippet in the email body)
 * Sends an email when the batch has completed (with a runtime statistics)
+
+![runSAS job failed email alert](https://i.imgur.com/OGGLMFo.png)
 
 _Tip: To disable email alerts temporarily for a run, just append `--noemail` during the launch i.e. `./runSAS.sh --noemail`, this will not send any emails for that specific run._
 
