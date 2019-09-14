@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.6                                                                                                  #
+#     Version: 10.8                                                                                                  #
 #                                                                                                                    #
-#        Date: 13/09/2019                                                                                            #
+#        Date: 14/09/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -24,7 +24,7 @@
 #              [8] Run-from-to-job-interactive mode------: ./runSAS.sh -fui  <name or index> <name or index>         #
 #              [9] Run-from-to-job-interactive-skip mode-: ./runSAS.sh -fuis <name or index> <name or index>         #
 #                                                                                                                    #
-#              For more details, see https://github.com/PrajwalSD/runSAS/blob/master/README.md                       #
+#              For more details, see https://github.com/PrajwalSD/runSAS/blob/master/README.md or --help menu        #
 #                                                                                                                    #
 #  Dependency: SAS 9.x (Linux) environment with SAS BatchServer (or an equivalent) is required at minimum with bash. #
 #              The other minor dependencies are automatically checked by the script during the runtime.              #
@@ -59,19 +59,21 @@ EOF
 #
 # 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs.
 #
-run_in_debug_mode=N                                                     # Default is N        ---> Set this to Y to turn on debugging mode.
-runtime_comparsion_routine=N                                            # Default is Y        ---> Set this N to turn off job runtime checks.
-increase_in_runtime_factor=50                                           # Default is 50       ---> This is used in determining the runtime changes between runs (to a last successful run only).
-job_error_display_count=1                                               # Default is 1        ---> This will restrict the error log display to the x no. of error(s) in the log.
-job_error_display_steps=N                                               # Default is N        ---> This will show more details when a job fails, it can be a page long output.
-job_error_display_lines_around_count=1                                  # Default is 1        ---> This will allow you to increase or decrease how much is shown from the log.
-job_error_display_lines_around_mode=a                                   # Default is a        ---> These are grep arguements, a=after error, b=before error, c=after & before.
-kill_process_on_user_abort=Y                                            # Default is Y        ---> The rogue processes are automatically killed by the script on user abort.
-program_type_ext=sas                                                    # Default is sas      ---> Do not change this. 
-check_for_error_string="^ERROR"                                         # Default is "^ERROR" ---> Change this to the locale setting.
-check_for_step_string="Step:"                                           # Default is "Step:"  ---> Change this to the locale setting.
-enable_runsas_run_history=Y                                             # Default is N        ---> Set to Y to capture runSAS run history
-abort_on_error=N                                                        # Default is N        ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
+run_in_debug_mode=N                                                     # Default is N                    ---> Set this to Y to turn on debugging mode.
+runtime_comparsion_routine=N                                            # Default is Y                    ---> Set this N to turn off job runtime checks.
+increase_in_runtime_factor=50                                           # Default is 50                   ---> This is used in determining the runtime changes between runs (to a last successful run only).
+job_error_display_count=1                                               # Default is 1                    ---> This will restrict the error log display to the x no. of error(s) in the log.
+job_error_display_steps=N                                               # Default is N                    ---> This will show more details when a job fails, it can be a page long output.
+job_error_display_lines_around_count=1                                  # Default is 1                    ---> This will allow you to increase or decrease how much is shown from the log.
+job_error_display_lines_around_mode=a                                   # Default is a                    ---> These are grep arguements, a=after error, b=before error, c=after & before.
+kill_process_on_user_abort=Y                                            # Default is Y                    ---> The rogue processes are automatically killed by the script on user abort.
+program_type_ext=sas                                                    # Default is sas                  ---> Do not change this. 
+check_for_error_string="^ERROR"                                         # Default is "^ERROR"             ---> Change this to the locale setting.
+check_for_step_string="Step:"                                           # Default is "Step:"              ---> Change this to the locale setting.
+check_for_sastrace_string="^options sastrace"                           # Default is "^options sastrace"  ---> Change this to the locale setting.
+enable_runsas_run_history=Y                                             # Default is N                    ---> Set to Y to capture runSAS run history
+abort_on_error=Y                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
+check_for_sastrace_in_programs=Y                                    	# Default is Y                    ---> Set to N to turn off the warnings on sastrace
 #
 # 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email. 
@@ -96,7 +98,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|6|
+|r|u|n|S|A|S| |v|1|0|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -111,8 +113,8 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
     # Script version
-    runsas_version=10.6
-    runsas_in_place_upgrade_compatible_version=10.6
+    runsas_version=10.8
+    runsas_in_place_upgrade_compatible_version=10.7
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$runsas_version"
@@ -167,6 +169,7 @@ function print_the_help_menu(){
         printf "\n     --update                     The script will update itself to the latest version from Github"
         printf "\n     --delay <time-in-seconds>    The script will launch after a specified time delay in seconds"
         printf "\n     --jobs or --show             The script will show a list of job(s) provided by the user in the script (quick preview)"
+        printf "\n     --log or --last              The script will show the last script run details"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -212,6 +215,8 @@ function validate_parameters_passed_to_script(){
          --job) ;;
         --show) ;;
         --list) ;;
+         --log) ;;
+        --last) ;;
             -v) ;;
            --v) ;;
             -i) ;;
@@ -244,7 +249,7 @@ function show_first_launch_intro_message(){
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
         printf "${blue}To know more about runSAS see the help menu (i.e. ./runSAS.sh --help) or go to ${underline}$runsas_github_page${end}${blue} for detailed documentation. \n${end}"
-        press_enter_key_to_continue
+        press_enter_key_to_continue 1
         printf "\n"
         # Do not show the message again
         create_a_new_file $runsas_first_use_intro_done_file  
@@ -457,7 +462,7 @@ fi
 EOF
 
 # Continue
-press_enter_key_to_continue
+press_enter_key_to_continue 1
    
 # Handover the execution to the update script 
 exec /bin/bash .runSAS_update.sh
@@ -627,6 +632,15 @@ function create_a_new_directory(){
             fi
         fi
     done
+}
+#------
+# Name: print_file_to_console()
+# Desc: This function prints the file content as is to the console
+#   In: file-name
+#  Out: <NA>
+#------
+function print_file_to_console(){
+    cat $1 | awk '{print $0}' 
 }
 #------
 # Name: print_file_content_with_index()
@@ -964,17 +978,17 @@ function run_from_to_job_interactive_skip_mode_check(){
 function kill_a_pid(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         kill -9 $1
-        printf "${red}\n\nCleaning up the background process (pid $1), please wait...${white}"
+        printf "${red}\nCleaning up the background process (pid $1), please wait...${white}"
         sleep 2
         if [[ -z `ps -p $1 -o comm=` ]]; then
-            printf "${green}DONE${white}\n\n${white}"
+            printf "${green}(DONE)${white}\n\n${white}"
         else
             printf "${red}\n\n*** ERROR: Attempt to terminate the pid $1 using kill command kill -9 command failed. It is likely due to user permissions (try sudo kill?), see details below. ***\n${white}"
             show_pid_details $1
             printf "\n"
         fi
     else
-        printf "${red} (pid is missing anyway, no action taken)${white}\n\n"
+        printf "${red}\n(pid is missing anyway, no action taken)${white}\n\n"
     fi
 }
 #------
@@ -985,9 +999,9 @@ function kill_a_pid(){
 #------
 function show_pid_details(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
-        printf "${yellow}$console_message_line_wrappers\n"
+        printf "${white}$console_message_line_wrappers\n"
         ps $1 # Show process details
-        printf "${yellow}$console_message_line_wrappers\n${white}"
+        printf "${white}$console_message_line_wrappers\n${white}"
     fi
 }
 #------
@@ -1001,7 +1015,7 @@ function running_processes_housekeeping(){
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$kill_process_on_user_abort" ==  "Y" ]]; then
                 stty igncr < /dev/tty
-                printf "${yellow}PID details for the active job:\n${white}"
+                printf "${white}PID details for the active job:\n${white}"
                 # PID show & kill
                 show_pid_details $1
                 kill_a_pid $1               
@@ -1042,6 +1056,22 @@ function check_if_there_are_any_rogue_runsas_processes(){
     fi
 }
 #------
+# Name: print_unix_user_session_variables()
+# Desc: Prints user session variables using compgen -v command
+#   In: file-or-console-mode, file-name
+#  Out: <NA>
+#------
+function print_unix_user_session_variables(){
+    session_variables_array=`compgen -v`
+    for session_variable_name in $session_variables_array; do
+        if [[ "$1" == "file" ]]; then
+            printf "$session_variable_name: ${!session_variable_name}\n" >> $2
+        else
+            printf "${white}${green}$session_variable_name${white} is set to ${green}${!session_variable_name}\n${white}" 
+        fi
+    done
+}
+#------
 # Name: print_to_console_debug_only()
 # Desc: Prints more details to console if the debug mode is turned on (experimental)
 #   In: <NA>
@@ -1049,15 +1079,10 @@ function check_if_there_are_any_rogue_runsas_processes(){
 #------
 function print_to_console_debug_only(){
     if [[ "$run_in_debug_mode" == "Y" ]]; then
-        printf "${!debug_console_print_color}DEBUG - $1: $2\n${white}"
-        session_variables_array=`compgen -v`
-        printf "${!debug_console_print_color}-----------------------------${white}\n"
-        for session_variable_name in $session_variables_array; do
-            printf "${!debug_console_print_color}${green}$session_variable_name${white} is set to ${green}${!session_variable_name}\n${white}"
-        done
-        printf "${!debug_console_print_color}-----------------------------\n\n${white}"
+        printf "${white}DEBUG - $1: $2\n${white}"
+        print_unix_user_session_variables 
+		printf "${white}\n"
     fi
-    printf "${white}"
 }
 #------
 # Name: send_an_email()
@@ -1306,6 +1331,28 @@ function show_job_hist_runtime_stats(){
 	fi
 }
 #------
+# Name: show_last_run_summary()
+# Desc: Print summary about last run (if available)
+#   In: script-launch-mode
+#  Out: <NA>
+#------
+function show_last_run_summary(){
+    if [[ "$1" == "--log" ]] || [[ "$1" == "--last" ]]; then
+        print_file_to_console $runsas_session_log_file
+		clear_session_and_exit
+    fi
+}
+#------
+# Name: print_2_runsas_session_log()
+# Desc: Keeps a track of what's done in the session for debugging etc.
+#   In: msg
+#  Out: <NA>
+#------
+function print_2_runsas_session_log(){
+    create_a_new_file $runsas_session_log_file
+    printf "\n$1" >> $runsas_session_log_file
+}
+#------
 # Name: write_current_job_details_on_screen()
 # Desc: Print details about the currently running job on the console
 #   In: job-name
@@ -1425,21 +1472,34 @@ function display_message_fillers_on_console(){
 #------
 # Name: press_enter_key_to_continue()
 # Desc: This function will pause the script and wait for the ENTER key to be pressed
-#   In: newline-count (e.g. 2 for 2 newlines)
+#   In: newline-count, color (e.g. 2 for 2 newlines)
 #  Out: enter_to_continue_user_input
 #------
 function press_enter_key_to_continue(){
+	# Set the color
+	press_enter_key_to_continue_color=${3:-"green"}
+	
     # Enable carriage return (ENTER key) during the script run
     stty -igncr < /dev/tty
-    # Show message
-    printf "${green}\nPress ENTER key to continue...${white}"
-    read enter_to_continue_user_input
-    # See if a newline is requested
-    if [[ "$1" != "" ]]; then
+	
+	# Newlines (before)
+    if [[ "$1" != "" ]] && [[ "$1" != "0" ]]; then
         for (( i=1; i<=$1; i++ )); do
             printf "\n"
         done
     fi
+	
+	# Show message
+    printf "${!press_enter_key_to_continue_color}Press ENTER key to continue...${white}"
+    read enter_to_continue_user_input
+	
+	# Newlines (after)
+    if [[ "$2" != "" ]] && [[ "$2" != "0" ]]; then
+        for (( i=1; i<=$1; i++ )); do
+            printf "\n"
+        done
+    fi
+	
     # Disable carriage return (ENTER key) during the script run
     stty -igncr < /dev/tty
 }
@@ -1459,6 +1519,20 @@ function check_for_multiple_instances_of_job(){
 	if [[ $joblist_job_count > 1 ]]; then
 		printf "\n${red}*** ERROR: Job ${black}${red_bg}$1${end}${red} has been specified more than once in the job list, launch the script again with a job index/number instead (ex.: ./runSAS.sh -f 16) ***${white}"
 		clear_session_and_exit
+	fi
+}
+#------
+# Name: scan_sas_programs_for_debug_options()
+# Desc: This function warns the user that SAS debug options are set
+#   In: <sas-file-name>
+#  Out: <NA>
+#------
+function scan_sas_programs_for_debug_options(){
+	 # Check if there are any debug options in the sas file
+	grep -i "$check_for_sastrace_string" $1 > $tmp_sastrace_file
+	# Show a warning to the user
+	if [ -s $tmp_sastrace_file ]; then
+		printf "\n${yellow}WARNING: SAS global options sastrace is detected in the $1 code file\n"
 	fi
 }
 #------
@@ -1484,10 +1558,13 @@ function validate_job_list(){
                     printf "${yellow}WARNING: $so was specified for $j in the list without the server context name, defaulting to $sas_app_server_name${white}"
                 fi
             fi
+			# Check if the file exists
 			if [[ "$o" != "--skip" ]] && [ ! -f "$vjmode_sas_deployed_jobs_root_directory/$j.$program_type_ext" ]; then
 				printf "\n${red}*** ERROR: Job #$job_counter ${black}${red_bg}$j${white}${red} has not been deployed or mispelled because $j.$program_type_ext was not found in $vjmode_sas_deployed_jobs_root_directory *** ${white}"
                 clear_session_and_exit
 			fi
+			# Check if there are any sastrace options enabled in the program file
+			scan_sas_programs_for_debug_options $vjmode_sas_deployed_jobs_root_directory/$j.$program_type_ext
 		done < $1
 	fi
 }
@@ -1686,6 +1763,19 @@ function runSAS(){
         fi
     fi
 
+    # Log
+    print_2_runsas_session_log $console_message_line_wrappers
+    print_2_runsas_session_log "Job No.: $job_counter_for_display"
+    print_2_runsas_session_log "Job: $local_sas_job"
+    print_2_runsas_session_log "Opt: $local_sas_opt"
+    print_2_runsas_session_log "Sub-Opt: $local_sas_subopt"
+    print_2_runsas_session_log "App server: $local_sas_app_root_directory"
+    print_2_runsas_session_log "Batch server: $local_sas_batch_server_root_directory"
+    print_2_runsas_session_log "SAS shell: $local_sas_sh"
+    print_2_runsas_session_log "Logs: $local_sas_logs_root_directory"
+    print_2_runsas_session_log "Deployed Jobs: $local_sas_deployed_jobs_root_directory"
+    print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
+
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
     if [[ "$run_from_mode" -ne "1" ]]; then
@@ -1750,7 +1840,6 @@ function runSAS(){
     # Check if the directory exists (specified by the user as configuration)
     check_if_the_dir_exists $local_sas_app_root_directory $local_sas_batch_server_root_directory $local_sas_logs_root_directory $local_sas_deployed_jobs_root_directory
     check_if_the_file_exists "$local_sas_batch_server_root_directory/$local_sas_sh" "$local_sas_deployed_jobs_root_directory/$local_sas_job.$program_type_ext"
-
 
     # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
     nice -n 20 $local_sas_batch_server_root_directory/$local_sas_sh -log $local_sas_logs_root_directory/${local_sas_job}_#Y.#m.#d_#H.#M.#s.log \
@@ -1830,7 +1919,7 @@ function runSAS(){
     		display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 $progressbar_color
             # Optionally, abort the job run on seeing an error
             if [[ "$abort_on_error" == "Y" ]]; then
-				kill $job_pid
+				kill -9 $job_pid
 				wait $job_pid 2>/dev/null
                 break
             fi
@@ -1878,11 +1967,18 @@ function runSAS(){
         # Wrappers
         printf "${red}$console_message_line_wrappers${white}\n"
 
+        # Log
+        print_2_runsas_session_log "Job Status: ${red}*** ERROR ***${white}"
+
         # Depending on user setting show the log details
         if [[ "$job_error_display_steps" == "Y" ]]; then
             printf "%s" "$(<$tmp_log_w_steps_file)"
-        else
+            print_2_runsas_session_log "Reason: ${red}\n"
+            printf "%s" "$(<$tmp_log_w_steps_file)" >> $runsas_session_log_file
+        else        
             printf "%s" "$(<$tmp_log_file)"
+            print_2_runsas_session_log "Reason: ${red}"
+            printf "%s" "$(<$tmp_log_file)" >> $runsas_session_log_file
         fi
 
         # Line separator
@@ -1895,12 +1991,16 @@ function runSAS(){
         # Print the log filename
         printf "\n${white}${white}"
         printf "${red}Log: ${red}$local_sas_logs_root_directory/$current_log_name${white}\n" 
+        print_2_runsas_session_log "Log: $local_sas_logs_root_directory/$current_log_name"  
 
         # Line separator
         printf "${red}$console_message_line_wrappers${white}"
 		
 		# Send an error email
         runsas_error_email $job_counter_for_display $total_no_of_jobs_counter
+
+        # Log
+        print_2_runsas_session_log "End: $end_datetime_of_job_timestamp"
 
         # Clear the session
         clear_session_and_exit
@@ -1924,6 +2024,11 @@ function runSAS(){
         printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, it took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs. Completed on $end_datetime_of_job_timestamp)${white}\n"
+
+        # Log
+        print_2_runsas_session_log "Job Status: ${green}DONE${white}"
+        print_2_runsas_session_log "Log: $local_sas_logs_root_directory/$current_log_name"
+        print_2_runsas_session_log "End: $end_datetime_of_job_timestamp"
 
         # Send an email (silently)
         runsas_job_completed_email $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $job_counter_for_display $total_no_of_jobs_counter
@@ -1992,6 +2097,8 @@ email_console_print_file=$runsas_tmp_directory/.email_console_print.html
 job_stats_delta_file=$runsas_tmp_directory/.job_delta.stats.$job_stats_timestamp
 runsas_last_job_pid_file=$runsas_tmp_directory/.runsas_last_job.pid
 runsas_first_use_intro_done_file=$runsas_tmp_directory/.runsas_intro.done
+tmp_sastrace_file=$runsas_tmp_directory/.sastrace.check
+runsas_session_log_file=$runsas_tmp_directory/.runsas_session.log
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
@@ -2002,6 +2109,28 @@ script_mode_value_4="$5"
 script_mode_value_5="$6"
 script_mode_value_6="$7"
 script_mode_value_7="$8"
+
+# Show run summary for the last run, if requested
+show_last_run_summary $script_mode
+
+# Log (session variables)
+print_2_runsas_session_log "$console_message_line_wrappers\n"
+print_unix_user_session_variables file $runsas_session_log_file
+
+# Log
+print_2_runsas_session_log $console_message_line_wrappers
+print_2_runsas_session_log "Host: $HOSTNAME"
+print_2_runsas_session_log "PID: $$"
+print_2_runsas_session_log "User: ${SUDO_USER:-$USER}"
+print_2_runsas_session_log "Batch start: $start_datetime_of_session_timestamp"
+print_2_runsas_session_log "script_mode: $script_mode"
+print_2_runsas_session_log "script_mode_value_1: $script_mode_value_1"
+print_2_runsas_session_log "script_mode_value_2: $script_mode_value_2"
+print_2_runsas_session_log "script_mode_value_3: $script_mode_value_3"
+print_2_runsas_session_log "script_mode_value_4: $script_mode_value_4"
+print_2_runsas_session_log "script_mode_value_5: $script_mode_value_5"
+print_2_runsas_session_log "script_mode_value_6: $script_mode_value_6"
+print_2_runsas_session_log "script_mode_value_7: $script_mode_value_7"
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
@@ -2095,7 +2224,7 @@ fi
 print_to_console_debug_only "runSAS session variables"
 
 # Get the consent from the user to trigger the batch 
-press_enter_key_to_continue 1
+press_enter_key_to_continue 1 1
 
 # Check for rogue process(es), the last known pid is checked here
 check_if_there_are_any_rogue_runsas_processes
@@ -2123,6 +2252,11 @@ end_datetime_of_session=`date +%s`
 
 # Print a final message on console
 printf "\n${green}The run completed on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+
+# Log
+print_2_runsas_session_log $console_message_line_wrappers
+print_2_runsas_session_log "Batch end: $end_datetime_of_session_timestamp"
+print_2_runsas_session_log "Batch runtime: $((end_datetime_of_session-start_datetime_of_session)) seconds"
 
 # Send a success email
 runsas_success_email
