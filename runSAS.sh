@@ -2115,9 +2115,6 @@ script_mode_value_7="$8"
 # Show run summary for the last run, if requested
 show_last_run_summary $script_mode
 
-# Clear the last run/session file
-rm -rf $RUNSAS_SESSION_LOG_FILE
-
 # Log (session variables)
 print_2_runsas_session_log "$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
 print_unix_user_session_variables file $RUNSAS_SESSION_LOG_FILE
