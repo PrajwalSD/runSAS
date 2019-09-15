@@ -1967,9 +1967,11 @@ function runSAS(){
     		display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 $progressbar_color
             # Optionally, abort the job run on seeing an error
             if [[ "$ABORT_ON_ERROR" == "Y" ]]; then
-				kill -9 $job_pid
-				wait $job_pid 2>/dev/null
-                break
+                if [[ ! -z `ps -p $job_pid -o comm=` ]]; then
+                    kill -9 $job_pid
+                    wait $job_pid 2>/dev/null
+                    break
+                fi
             fi
         else
             # Reset it to the default
