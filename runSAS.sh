@@ -2034,7 +2034,7 @@ function runSAS(){
         # Print the log filename
         printf "\n${white}${white}"
         printf "${red}Log: ${red}$local_sas_logs_root_directory/$current_log_name${white}\n" 
-        print_2_runsas_session_log "Log: $local_sas_logs_root_directory/$current_log_name"  
+        print_2_runsas_session_log "${white}Log: ${red}$local_sas_logs_root_directory/$current_log_name${white}"  
 
         # Line separator
         printf "${red}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}"
@@ -2043,7 +2043,7 @@ function runSAS(){
         runsas_error_email $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
 
         # Log
-        print_2_runsas_session_log "End: $end_datetime_of_job_timestamp"
+        print_2_runsas_session_log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Clear the session
         clear_session_and_exit
