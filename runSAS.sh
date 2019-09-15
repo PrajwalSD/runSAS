@@ -174,6 +174,7 @@ function print_the_help_menu(){
         printf "\n     --jobs or --show             The script will show a list of job(s) provided by the user in the script (quick preview)"
         printf "\n     --log or --last              The script will show the last script run details"
         printf "\n     --reset                      The script will remove temporary files"
+        printf "\n     --parameters or --parms      The script will show the runSAS parameters"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -215,6 +216,8 @@ function validate_parameters_passed_to_script(){
       --nomail) ;;
       --update) ;;
        --reset) ;;
+       --parms) ;;
+  --parameters) ;;
     --update-c) ;;
         --jobs) ;;
          --job) ;;
@@ -1061,9 +1064,51 @@ function check_if_there_are_any_rogue_runsas_processes(){
     fi
 }
 #------
+# Name: show_runsas_parameters)
+# Desc: Shows the runSAS parameters set by the user
+#   In: script-mode
+#  Out: <NA>
+#------
+function show_runsas_parameters(){
+    if [[ "$1" == "--parms" ]] || [[ "$1" == "--parameters" ]]; then
+        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (SAS Environment) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"  
+        printf "\n${green}SAS_INSTALLATION_ROOT_DIRECTORY=$SAS_INSTALLATION_ROOT_DIRECTORY ${white}"
+        printf "\n${green}SAS_APP_SERVER_NAME=$SAS_APP_SERVER_NAME ${white}"
+        printf "\n${green}SAS_LEV=$SAS_LEV ${white}"
+        printf "\n${green}SAS_DEFAULT_SH=$SAS_DEFAULT_SH ${white}"
+        printf "\n${green}SAS_APP_ROOT_DIRECTORY=$SAS_APP_ROOT_DIRECTORY ${white}"
+        printf "\n${green}SAS_BATCH_SERVER_ROOT_DIRECTORY=$SAS_BATCH_SERVER_ROOT_DIRECTORY ${white}"
+        printf "\n${green}SAS_LOGS_ROOT_DIRECTORY=$SAS_LOGS_ROOT_DIRECTORY ${white}"
+        printf "\n${green}SAS_DEPLOYED_JOBS_ROOT_DIRECTORY=$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY ${white}"
+
+        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Features) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}" 
+        printf "\n${green}ENABLE_DEBUG_MODE=$ENABLE_DEBUG_MODE ${white}"                       
+        printf "\n${green}ENABLE_RUNTIME_COMPARE=$ENABLE_RUNTIME_COMPARE ${white}"                                           
+        printf "\n${green}RUNTIME_COMPARE_FACTOR=$RUNTIME_COMPARE_FACTOR ${white}"                                               
+        printf "\n${green}JOB_ERROR_DISPLAY_COUNT=$JOB_ERROR_DISPLAY_COUNT ${white}"                                               
+        printf "\n${green}JOB_ERROR_DISPLAY_STEPS=$JOB_ERROR_DISPLAY_STEPS ${white}"                                             
+        printf "\n${green}JOB_ERROR_DISPLAY_LINES_AROUND_MODE=$JOB_ERROR_DISPLAY_LINES_AROUND_MODE ${white}"                                   
+        printf "\n${green}JOB_ERROR_DISPLAY_LINES_AROUND_COUNT=$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT ${white}"                                 
+        printf "\n${green}KILL_PROCESS_ON_USER_ABORT=$KILL_PROCESS_ON_USER_ABORT ${white}"                                          
+        printf "\n${green}PROGRAM_TYPE_EXTENSION=$PROGRAM_TYPE_EXTENSION ${white}"                                            
+        printf "\n${green}ERROR_CHECK_SEARCH_STRING=$ERROR_CHECK_SEARCH_STRING ${white}"                                      
+        printf "\n${green}STEP_CHECK_SEARCH_STRING=$STEP_CHECK_SEARCH_STRING ${white}"                                   
+        printf "\n${green}SASTRACE_SEARCH_STRING=$SASTRACE_SEARCH_STRING ${white}"                        
+        printf "\n${green}ENABLE_RUNSAS_RUN_HISTORY=$ENABLE_RUNSAS_RUN_HISTORY ${white}"                                          
+        printf "\n${green}ABORT_ON_ERROR=$ABORT_ON_ERROR ${white}"                                                       
+        printf "\n${green}ENABLE_SASTRACE_IN_JOB_CHECK=$ENABLE_SASTRACE_IN_JOB_CHECK ${white}"                                         
+        printf "\n${green}ENABLE_RUNSAS_DEPENDENCY_CHECK=$ENABLE_RUNSAS_DEPENDENCY_CHECK ${white}"   
+
+        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Email) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"
+        printf "\n${green}ENABLE_EMAIL_ALERTS=$ENABLE_EMAIL_ALERTS ${white}"                                  	                
+        printf "\n${green}EMAIL_ALERT_TO_ADDRESS=$EMAIL_ALERT_TO_ADDRESS ${white}"                                              
+        printf "\n${green}EMAIL_ALERT_USER_NAME=$EMAIL_ALERT_USER_NAME ${white}"     
+    fi 
+}                                   
+#------
 # Name: reset_runsas()
 # Desc: Clears the temporary files
-#   In: <NA>
+#   In: script-mode
 #  Out: <NA>
 #------
 function reset_runsas(){
@@ -2159,11 +2204,14 @@ script_mode_value_5="$6"
 script_mode_value_6="$7"
 script_mode_value_7="$8"
 
-# Show run summary for the last run, if requested
+# Show run summary for the last run on user request
 show_last_run_summary $script_mode
 
 # Resets the session on user request
 reset_runsas $script_mode
+
+# Show parameters on user request
+show_runsas_parameters $script_mode
 
 # Log (session variables)
 print_2_runsas_session_log "================ runSAS launched on $start_datetime_of_session_timestamp by ${SUDO_USER:-$USER} ================\n"
