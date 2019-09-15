@@ -2116,7 +2116,7 @@ script_mode_value_7="$8"
 show_last_run_summary $script_mode
 
 # Log (session variables)
-print_2_runsas_session_log "$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
+print_2_runsas_session_log "================ runSAS launched on $start_datetime_of_session_timestamp by ${SUDO_USER:-$USER} ================\n"
 print_unix_user_session_variables file $RUNSAS_SESSION_LOG_FILE
 
 # Log
