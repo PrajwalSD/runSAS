@@ -1073,6 +1073,8 @@ function print_unix_user_session_variables(){
             printf "${white}${green}$session_variable_name${white} is set to ${green}${!session_variable_name}\n${white}" 
         fi
     done
+    # Fix the color issue
+    sed -i 's/\x1b\[[0-9;]*m//g' $2
 }
 #------
 # Name: print_to_console_debug_only()
