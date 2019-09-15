@@ -1864,7 +1864,7 @@ function runSAS(){
 
     # Check if the prompt option is set by the user for the job
     if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
-        printf "${red}Do you want to run ${darkgrey_bg}${red}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
+        printf "${red}Do you want to run ${red_bg}${black}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
         stty -igncr < /dev/tty
         read run_job_with_prompt < /dev/tty
         if [[ "$JOB_COUNTER_FOR_DISPLAY" == "1" ]]; then
