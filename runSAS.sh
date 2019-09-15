@@ -1093,6 +1093,7 @@ function reset_runsas(){
             rm -rf $RUNSAS_TMP_DIRECTORY/.job.stats
             printf "${green}...Cleared${white}"
         fi
+        clear_session_and_exit
     fi
 }
 #------
