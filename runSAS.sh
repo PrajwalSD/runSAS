@@ -173,6 +173,7 @@ function print_the_help_menu(){
         printf "\n     --delay <time-in-seconds>    The script will launch after a specified time delay in seconds"
         printf "\n     --jobs or --show             The script will show a list of job(s) provided by the user in the script (quick preview)"
         printf "\n     --log or --last              The script will show the last script run details"
+        printf "\n     --reset                      The script will remove temporary files"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -213,6 +214,7 @@ function validate_parameters_passed_to_script(){
      --noemail) ;;
       --nomail) ;;
       --update) ;;
+       --reset) ;;
     --update-c) ;;
         --jobs) ;;
          --job) ;;
@@ -1056,6 +1058,41 @@ function check_if_there_are_any_rogue_runsas_processes(){
             printf "\n\n"
         fi
         stty -igncr < /dev/tty
+    fi
+}
+#------
+# Name: reset_runsas()
+# Desc: Clears the temporary files
+#   In: <NA>
+#  Out: <NA>
+#------
+function reset_runsas(){
+    if [[ "$1" == "--reset" ]]; then
+        # Clear the TMP directory
+        printf "${red}\nClear temporary files? (Y to confirm): ${white}"
+        stty igncr < /dev/tty
+        read -n1 clear_tmp_files
+        if [[ "$clear_tmp_files" == "Y" ]] || [[ "$clear_tmp_files" == "y" ]]; then    
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
+            rm -rf $RUNSAS_TMP_DIRECTORY/.tmp_s.log
+            rm -rf $RUNSAS_TMP_DIRECTORY/.tmp.log
+            rm -rf $RUNSAS_TMP_DIRECTORY/.email_body_msg.html
+            rm -rf $RUNSAS_TMP_DIRECTORY/.sastrace.check
+            rm -rf $RUNSAS_TMP_DIRECTORY/.errored_job.log
+            rm -rf $RUNSAS_TMP_DIRECTORY/.email_console_print.html
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_intro.done
+            printf "${green}...Cleared${white}"
+        fi
+        # Clear the runSAS historical run stats
+        printf "${red}\nClear historical runtime stats? (Y to confirm): ${white}"
+        stty igncr < /dev/tty
+        read -n1 clear_his_files
+        if [[ "$clear_his_files" == "Y" ]] || [[ "$clear_his_files" == "y" ]]; then    
+            rm -rf $RUNSAS_TMP_DIRECTORY/.job_delta*.*
+            rm -rf $RUNSAS_TMP_DIRECTORY/.job.stats
+            printf "${green}...Cleared${white}"
+        fi
     fi
 }
 #------
@@ -2116,6 +2153,9 @@ script_mode_value_7="$8"
 
 # Show run summary for the last run, if requested
 show_last_run_summary $script_mode
+
+# Resets the session on user request
+reset_runsas $script_mode
 
 # Log (session variables)
 print_2_runsas_session_log "================ runSAS launched on $start_datetime_of_session_timestamp by ${SUDO_USER:-$USER} ================\n"
