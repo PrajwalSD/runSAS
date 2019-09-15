@@ -98,6 +98,7 @@ Just press CTRL+C, runSAS is designed gracefully exit even in the case of user i
 * To preview the job list use `./runSAS.sh --jobs`
 * To see the last run details use `./runSAS.sh --last`
 * To skip a job from the list during the run, add `--skip` in front of the job name in the list
+* To reset runSAS script, use `./runSAS.sh --reset` (restore it to first time use state, will clear all temporary files etc.)
 * To stop email alerts (temporarily, instead of disabling it) for a run, append `--noemail` to the launch e.g.: `./runSAS.sh --noemail`
 * To override the default server parameters by job, add `--server` option followed by the server parameters: `<jobname> --server <sas-server-name> <sasapp-dir> <batch-server-dir> <sas-sh> <logs-dir> <deployed-jobs-dir>`
 * runSAS stores temporary files under `.tmp` folder in script root directory.
