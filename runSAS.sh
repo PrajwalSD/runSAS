@@ -195,7 +195,7 @@ function print_the_help_menu(){
         printf "\n       $RUNSAS_GITHUB_SOURCE_CODE_URL "
         printf "(To get the latest version of the runSAS you can use the in place upgrade option: ./runSAS.sh --update)\n\n"
         printf "${white}"
-        exit 0;
+        exit 0; 
     fi;
 }
 #------
