@@ -1102,7 +1102,9 @@ function show_runsas_parameters(){
         printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Email) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"
         printf "\n${green}ENABLE_EMAIL_ALERTS=$ENABLE_EMAIL_ALERTS ${white}"                                  	                
         printf "\n${green}EMAIL_ALERT_TO_ADDRESS=$EMAIL_ALERT_TO_ADDRESS ${white}"                                              
-        printf "\n${green}EMAIL_ALERT_USER_NAME=$EMAIL_ALERT_USER_NAME ${white}"     
+        printf "\n${green}EMAIL_ALERT_USER_NAME=$EMAIL_ALERT_USER_NAME ${white}"  
+
+        clear_session_and_exit   
     fi 
 }                                   
 #------
