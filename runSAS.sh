@@ -1381,8 +1381,12 @@ function show_job_hist_runtime_stats(){
 #------
 function show_last_run_summary(){
     if [[ "$1" == "--log" ]] || [[ "$1" == "--last" ]]; then
-        print_file_to_console $RUNSAS_SESSION_LOG_FILE
-		clear_session_and_exit
+        if [ ! -f "$RUNSAS_SESSION_LOG_FILE" ]; then
+            printf "${red}\n*** ERROR: History file is empty (possibly due to reset?) ***${white}"
+        else
+            print_file_to_console $RUNSAS_SESSION_LOG_FILE
+            clear_session_and_exit
+        fi
     fi
 }
 #------
