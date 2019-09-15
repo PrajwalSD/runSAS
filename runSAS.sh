@@ -2102,7 +2102,6 @@ job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
 # Initialization
 create_a_new_directory -p $RUNSAS_TMP_DIRECTORY
 
-
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
 script_mode_value_1="$2"
@@ -2115,6 +2114,9 @@ script_mode_value_7="$8"
 
 # Show run summary for the last run, if requested
 show_last_run_summary $script_mode
+
+# Clear the last run/session file
+rm -rf $RUNSAS_SESSION_LOG_FILE
 
 # Log (session variables)
 print_2_runsas_session_log "$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
