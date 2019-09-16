@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 10.9                                                                                                  #
+#     Version: 11.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 16/09/2019                                                                                            #
+#        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -86,7 +86,7 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 #                                                                             
 # 5/5: System settings (keep the defaults) 
 #
-RUNSAS_CURRENT_VERSION=10.9                                             # Current version
+RUNSAS_CURRENT_VERSION=11.0                                             # Current version
 RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9                          # Compatible version from which you can do an in place update using ./runSAS.sh --update
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
@@ -104,7 +104,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|0|.|9|
+|r|u|n|S|A|S| |v|1|1|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -181,7 +181,7 @@ function print_the_help_menu(){
         printf "\n       Tip #2: You can add --prompt option against job(s) when you provide a list, this will halt the script during runtime for the user confirmation."
 		printf "\n       Tip #3: You can add --skip option against job(s) when you provide a list, this will skip the job in every run."
         printf "\n       Tip #4: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
-		printf "\n       Tip #5: You can add --server option followed by specific parameters to override the defaults for a job (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
+		printf "\n       Tip #5: You can add --server option followed by server parameters to override the defaults for a job (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
         printf "${underline}"
         printf "\n\nVERSION\n"
         printf "${end}${blue}"
@@ -194,7 +194,7 @@ function print_the_help_menu(){
         printf "\nGITHUB\n"
         printf "${end}${blue}"
         printf "\n       $RUNSAS_GITHUB_SOURCE_CODE_URL "
-        printf "(To get the latest version of the runSAS you can use the in place upgrade option: ./runSAS.sh --update)\n\n"
+        printf "(To get the latest version of the runSAS you can use the in-place upgrade option: ./runSAS.sh --update)\n\n"
         printf "${white}"
         exit 0; 
     fi;
@@ -251,12 +251,12 @@ function validate_parameters_passed_to_script(){
 #------
 function show_first_launch_intro_message(){
      if [[ ! -f $RUNSAS_FIRST_USER_INTRO_DONE_FILE ]]; then
-        printf "${blue}Welcome, it looks like a first launch of the runSAS script, let's quickly go through some basics. \n\n${end}" 
+        printf "${blue}Welcome, this is a first launch of runSAS script, let's quickly go through some basics. \n\n${end}" 
         printf "${blue}runSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
         printf "${blue}    (a) SAS environment parameters and, ${end}\n"
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
-        printf "${blue}To know more about runSAS see the help menu (i.e. ./runSAS.sh --help) or go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
+        printf "${blue}To know more about various options available in runSAS, see the help menu (i.e. ./runSAS.sh --help) or better yet go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
         press_enter_key_to_continue 1
         printf "\n"
         # Do not show the message again
@@ -306,7 +306,6 @@ function set_colors_codes(){
     bold=$'\e[1m'
     italic=$'\e[3m'
     underline=$'\e[4m'
-	
     # Reset text attributes to normal without clearing screen.
     alias reset_colors="tput sgr0" 
 }
@@ -326,8 +325,6 @@ function display_post_banner_messages(){
 #  Out: <NA>
 #------
 function check_dependencies(){
-    # Set the package manager
-    package_installer=yum
     # Dependency checker
     if [[ "$ENABLE_RUNSAS_DEPENDENCY_CHECK" == "Y" ]]; then
         for prg in "$@"
@@ -339,18 +336,18 @@ function check_dependencies(){
             if [[ -z "$check_dependency_cmd" ]]; then
                 printf "${red}\n*** ERROR: Dependency checks failed, ${white}${red_bg}$prg${white}${red} program is not found, runSAS requires this program to run. ***\n"
                 # If the package installer is available try installing the missing dependency
-                if [[ ! -z `which $package_installer` ]]; then
-                    printf "${green}\nPress Y to auto install $prg (requires $package_installer and sudo access if you're not root): ${white}"
+                if [[ ! -z `which $PACKAGE_INSTALLER_PROGRAM` ]]; then
+                    printf "${green}\nPress Y to auto install $prg (requires $PACKAGE_INSTALLER_PROGRAM and sudo access if you're not root): ${white}"
                     read read_install_dependency
                     if [[ "$read_install_dependency" == "Y" ]]; then
                         printf "${white}\nAttempting to install $prg, running ${green}sudo yum install $prg${white}...\n${white}"
                         # Command 
-                        sudo $package_installer install $prg
+                        sudo $PACKAGE_INSTALLER_PROGRAM install $prg
                     else
-                        printf "${white}Try installing this using $package_installer, run ${green}sudo $package_installer install $prg${white} or download the $prg package from web (Goooooogle!)"
+                        printf "${white}Try installing this using $PACKAGE_INSTALLER_PROGRAM, run ${green}sudo $PACKAGE_INSTALLER_PROGRAM install $prg${white} or download the $prg package from web (Goooooogle!)"
                     fi
                 else
-                    printf "${green}\n$package_installer not found, skipping auto install.\n${white}"
+                    printf "${green}\n$PACKAGE_INSTALLER_PROGRAM not found, skipping auto install.\n${white}"
                     printf "${white}\nLaunch runSAS after installing the ${green}$prg${white} program manually (Google if your friend!) or ask server administrator."
                 fi
                 clear_session_and_exit
@@ -486,14 +483,7 @@ exit 0
 #------
 function check_for_in_place_upgrade_request_from_user(){
     if [[ "$1" == "--update" ]]; then
-        printf "${red}The update process will overwrite the runSAS script (user configuration will be preserved), press Y to proceed: ${white}"
-        read read_in_place_upgrade_confirmation
-        if [[ "$read_in_place_upgrade_confirmation" == "Y" ]]; then
-            runsas_script_auto_update
-        else
-            printf "Cancelled.\n"
-            exit 0
-        fi
+        runsas_script_auto_update
     fi
 }
 #------
@@ -671,10 +661,8 @@ function print_file_content_with_index(){
 #------
 function check_if_logged_in_user_is_root(){
     if [[ "$EUID" -eq 0 ]]; then
-        printf "${yellow}\nWARNING: Typically you have to launch this script as a SAS installation user such as ${green}sas${yellow} or any user that has SAS batch execution privileges, you are currently logged in as ${red}root. ${white}"
-        printf "${yellow}Press ENTER key to ignore this and continue (CTRL+C to abort this session)...${white}"
-        read -s < /dev/tty
-        printf "\n"
+        printf "${yellow}\nWARNING: Typically you have to launch this script as a SAS batch user such as ${green}sas${yellow} or any user that has SAS batch execution privileges, you are currently logged in as ${red}root. ${white}"
+        press_enter_key_to_continue 0 1 yellow
     fi
 }
 #------
@@ -986,12 +974,12 @@ function run_from_to_job_interactive_skip_mode_check(){
 function kill_a_pid(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         kill -9 $1
-        printf "${red}\nCleaning up the background process (pid $1), please wait...${white}"
+        printf "${red}\nTerminating running jobs (pid $1), please wait...${white}"
         sleep 2
         if [[ -z `ps -p $1 -o comm=` ]]; then
             printf "${green}(DONE)${white}\n\n${white}"
         else
-            printf "${red}\n\n*** ERROR: Attempt to terminate the pid $1 using kill command kill -9 command failed. It is likely due to user permissions (try sudo kill?), see details below. ***\n${white}"
+            printf "${red}\n\n*** ERROR: Attempt to terminate the job (pid $1) failed. It is likely due to user permissions, review the details below. ***\n${white}"
             show_pid_details $1
             printf "\n"
         fi
@@ -1023,7 +1011,7 @@ function running_processes_housekeeping(){
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$KILL_PROCESS_ON_USER_ABORT" ==  "Y" ]]; then
                 stty igncr < /dev/tty
-                printf "${white}PID details for the active job:\n${white}"
+                printf "${white}Process (pid) details for the running job:\n${white}"
                 # PID show & kill
                 show_pid_details $1
                 kill_a_pid $1               
@@ -1064,14 +1052,14 @@ function check_if_there_are_any_rogue_runsas_processes(){
     fi
 }
 #------
-# Name: show_runsas_parameters)
+# Name: show_runsas_parameters
 # Desc: Shows the runSAS parameters set by the user
 #   In: script-mode
 #  Out: <NA>
 #------
 function show_runsas_parameters(){
     if [[ "$1" == "--parms" ]] || [[ "$1" == "--parameters" ]]; then
-        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (SAS Environment) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"  
+        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (SAS) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"  
         printf "\n${white}SAS_INSTALLATION_ROOT_DIRECTORY: ${green}$SAS_INSTALLATION_ROOT_DIRECTORY ${white}"
         printf "\n${white}SAS_APP_SERVER_NAME: ${green}$SAS_APP_SERVER_NAME ${white}"
         printf "\n${white}SAS_LEV: ${green}$SAS_LEV ${white}"
@@ -1081,7 +1069,7 @@ function show_runsas_parameters(){
         printf "\n${white}SAS_LOGS_ROOT_DIRECTORY: ${green}$SAS_LOGS_ROOT_DIRECTORY ${white}"
         printf "\n${white}SAS_DEPLOYED_JOBS_ROOT_DIRECTORY: ${green}$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY ${white}"
 
-        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Features) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}" 
+        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Script) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}" 
         printf "\n${white}ENABLE_DEBUG_MODE: ${green}$ENABLE_DEBUG_MODE ${white}"                       
         printf "\n${white}ENABLE_RUNTIME_COMPARE: ${green}$ENABLE_RUNTIME_COMPARE ${white}"                                           
         printf "\n${white}RUNTIME_COMPARE_FACTOR: ${green}$RUNTIME_COMPARE_FACTOR ${white}"                                               
@@ -1115,12 +1103,11 @@ function show_runsas_parameters(){
 #------
 function reset_runsas(){
     if [[ "$1" == "--reset" ]]; then
-        # Clear the TMP directory
+        # Clear the temporary files
         printf "${red}\nClear temporary files? (Y to confirm): ${white}"
         stty igncr < /dev/tty
         read -n1 clear_tmp_files
         if [[ "$clear_tmp_files" == "Y" ]] || [[ "$clear_tmp_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
             rm -rf $RUNSAS_TMP_DIRECTORY/.tmp_s.log
             rm -rf $RUNSAS_TMP_DIRECTORY/.tmp.log
             rm -rf $RUNSAS_TMP_DIRECTORY/.email_body_msg.html
@@ -1131,7 +1118,15 @@ function reset_runsas(){
             rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_intro.done
             printf "${green}...Cleared${white}"
         fi
-        # Clear the runSAS historical run stats
+        # Clear the session history files
+        printf "${red}\nClear session history file? (Y to confirm): ${white}"
+        stty igncr < /dev/tty
+        read -n1 clear_sess_files
+        if [[ "$clear_sess_files" == "Y" ]] || [[ "$clear_sess_files" == "y" ]]; then    
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
+            printf "${green}...Cleared${white}"
+        fi
+        # Clear the historical run stats
         printf "${red}\nClear historical runtime stats? (Y to confirm): ${white}"
         stty igncr < /dev/tty
         read -n1 clear_his_files
@@ -1567,8 +1562,8 @@ function display_message_fillers_on_console(){
 #------
 # Name: press_enter_key_to_continue()
 # Desc: This function will pause the script and wait for the ENTER key to be pressed
-#   In: newline-count, color (e.g. 2 for 2 newlines)
-#  Out: enter_to_continue_user_input
+#   In: before-newline-count, after-newline-count, color (default is green)
+#  Out: <NA>
 #------
 function press_enter_key_to_continue(){
 	# Set the color
@@ -2175,6 +2170,7 @@ INDEX_MODE_FIRST_JOB_NUMBER=-1
 INDEX_MODE_SECOND_JOB_NUMBER=-1
 EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
 DEFAULT_PROGRESS_BAR_COLOR="green_bg"
+PACKAGE_INSTALLER_PROGRAM=yum
 
 # Files
 JOB_STATS_FILE=$RUNSAS_TMP_DIRECTORY/.job.stats
@@ -2374,6 +2370,10 @@ if [[ "$ENABLE_RUNSAS_RUN_HISTORY" != "Y" ]]; then
 fi
 
 # Tidy up
+rm -rf $TMP_LOG_FILE $JOB_THAT_ERRORED_FILE
+
+# END: Clear the session, reset the console
+clear_session_and_exit
 rm -rf $TMP_LOG_FILE $JOB_THAT_ERRORED_FILE
 
 # END: Clear the session, reset the console
