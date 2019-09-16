@@ -2085,6 +2085,10 @@ function runSAS(){
         printf "${red}Job: ${red}"
         printf "%s" "$(<$JOB_THAT_ERRORED_FILE)"
 
+        # Add failed job/step details to the log
+        printf "${white}Job: ${red}" >> $RUNSAS_SESSION_LOG_FILE
+        printf "%s" "$(<$JOB_THAT_ERRORED_FILE)" >> $RUNSAS_SESSION_LOG_FILE  
+        
         # Print the log filename
         printf "\n${white}${white}"
         printf "${red}Log: ${red}$local_sas_logs_root_directory/$current_log_name${white}\n" 
