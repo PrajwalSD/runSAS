@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.1                                                                                                  #
+#     Version: 11.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
@@ -86,7 +86,7 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 #                                                                             
 # 5/5: System settings (keep the defaults) 
 #
-RUNSAS_CURRENT_VERSION=11.1                                             # Current version
+RUNSAS_CURRENT_VERSION=11.2                                             # Current version
 RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9                          # Compatible version from which you can do an in place update using ./runSAS.sh --update
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
@@ -104,7 +104,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|1|
+|r|u|n|S|A|S| |v|1|1|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -257,8 +257,8 @@ function show_first_launch_intro_message(){
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
         printf "${blue}To know more about various options available in runSAS, see the help menu (i.e. ./runSAS.sh --help) or better yet go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
-		printf "${blue}Does the below parameters look ok?\n${end}"
-		show_runsas_parameters
+		printf "${blue}\nDoes the below parameters look ok?\n${end}"
+		show_runsas_parameters --parms
 		press_enter_key_to_continue 1
         printf "\n"
         # Do not show the message again
