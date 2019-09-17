@@ -181,7 +181,7 @@ function print_the_help_menu(){
         printf "\n       Tip #2: You can add --prompt option against job(s) when you provide a list, this will halt the script during runtime for the user confirmation."
 		printf "\n       Tip #3: You can add --skip option against job(s) when you provide a list, this will skip the job in every run."
         printf "\n       Tip #4: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
-		printf "\n       Tip #5: You can add --server option followed by server parameters to override the defaults for a job (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
+		printf "\n       Tip #5: You can add --server option followed by server parameters (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
         printf "${underline}"
         printf "\n\nVERSION\n"
         printf "${end}${blue}"
