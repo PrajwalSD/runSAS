@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.3                                                                                                  #
+#     Version: 11.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
@@ -71,8 +71,8 @@ PROGRAM_TYPE_EXTENSION=sas                                              # Defaul
 ERROR_CHECK_SEARCH_STRING="^ERROR"                                      # Default is "^ERROR"             ---> This is what is grepped in the log
 STEP_CHECK_SEARCH_STRING="Step:"                                        # Default is "Step:"              ---> This is searched for the step in the log
 SASTRACE_SEARCH_STRING="^options sastrace"                              # Default is "^options sastrace"  ---> This is used for searching the sastrace option in SAS log
-ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is N                    ---> Enables runSAS script history, specify Y/N
-ABORT_ON_ERROR=Y                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
+ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is Y                    ---> Enables runSAS script history, specify Y/N
+ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
 #
@@ -99,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|3|
+|r|u|n|S|A|S| |v|1|1|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,8 +114,8 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=11.3                                            
-	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9
+	RUNSAS_CURRENT_VERSION=11.4                                           
+	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$RUNSAS_CURRENT_VERSION"
