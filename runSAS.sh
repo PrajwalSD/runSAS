@@ -257,7 +257,9 @@ function show_first_launch_intro_message(){
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
         printf "${blue}To know more about various options available in runSAS, see the help menu (i.e. ./runSAS.sh --help) or better yet go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
-        press_enter_key_to_continue 1
+		printf "${blue}Does the below parameters look ok?\n${end}"
+		show_runsas_parameters
+		press_enter_key_to_continue 1
         printf "\n"
         # Do not show the message again
         create_a_new_file $RUNSAS_FIRST_USER_INTRO_DONE_FILE  
