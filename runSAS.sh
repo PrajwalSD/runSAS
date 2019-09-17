@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.2                                                                                                  #
+#     Version: 11.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
@@ -35,7 +35,7 @@
 #<
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
-# 1/5: Set SAS 9.x environment related parameters.
+# 1/4: Set SAS 9.x environment related parameters.
 #      Ideally, setting just the first three parameters should work but amend the rest if needed as per the environment
 #      Always enclose the value with double-quotes (NOT single-quotes)
 #
@@ -48,7 +48,7 @@ SAS_BATCH_SERVER_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer"
 SAS_LOGS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer/Logs"
 SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode/Jobs"
 #
-# 2/5: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
+# 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
 #      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters
 #
@@ -57,7 +57,7 @@ XXXXX --prompt
 YYYYY
 EOF
 #
-# 3/5: Script behaviors, defaults should work just fine but amend as per the environment needs.
+# 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs.
 #
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
 ENABLE_RUNTIME_COMPARE=N                                                # Default is N                    ---> Compares job run times between batches, specify Y/N
@@ -76,18 +76,13 @@ ABORT_ON_ERROR=Y                                                        # Defaul
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
 #
-# 4/5: Email alerts, set the first parameter to N to turn off this feature.
+# 4/4: Email alerts, set the first parameter to N to turn off this feature.
 #      Uses "sendmail" program to send email (installs it if not found in the server)
 #      If you don't receive emails from the server, add <logged-in-user>@<server-full-name> (e.g.: sas@sasserver.demo.com) to your email client whitelist.
 #
 ENABLE_EMAIL_ALERTS=N                                  	                # Default is N                    ---> "Y" to enable all 4 alert types (YYYY is the extended format, <trigger-alert><job-alert><error-alert><completion-alert>)
 EMAIL_ALERT_TO_ADDRESS=""                                               # Default is ""                   ---> Provide email addresses separated by a semi-colon
-EMAIL_ALERT_USER_NAME="runSAS"                                          # Default is "runSAS"             ---> This is used as FROM address for the email alerts
-#                                                                             
-# 5/5: System settings (keep the defaults) 
-#
-RUNSAS_CURRENT_VERSION=11.2                                             # Current version
-RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9                          # Compatible version from which you can do an in place update using ./runSAS.sh --update
+EMAIL_ALERT_USER_NAME="runSAS"                                          # Default is "runSAS"             ---> This is used as FROM address for the email alerts                          
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -104,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|2|
+|r|u|n|S|A|S| |v|1|1|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -118,6 +113,9 @@ printf "\n${white}"
 #  Out: <NA>
 #------
 function show_the_script_version_number(){
+	# Version numbers
+	RUNSAS_CURRENT_VERSION=11.3                                            
+	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$RUNSAS_CURRENT_VERSION"
