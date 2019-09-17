@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.6                                                                                                  #
+#     Version: 11.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
@@ -99,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|6|
+|r|u|n|S|A|S| |v|1|1|.|7|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=11.6                                           
+	RUNSAS_CURRENT_VERSION=11.7                                           
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -256,7 +256,8 @@ function show_first_launch_intro_message(){
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
         printf "${blue}To know more about various options available in runSAS, see the help menu (i.e. ./runSAS.sh --help) or better yet go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
 		printf "${blue}\nDoes the below parameters look ok?\n${end}"
-		show_runsas_parameters --parms X
+		show_runsas_parameters --parms
+		printf "\n"
 		press_enter_key_to_continue 1
         printf "\n"
         # Do not show the message again
@@ -1091,7 +1092,7 @@ function show_runsas_parameters(){
         printf "\n${white}ENABLE_EMAIL_ALERTS: ${green}$ENABLE_EMAIL_ALERTS ${white}"                                  	                
         printf "\n${white}EMAIL_ALERT_TO_ADDRESS: ${green}$EMAIL_ALERT_TO_ADDRESS ${white}"                                              
         printf "\n${white}EMAIL_ALERT_USER_NAME: ${green}$EMAIL_ALERT_USER_NAME ${white}"  
-		if [[ ! "$1" == "X" ]]; then
+		if [[ "$1" == "X" ]]; then
 			clear_session_and_exit   
 		fi
     fi 
@@ -2214,7 +2215,7 @@ show_last_run_summary $script_mode
 reset_runsas $script_mode
 
 # Show parameters on user request
-show_runsas_parameters $script_mode
+show_runsas_parameters $script_mode X
 
 # Log (session variables)
 print_2_runsas_session_log "================ *** runSAS launched on $start_datetime_of_session_timestamp by ${SUDO_USER:-$USER} *** ================\n"
