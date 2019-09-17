@@ -86,11 +86,7 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 #                                                                             
 # 5/5: System settings (keep the defaults) 
 #
-<<<<<<< HEAD
-RUNSAS_CURRENT_VERSION=11.0                                            # Current version
-=======
 RUNSAS_CURRENT_VERSION=11.0                                             # Current version
->>>>>>> ed6754c5f9b14e9f030b47d8f947a4f9bd90f7ca
 RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9                          # Compatible version from which you can do an in place update using ./runSAS.sh --update
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
