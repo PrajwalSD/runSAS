@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.0                                                                                                  #
+#     Version: 11.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
@@ -86,7 +86,7 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 #                                                                             
 # 5/5: System settings (keep the defaults) 
 #
-RUNSAS_CURRENT_VERSION=11.0                                             # Current version
+RUNSAS_CURRENT_VERSION=11.1                                             # Current version
 RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=10.9                          # Compatible version from which you can do an in place update using ./runSAS.sh --update
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
@@ -104,7 +104,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|0|
+|r|u|n|S|A|S| |v|1|1|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -193,7 +193,7 @@ function print_the_help_menu(){
         printf "${underline}"
         printf "\nGITHUB\n"
         printf "${end}${blue}"
-        printf "\n       $RUNSAS_GITHUB_SOURCE_CODE_URL "
+        printf "\n       $RUNSAS_GITHUB_PAGE "
         printf "(To get the latest version of the runSAS you can use the in-place upgrade option: ./runSAS.sh --update)\n\n"
         printf "${white}"
         exit 0; 
