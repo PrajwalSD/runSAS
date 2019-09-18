@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.7                                                                                                  #
+#     Version: 11.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 17/09/2019                                                                                            #
 #                                                                                                                    #
@@ -99,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|7|
+|r|u|n|S|A|S| |v|1|1|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=11.7                                           
+	RUNSAS_CURRENT_VERSION=11.8                                          
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -255,11 +255,15 @@ function show_first_launch_intro_message(){
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
         printf "${blue}To know more about various options available in runSAS, see the help menu (i.e. ./runSAS.sh --help) or better yet go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
-		printf "${blue}\nDoes the below parameters look ok?\n${end}"
+        press_enter_key_to_continue 1
+
+		printf "${blue}\nBelow is the current configuration, review before you continue.\n${end}"
 		show_runsas_parameters --parms
 		printf "\n"
 		press_enter_key_to_continue 1
+
         printf "\n"
+
         # Do not show the message again
         create_a_new_file $RUNSAS_FIRST_USER_INTRO_DONE_FILE  
     fi
@@ -1118,7 +1122,7 @@ function reset_runsas(){
             rm -rf $RUNSAS_TMP_DIRECTORY/.email_console_print.html
             rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
             rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_intro.done
-            printf "${green}...Cleared${white}"
+            printf "${green}...(DONE)${white}"
         fi
         # Clear the session history files
         printf "${red}\nClear session history file? (Y/N): ${white}"
@@ -1126,7 +1130,7 @@ function reset_runsas(){
         read -n1 clear_sess_files
         if [[ "$clear_sess_files" == "Y" ]] || [[ "$clear_sess_files" == "y" ]]; then    
             rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
-            printf "${green}...Cleared${white}"
+            printf "${green}...(DONE)${white}"
         fi
         # Clear the historical run stats
         printf "${red}\nClear historical runtime stats? (Y/N): ${white}"
@@ -1135,7 +1139,7 @@ function reset_runsas(){
         if [[ "$clear_his_files" == "Y" ]] || [[ "$clear_his_files" == "y" ]]; then    
             rm -rf $RUNSAS_TMP_DIRECTORY/.job_delta*.*
             rm -rf $RUNSAS_TMP_DIRECTORY/.job.stats
-            printf "${green}...Cleared${white}"
+            printf "${green}...(DONE)${white}"
         fi
         clear_session_and_exit
     fi
