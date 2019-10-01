@@ -93,6 +93,9 @@ Currently runSAS supports a simple time based delay. just add `--delay <time-in-
 
 # How do I stop/abort a runSAS run?
 Just press CTRL+C, runSAS is designed gracefully exit even in the case of user intervention. If `KILL_PROCESS_ON_USER_ABORT=Y` was set then the running job process will be killed/terminated on user abort, turn it off if you want the last job process to complete the run even when the user has aborted the batch run.
+
+# Can I see the batch status on a browser?
+Yes, you can forward the console output to [seashells.io](https://seashells.io/) to see the batch status updates in real-time. No installation is required unless nc (netcat) is not pre-installed.
  
 # Tips
 * To preview the job list use `./runSAS.sh --jobs`
