@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.8                                                                                                  #
+#     Version: 11.9                                                                                                  #
 #                                                                                                                    #
-#        Date: 17/09/2019                                                                                            #
+#        Date: 15/10/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -99,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|8|
+|r|u|n|S|A|S| |v|1|1|.|9|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=11.8                                          
+	RUNSAS_CURRENT_VERSION=11.9                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2178,6 +2178,11 @@ EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
 DEFAULT_PROGRESS_BAR_COLOR="green_bg"
 PACKAGE_INSTALLER_PROGRAM=yum
 
+# Timestamps
+start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
+start_datetime_of_session=`date +%s`
+job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
+
 # Files
 JOB_STATS_FILE=$RUNSAS_TMP_DIRECTORY/.job.stats
 TMP_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.tmp.log
@@ -2193,11 +2198,6 @@ RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 
 # Bash color codes for the console
 set_colors_codes
-
-# Timestamps
-start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
-start_datetime_of_session=`date +%s`
-job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
 
 # Initialization
 create_a_new_directory -p $RUNSAS_TMP_DIRECTORY
