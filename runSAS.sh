@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 11.9                                                                                                  #
+#     Version: 12.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 15/10/2019                                                                                            #
 #                                                                                                                    #
@@ -99,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|1|.|9|
+|r|u|n|S|A|S| |v|1|2|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=11.9                                         
+	RUNSAS_CURRENT_VERSION=12.0                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -249,7 +249,7 @@ function validate_parameters_passed_to_script(){
 #------
 function show_first_launch_intro_message(){
      if [[ ! -f $RUNSAS_FIRST_USER_INTRO_DONE_FILE ]]; then
-        printf "${blue}Welcome, this is a first launch of runSAS script, so let's quickly go through some basics. \n\n${end}" 
+        printf "${blue}Welcome, this is a first launch of runSAS script post installation (or update), so let's quickly go through some basics. \n\n${end}" 
         printf "${blue}runSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
         printf "${blue}    (a) SAS environment parameters and, ${end}\n"
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
