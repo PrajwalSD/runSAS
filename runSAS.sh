@@ -2071,12 +2071,12 @@ function runSAS(){
         # Depending on user setting show the log details
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)"
-            printf " (...continued)"
+            printf " (...read full error on log)"
             print_2_runsas_session_log "Reason: ${red}\n"
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         else        
             printf "%s" "$(<$TMP_LOG_FILE)"
-            printf " (...continued)"
+            printf " (...read full error on log)"
             print_2_runsas_session_log "Reason: ${red}"
             printf "%s" "$(<$TMP_LOG_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         fi
