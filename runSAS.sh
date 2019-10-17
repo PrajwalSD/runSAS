@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.0                                                                                                  #
+#     Version: 12.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 15/10/2019                                                                                            #
 #                                                                                                                    #
@@ -99,7 +99,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|0|
+|r|u|n|S|A|S| |v|1|2|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.0                                         
+	RUNSAS_CURRENT_VERSION=12.1                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2071,10 +2071,12 @@ function runSAS(){
         # Depending on user setting show the log details
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)"
+            printf " (...continued)"
             print_2_runsas_session_log "Reason: ${red}\n"
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         else        
             printf "%s" "$(<$TMP_LOG_FILE)"
+            printf " (...continued)"
             print_2_runsas_session_log "Reason: ${red}"
             printf "%s" "$(<$TMP_LOG_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         fi
