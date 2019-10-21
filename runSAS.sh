@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.1                                                                                                  #
+#     Version: 12.2                                                                                                  #
 #                                                                                                                    #
-#        Date: 15/10/2019                                                                                            #
+#        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -47,6 +47,7 @@ SAS_APP_ROOT_DIRECTORY="$SAS_INSTALLATION_ROOT_DIRECTORY/$SAS_LEV/$SAS_APP_SERVE
 SAS_BATCH_SERVER_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer"
 SAS_LOGS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer/Logs"
 SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode/Jobs"
+SAS_HOME_DIRECTORY="/sas/SASHome"
 #
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
@@ -99,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|1|
+|r|u|n|S|A|S| |v|1|2|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -114,8 +115,8 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.1                                         
-	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=11.3
+	RUNSAS_CURRENT_VERSION=12.2                                         
+	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$RUNSAS_CURRENT_VERSION"
@@ -159,20 +160,21 @@ function print_the_help_menu(){
         printf "\n\nDESCRIPTION\n"
         printf "${end}${blue}"
         printf "\n       There are various [script-mode] in which you can launch runSAS, see below.\n"
-        printf "\n      -i                          The script will halt after running each job, waiting for an ENTER key to continue"
-        printf "\n      -j    <job-name>            The script will run a specified job even if it is not in the job list (adhoc mode, run any job using runSAS)"
-        printf "\n      -u    <job-name>            The script will run everything (and including) upto the specified job"
-        printf "\n      -f    <job-name>            The script will run from (and including) a specified job."
-        printf "\n      -o    <job-name>            The script will run a specified job from the job list."
-        printf "\n      -fu   <job-name> <job-name> The script will run from one job upto the other job."
-        printf "\n      -fui  <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
-        printf "\n      -fuis <job-name> <job-name> The script will run from one job upto the other job, but in an interactive mode (skips the rest)"
-        printf "\n     --update                     The script will update itself to the latest version from Github"
-        printf "\n     --delay <time-in-seconds>    The script will launch after a specified time delay in seconds"
-        printf "\n     --jobs or --show             The script will show a list of job(s) provided by the user in the script (quick preview)"
-        printf "\n     --log or --last              The script will show the last script run details"
-        printf "\n     --reset                      The script will remove temporary files"
-        printf "\n     --parameters or --parms      The script will show the runSAS parameters"
+        printf "\n      -i                          runSAS will halt after running each job, waiting for an ENTER key to continue"
+        printf "\n      -j    <job-name>            runSAS will run a specified job even if it is not in the job list (adhoc mode, run any job using runSAS)"
+        printf "\n      -u    <job-name>            runSAS will run everything (and including) upto the specified job"
+        printf "\n      -f    <job-name>            runSAS will run from (and including) a specified job."
+        printf "\n      -o    <job-name>            runSAS will run a specified job from the job list."
+        printf "\n      -fu   <job-name> <job-name> runSAS will run from one job upto the other job."
+        printf "\n      -fui  <job-name> <job-name> runSAS will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
+        printf "\n      -fuis <job-name> <job-name> runSAS will run from one job upto the other job, but in an interactive mode (skips the rest)"
+        printf "\n     --update                     runSAS will update itself to the latest version from Github"
+        printf "\n     --delay <time-in-seconds>    runSAS will launch after a specified time delay in seconds"
+        printf "\n     --jobs or --show             runSAS will show a list of job(s) provided by the user in the script (quick preview)"
+        printf "\n     --log or --last              runSAS will show the last script run details"
+        printf "\n     --reset                      runSAS will remove temporary files"
+        printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
+        printf "\n     --redeploy                   runSAS will redeploy the jobs specified in the user specified list (deploy option is not available, yet)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -213,6 +215,7 @@ function validate_parameters_passed_to_script(){
      --noemail) ;;
       --nomail) ;;
       --update) ;;
+    --redeploy) ;;
        --reset) ;;
        --parms) ;;
   --parameters) ;;
@@ -249,7 +252,7 @@ function validate_parameters_passed_to_script(){
 #------
 function show_first_launch_intro_message(){
      if [[ ! -f $RUNSAS_FIRST_USER_INTRO_DONE_FILE ]]; then
-        printf "${blue}Welcome, this is a first launch of runSAS script post installation (or update), so let's quickly go through some basics. \n\n${end}" 
+        printf "${blue}Welcome, this is a first launch of runSAS script post installation (or update), so let's quickly check few things. \n\n${end}" 
         printf "${blue}runSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
         printf "${blue}    (a) SAS environment parameters and, ${end}\n"
         printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
@@ -1665,6 +1668,86 @@ function validate_job_list(){
 	fi
 }
 #------
+# Name: deploy_or_redeploy_sas_jobs()
+# Desc: This function redeploys SAS jobs if user has requested for it (currently only supports REDEPLOY)
+#  Ref: http://support.sas.com/documentation/cdl/en/etlug/68225/HTML/default/viewer.htm#p1jxhqhaz10gj2n1pyr0hbzozv2f.htm)
+#   In: mode
+#  Out: <NA>
+#------
+function deploy_or_redeploy_sas_jobs(){
+    # Timestamp
+    depjob_start_timestamp=`date '+%Y%m%d_%H%M%S'`
+
+    # Get the details from user, via console
+    printf "${green}\nSAS Metadata username (e.g.: sasadm@saspw): ${white}"
+    read read_depjob_user
+    printf "${green}\nSAS Metadata password: ${white}" 
+    read read_depjob_password
+    printf "${green}\nSAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${white}" 
+    read read_depjob_appservername
+    printf "${green}\nSAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${white}" 
+    read read_depjob_serverusername
+    printf "${green}\nSAS Application server password: ${white}" 
+    read read_depjob_serverpassword
+    printf "${green}\nSAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${white}" 
+    read -n1 read_depjob_level
+    
+    # Parameters (some are set to defaults and the rest is from the user inputs above)
+    depjobs_scripts_root_directory=$SAS_HOME_DIRECTORY/SASDataIntegrationStudioServerJARs/4.8
+    depjob_host="$HOSTNAME"
+    depjob_port=856$read_depjob_level
+    depjob_user=$read_depjob_user
+    depjob_password=$read_depjob_password
+    depjob_deploytype=$1
+    depjob_objects_root_dir=""
+    depjob_sourcedir="$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY"    
+    depjob_metarepository=Foundation
+    depjob_appservername=$read_depjob_appservername
+    depjob_servermachine="$HOSTNAME"
+    depjob_serverport=859$read_depjob_level
+    depjob_serverusername=$read_depjob_serverusername
+    depjob_serverpassword=$read_depjob_serverpassword
+    depjob_batchserver="$read_depjob_appservername - SAS DATA Step Batch Server" 
+    depjob_log=$RUNSAS_TMP_DIRECTORY/runSAS_job_redeployment_util_$depjob_start_timestamp.log
+
+    # Check if the utility exists? 
+    if [ ! -f "$depjobs_scripts_root_directory/DeployJobs" ]; then
+        printf "\n${red}*** ERROR: ${red_bg}${black}DeployJobs${white}${red} utility is not found on the server, cannot proceed with the $1 for now (try the manual option via SAS DI) *** ${white}"
+        clear_session_and_exit
+    fi
+
+    # Wait for the user to confirm
+    press_enter_key_to_continue 1
+
+    # Run the jobs from the list one at a time (here's where everything is brought together!)
+    while IFS=' ' read -r job; do
+        printf "${white}Redeploying ${green}$job${white} now...${white}" 
+
+        # Make sure the metadata tree path is specified in the job list to use --redeploy feature
+        if [[ "${job%/*}" == "" ]]; then
+            printf "\n${red}*** ERROR: To use $1 feature in runSAS, you must specify full metadata path for the jobs in the list (relative to ${red_bg}${black}SAS Folders${end}${red} directory) *** ${white}"
+            clear_session_and_exit
+        fi
+
+        # Run "DeployJobs" SAS script/utility (currently this does not accept override parameters, possible candidate for later releases)
+        $depjobs_scripts_root_directory/DeployJobs 	-host $depjob_host \
+                                                    -port $depjob_port \
+                                                    -user $depjob_user \
+                                                    -password $depjob_password \
+                                                    -deploytype $depjob_deploytype \
+                                                    -objects $job \
+                                                    -sourcedir $depjob_sourcedir \
+                                                    -metarepository $depjob_metarepository \
+                                                    -appservername $depjob_appservername \
+                                                    -servermachine $depjob_servermachine \
+                                                    -serverport $depjob_serverport \
+                                                    -serverusername $depjob_serverusername \
+                                                    -serverpassword $depjob_serverpassword \
+                                                    -batchserver $depjob_batchserver \
+                                                    -log $depjob_batchserver 
+    done < .job.list
+}
+#------
 # Name: archive_all_job_logs()
 # Desc: This function archives all logs in the directory in preparation for a fresh batch run
 #   In: job-list-filename, archive-folder-name
@@ -1696,7 +1779,7 @@ function archive_all_job_logs(){
 # Name: show_server_and_user_details()
 # Desc: This function will show details about the server and the user
 #   In: file-name (multiple files can be provided)
-#  Out: <NA>
+#  Out: <NA> 
 #------
 function show_server_and_user_details(){
     printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
@@ -2299,6 +2382,9 @@ fi
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
 run_a_job_mode_check
 
+# Redeploy jobs routine (--redeploy option)
+deploy_or_redeploy_sas_jobs $script_mode
+
 # Print job(s) list on console
 print_file_content_with_index .job.list jobs
 
@@ -2354,7 +2440,7 @@ runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $s
 
 # Run the jobs from the list one at a time (here's where everything is brought together!)
 while IFS=' ' read -r job opt subopt sappdir bservdir bsh blogdir bjobdir; do
-    runSAS $job $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
+    runSAS ${job##/*/} $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
 done < .job.list
 
 # Capture session runtimes
