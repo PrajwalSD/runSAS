@@ -36,9 +36,10 @@
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
 # 1/4: Set SAS 9.x environment related parameters.
-#      Ideally, setting just the first three parameters should work but amend the rest if needed as per the environment
-#      Always enclose the value with double-quotes (NOT single-quotes)
+#      Ideally, setting just the first four parameters should work but amend the rest if needed as per the environment
+#      Always enclose the value with double-quotes (NOT single-quotes, everything is case-sensitive)
 #
+SAS_HOME_DIRECTORY="/SASInside/SASHome"
 SAS_INSTALLATION_ROOT_DIRECTORY="/SASInside/SAS"
 SAS_APP_SERVER_NAME="SASApp"
 SAS_LEV="Lev1"
@@ -47,11 +48,11 @@ SAS_APP_ROOT_DIRECTORY="$SAS_INSTALLATION_ROOT_DIRECTORY/$SAS_LEV/$SAS_APP_SERVE
 SAS_BATCH_SERVER_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer"
 SAS_LOGS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer/Logs"
 SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode/Jobs"
-SAS_HOME_DIRECTORY="/sas/SASHome"
 #
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
 #      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters
+#      Redeploy feature (i.e. --redeploy) of runSAS will require you to specify full metadata path of the job (e.g.: /Shared Data/Solution/XXXXX instead of just XXXXX)
 #
 cat << EOF > .job.list
 XXXXX --prompt
@@ -1679,17 +1680,17 @@ function deploy_or_redeploy_sas_jobs(){
     depjob_start_timestamp=`date '+%Y%m%d_%H%M%S'`
 
     # Get the details from user, via console
-    printf "${green}\nSAS Metadata username (e.g.: sasadm@saspw): ${white}"
+    printf "${green}SAS Metadata username (e.g.: sasadm@saspw): ${white}"
     read read_depjob_user
-    printf "${green}\nSAS Metadata password: ${white}" 
+    printf "${green}SAS Metadata password: ${white}" 
     read read_depjob_password
-    printf "${green}\nSAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${white}" 
+    printf "${green}SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${white}" 
     read read_depjob_appservername
-    printf "${green}\nSAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${white}" 
+    printf "${green}SAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${white}" 
     read read_depjob_serverusername
-    printf "${green}\nSAS Application server password: ${white}" 
+    printf "${green}SAS Application server password: ${white}" 
     read read_depjob_serverpassword
-    printf "${green}\nSAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${white}" 
+    printf "${green}SAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${white}" 
     read -n1 read_depjob_level
     
     # Parameters (some are set to defaults and the rest is from the user inputs above)
@@ -1698,7 +1699,7 @@ function deploy_or_redeploy_sas_jobs(){
     depjob_port=856$read_depjob_level
     depjob_user=$read_depjob_user
     depjob_password=$read_depjob_password
-    depjob_deploytype=$1
+    depjob_deploytype=`echo $1 | tr a-z A-Z`
     depjob_objects_root_dir=""
     depjob_sourcedir="$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY"    
     depjob_metarepository=Foundation
@@ -1717,11 +1718,11 @@ function deploy_or_redeploy_sas_jobs(){
     fi
 
     # Wait for the user to confirm
-    press_enter_key_to_continue 1
+    press_enter_key_to_continue 1 1 red
 
     # Run the jobs from the list one at a time (here's where everything is brought together!)
     while IFS=' ' read -r job; do
-        printf "${white}Redeploying ${green}$job${white} now...${white}" 
+        printf "${white}Redeploying ${green}$job${white} now...\n${white}" 
 
         # Make sure the metadata tree path is specified in the job list to use --redeploy feature
         if [[ "${job%/*}" == "" ]]; then
