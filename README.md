@@ -78,9 +78,11 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   `./runSAS.sh -fuis <name or index> <name or index>` 
   
 # Can runSAS redeploy SAS DI jobs?
-Yes, it can. All you need to do is a build a list of jobs that need to be redeployed (unfortunately deploy is not implemented yet) and provide that as an argument to --redeploy option. Do note that the job name should also contain the full path (relative to SAS Folders)
+Yes, it can. All you need to do is create a file that contains the list of jobs that needs to be redeployed and provide that as an argument to --redeploy option. Do note that the job name should also contain the full path (relative to SAS Folders)
 
 `./runSAS.sh --redeploy <job-list-file>` 
+
+_NOTE: DEPLOY feature is not built into runSAS yet_
   
 # How to enable email alerts?
 The script can send email alerts on different scenarios, to enable it set `EMAIL_ALERTS=Y` inside the script with the email address(es) (in parameters section).
