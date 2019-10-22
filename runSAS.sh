@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.5                                                                                                  #
+#     Version: 12.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|5|
+|r|u|n|S|A|S| |v|1|2|.|6|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.5                                         
+	RUNSAS_CURRENT_VERSION=12.6                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1800,12 +1800,20 @@ function deploy_or_redeploy_sas_jobs(){
             # Newlines
 			printf "\n"
 
+            # Print the jobs file
+            printf "${green}List of jobs that will be redeployed${white}\n"
+            print_file_content_with_index $2
+
+            # Counter
+            depjob_job_total_count=`cat $2 | wc -l`
+            depjob_job_curr_count=1
+
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
 			
 				# Show the current state of the deployment
 				printf "${green}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}\n"
-				printf "${green}Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
+				printf "[$depjob_job_curr_count/$depjob_job_total_count]: ${green}Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
 
 				# Make sure the metadata tree path is specified in the job list to use --redeploy feature
 				if [[ "${job%/*}" == "" ]]; then
