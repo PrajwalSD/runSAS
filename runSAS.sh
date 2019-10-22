@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.8                                                                                                  #
+#     Version: 12.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|8|
+|r|u|n|S|A|S| |v|1|2|.|9|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.8                                         
+	RUNSAS_CURRENT_VERSION=12.9                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -174,7 +174,7 @@ function print_the_help_menu(){
         printf "\n     --log or --last              runSAS will show the last script run details"
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
-        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file> (DEPLOY option is not available yet)"
+        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file> (NOTE: DEPLOY option is not available yet)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -1716,6 +1716,10 @@ function deploy_or_redeploy_sas_jobs(){
 			# Timestamp
 			depjob_start_timestamp=`date '+%Y%m%d_%H%M%S'`
 			
+			# Create an empty file
+			create_a_new_file $2
+			create_a_new_file $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE
+			
 			# Newlines
 			printf "\n"
 			
@@ -1808,9 +1812,8 @@ function deploy_or_redeploy_sas_jobs(){
             
             # Newlines
             retrieve_a_key_value_pair $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE depjob_total_runtime
-                printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
 
-			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it usually takes "${retrieved_value:-'~950'}" seconds to finish so grab a cup of coffee or tea.${white}\n\n"
+			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it took "${retrieved_value:-'~950'}" seconds last time to finish, so grab a cup of coffee or tea.${white}\n\n"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
@@ -1841,7 +1844,7 @@ function deploy_or_redeploy_sas_jobs(){
 															-batchserver "$depjob_batchserver" \
 															-log $depjob_log
 															
-				# Fix the file name with underscores
+				# Fix the file name with underscores (SAS DI does this by default, just to keep it in-sync with deployed job name referred in .jobs.list file)
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
