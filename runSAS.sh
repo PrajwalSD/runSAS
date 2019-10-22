@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.2                                                                                                  #
+#     Version: 12.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
@@ -52,7 +52,6 @@ SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
 #      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters
-#      Redeploy feature (i.e. --redeploy) of runSAS will require you to specify full metadata path of the job (e.g.: /Shared Data/Solution/XXXXX instead of just XXXXX)
 #
 cat << EOF > .job.list
 XXXXX --prompt
@@ -101,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|2|
+|r|u|n|S|A|S| |v|1|2|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -116,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.2                                         
+	RUNSAS_CURRENT_VERSION=12.4                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -175,7 +174,7 @@ function print_the_help_menu(){
         printf "\n     --log or --last              runSAS will show the last script run details"
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
-        printf "\n     --redeploy                   runSAS will redeploy the jobs specified in the user specified list (deploy option is not available, yet)"
+        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file> (DEPLOY option is not available yet)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -1145,6 +1144,16 @@ function reset_runsas(){
             rm -rf $RUNSAS_TMP_DIRECTORY/.job.stats
             printf "${green}...(DONE)${white}"
         fi
+		# Clear redeploy parameters file
+        printf "${red}\nClear job redeployment parameter files? (Y/N): ${white}"
+        stty igncr < /dev/tty
+        read -n1 clear_depjob_files
+        if [[ "$clear_depjob_files" == "Y" ]] || [[ "$clear_depjob_files" == "y" ]]; then    
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_redeploy_job_user.parms
+			rm -rf $RUNSAS_TMP_DIRECTORY/runSAS_job_redeployment_util_*.log
+            printf "${green}...(DONE)${white}"
+        fi
+		
         clear_session_and_exit
     fi
 }
@@ -1392,6 +1401,27 @@ function runsas_success_email(){
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE	
         send_an_email -v "" "Batch has completed successfully!" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
     fi
+}
+#------
+# Name: store_a_key_value_pair()
+# Desc: Stores a key-value pair in a file
+#   In: file, key, value
+#  Out: <NA>
+#------
+function store_a_key_value_pair(){
+    sed -i "/$2/d" $1 # Remove the previous entry
+    echo "$2 $3" >> $1 # Add a new entry 
+}
+#------
+# Name: retrieve_a_key_value_pair()
+# Desc: Check job runtime for the last batch run
+#   In: file, key
+#  Out: <NA>
+#------
+function retrieve_a_key_value_pair(){
+	if [ -f "$1" ]; then
+		retrieved_value=`awk -v pat="$2" -F" " '$0~pat { print $2 }' $1`
+	fi   
 }
 #------
 # Name: store_job_runtime_stats()
@@ -1678,20 +1708,37 @@ function validate_job_list(){
 function deploy_or_redeploy_sas_jobs(){
     # Timestamp
     depjob_start_timestamp=`date '+%Y%m%d_%H%M%S'`
+	
+	# Newlines
+	printf "\n"
+	
+    # Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
+	retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_user
+	read -p "${green}SAS Metadata username (e.g.: sasadm@saspw): ${grey}" -i "$retrieved_value" -e read_depjob_user	
+	store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_user $read_depjob_user
+	
+	retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_password
+	read -p "${green}SAS Metadata password: ${grey}" -i "$retrieved_value" -e read_depjob_password	
+	store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_password $read_depjob_password
 
-    # Get the details from user, via console
-    printf "${green}SAS Metadata username (e.g.: sasadm@saspw): ${white}"
-    read read_depjob_user
-    printf "${green}SAS Metadata password: ${white}" 
-    read read_depjob_password
-    printf "${green}SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${white}" 
-    read read_depjob_appservername
-    printf "${green}SAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${white}" 
-    read read_depjob_serverusername
-    printf "${green}SAS Application server password: ${white}" 
-    read read_depjob_serverpassword
-    printf "${green}SAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${white}" 
-    read -n1 read_depjob_level
+	retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_appservername
+	read -p "${green}SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${grey}" -i "$retrieved_value" -e read_depjob_appservername	
+	store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_appservername $read_depjob_appservername
+	
+	retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverusername
+	read -p "${green}SAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${grey}" -i "$retrieved_value" -e read_depjob_serverusername	
+	store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverusername $read_depjob_serverusername
+
+	retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverpassword
+	read -p "${green}SAS Application server password: ${grey}" -i "$retrieved_value" -e read_depjob_serverpassword	
+	store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverpassword $read_depjob_serverpassword
+	
+	retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_level
+	read -p "${green}SAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${grey}" -i "$retrieved_value" -e read_depjob_level	
+	store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_level $read_depjob_level
+	
+	# Newlines
+	printf "\n"
     
     # Parameters (some are set to defaults and the rest is from the user inputs above)
     depjobs_scripts_root_directory=$SAS_HOME_DIRECTORY/SASDataIntegrationStudioServerJARs/4.8
@@ -1699,8 +1746,7 @@ function deploy_or_redeploy_sas_jobs(){
     depjob_port=856$read_depjob_level
     depjob_user=$read_depjob_user
     depjob_password=$read_depjob_password
-    depjob_deploytype=`echo $1 | tr a-z A-Z`
-    depjob_objects_root_dir=""
+    depjob_deploytype=`echo ${1#"--"} | tr a-z A-Z`
     depjob_sourcedir="$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY"    
     depjob_metarepository=Foundation
     depjob_appservername=$read_depjob_appservername
@@ -1709,20 +1755,49 @@ function deploy_or_redeploy_sas_jobs(){
     depjob_serverusername=$read_depjob_serverusername
     depjob_serverpassword=$read_depjob_serverpassword
     depjob_batchserver="$read_depjob_appservername - SAS DATA Step Batch Server" 
-    depjob_log=$RUNSAS_TMP_DIRECTORY/runSAS_job_redeployment_util_$depjob_start_timestamp.log
-
+    depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_job_redeployment_util_$depjob_start_timestamp.log
+	
+	# Debug
+	#echo depjobs_scripts_root_directory=$depjobs_scripts_root_directory
+	#echo depjob_host=$depjob_host
+	#echo depjob_port=$depjob_port
+	#echo depjob_user=$depjob_user
+	#echo depjob_password=$depjob_password
+	#echo depjob_deploytype=$depjob_deploytype
+	#echo depjob_sourcedir="$depjob_sourcedir"
+	#echo depjob_metarepository=$depjob_metarepository
+	#echo depjob_appservername=$depjob_appservername
+	#echo depjob_servermachine=$depjob_servermachine
+	#echo depjob_serverport=$depjob_serverport
+	#echo depjob_serverport=$depjob_serverport
+	#echo depjob_serverusername=$depjob_serverusername
+	#echo depjob_batchserver=$depjob_batchserver
+	#echo depjob_log=$depjob_log
+	
     # Check if the utility exists? 
     if [ ! -f "$depjobs_scripts_root_directory/DeployJobs" ]; then
         printf "\n${red}*** ERROR: ${red_bg}${black}DeployJobs${white}${red} utility is not found on the server, cannot proceed with the $1 for now (try the manual option via SAS DI) *** ${white}"
         clear_session_and_exit
     fi
+	
+	# Check if the redeploy job file list exists
+	check_if_the_file_exists $2
+	
+	# If it exists, perform dos2unix
+	dos2unix $2
+	
+	# Add a newline at the end of the file
+	add_a_newline_char_to_eof $2
 
     # Wait for the user to confirm
-    press_enter_key_to_continue 1 1 red
+    press_enter_key_to_continue 1 0 red
 
     # Run the jobs from the list one at a time (here's where everything is brought together!)
-    while IFS=' ' read -r job; do
-        printf "${white}Redeploying ${green}$job${white} now...\n${white}" 
+    while IFS='|' read -r job; do
+	
+		# Show the current state of the deployment
+		printf "${green}\n$CONSOLE_MESSAGE_LINE_WRAPPERS${green}\n"
+        printf "${green}Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
 
         # Make sure the metadata tree path is specified in the job list to use --redeploy feature
         if [[ "${job%/*}" == "" ]]; then
@@ -1736,7 +1811,7 @@ function deploy_or_redeploy_sas_jobs(){
                                                     -user $depjob_user \
                                                     -password $depjob_password \
                                                     -deploytype $depjob_deploytype \
-                                                    -objects $job \
+                                                    -objects "${job}" \
                                                     -sourcedir $depjob_sourcedir \
                                                     -metarepository $depjob_metarepository \
                                                     -appservername $depjob_appservername \
@@ -1744,9 +1819,20 @@ function deploy_or_redeploy_sas_jobs(){
                                                     -serverport $depjob_serverport \
                                                     -serverusername $depjob_serverusername \
                                                     -serverpassword $depjob_serverpassword \
-                                                    -batchserver $depjob_batchserver \
-                                                    -log $depjob_batchserver 
-    done < .job.list
+                                                    -batchserver "$depjob_batchserver" \
+                                                    -log $depjob_log
+    done < $2
+}
+#------
+# Name: add_a_newline_char_to_eof()
+# Desc: This function will add a new line character to the end of file (only if it doesn't exists)
+#   In: file-name
+#  Out: <NA>
+#------
+function add_a_newline_char_to_eof(){
+    if [ "$(tail -c1 "$1"; echo x)" != $'\nx' ]; then     
+        echo "" >> "$1"; 
+    fi
 }
 #------
 # Name: archive_all_job_logs()
@@ -2281,6 +2367,7 @@ RUNSAS_LAST_JOB_PID_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
 RUNSAS_FIRST_USER_INTRO_DONE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_intro.done
 SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
 RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
+RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_redeploy_job_user.parms
 
 # Bash color codes for the console
 set_colors_codes
@@ -2384,7 +2471,7 @@ fi
 run_a_job_mode_check
 
 # Redeploy jobs routine (--redeploy option)
-deploy_or_redeploy_sas_jobs $script_mode
+deploy_or_redeploy_sas_jobs $script_mode $script_mode_value_1
 
 # Print job(s) list on console
 print_file_content_with_index .job.list jobs
