@@ -1801,19 +1801,20 @@ function deploy_or_redeploy_sas_jobs(){
 			printf "\n"
 
             # Print the jobs file
-            printf "${green}List of jobs that will be redeployed${white}\n"
-            print_file_content_with_index $2
+            print_file_content_with_index $2 jobs
 
             # Counter
             depjob_job_total_count=`cat $2 | wc -l`
             depjob_job_curr_count=1
+            
+            # Newlines
+			printf "\nRedeployment process started at $start_datetime_of_session_timestamp, it usually takes 10-12 minutes to finish so grab a cup of coffee or tea.\n"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
-			
 				# Show the current state of the deployment
-				printf "${green}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}\n"
-				printf "[$depjob_job_curr_count/$depjob_job_total_count]: ${green}Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
+				printf "${green}---${white}\n"
+				printf "${green}[$depjob_job_curr_count/$depjob_job_total_count]: Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
 
 				# Make sure the metadata tree path is specified in the job list to use --redeploy feature
 				if [[ "${job%/*}" == "" ]]; then
@@ -1841,9 +1842,18 @@ function deploy_or_redeploy_sas_jobs(){
 				# Fix the file name with underscores
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
+
+                # Increment the counter
+                depjob_job_curr_count+=1
 			done < $2
+
+            # Capture session runtimes
+            end_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
+            end_datetime_of_session=`date +%s`
+
 			# Clear session
-			printf "${green}\nDONE!${white}"
+            printf "${green}The redeployment process completed at $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+
 			clear_session_and_exit
 		fi
 	fi
