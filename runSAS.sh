@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.7                                                                                                  #
+#     Version: 12.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|7|
+|r|u|n|S|A|S| |v|1|2|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.7                                         
+	RUNSAS_CURRENT_VERSION=12.8                                         
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1149,8 +1149,9 @@ function reset_runsas(){
         stty igncr < /dev/tty
         read -n1 clear_depjob_files
         if [[ "$clear_depjob_files" == "Y" ]] || [[ "$clear_depjob_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_redeploy_job_user.parms
-			rm -rf $RUNSAS_TMP_DIRECTORY/runSAS_job_redeployment_util_*.log
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_depjob_user.parms
+			rm -rf $RUNSAS_TMP_DIRECTORY/runsas_depjob_util_*.log
+			rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_depjob_runtime.log
             printf "${green}...(DONE)${white}"
         fi
 		
@@ -1708,6 +1709,7 @@ function validate_job_list(){
 function deploy_or_redeploy_sas_jobs(){
 	if [[ "$1" == "--redeploy" ]]; then
 		if [[ "$2" == "" ]]; then
+            # Ensure the job list is provided
 			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $1 option (e.g.: ./runSAS.sh --redeploy ./deploy_jobs.list) ***${white}"
 			clear_session_and_exit
 		else
@@ -1718,34 +1720,34 @@ function deploy_or_redeploy_sas_jobs(){
 			printf "\n"
 			
 			# Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
-			retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_user
+			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_user
 			read -p "${green}SAS Metadata username (e.g.: sasadm@saspw): ${grey}" -i "$retrieved_value" -e read_depjob_user	
-			store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_user $read_depjob_user
+			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_user $read_depjob_user
 			
-			retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_password
+			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_password
 			read -p "${green}SAS Metadata password: ${grey}" -i "$retrieved_value" -e read_depjob_password	
-			store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_password $read_depjob_password
+			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_password $read_depjob_password
 
-			retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_appservername
+			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_appservername
 			read -p "${green}SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${grey}" -i "$retrieved_value" -e read_depjob_appservername	
-			store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_appservername $read_depjob_appservername
+			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_appservername $read_depjob_appservername
 			
-			retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverusername
+			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverusername
 			read -p "${green}SAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${grey}" -i "$retrieved_value" -e read_depjob_serverusername	
-			store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverusername $read_depjob_serverusername
+			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverusername $read_depjob_serverusername
 
-			retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverpassword
+			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverpassword
 			read -p "${green}SAS Application server password: ${grey}" -i "$retrieved_value" -e read_depjob_serverpassword	
-			store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_serverpassword $read_depjob_serverpassword
+			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverpassword $read_depjob_serverpassword
 			
-			retrieve_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_level
+			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_level
 			read -p "${green}SAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${grey}" -i "$retrieved_value" -e read_depjob_level	
-			store_a_key_value_pair $RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE read_depjob_level $read_depjob_level
+			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_level $read_depjob_level
 			
 			# Newlines
 			printf "\n"
 			
-			# Parameters (some are set to defaults and the rest is from the user inputs above)
+			# Set the parameters (some are set to defaults and the rest is from the user inputs above)
 			depjobs_scripts_root_directory=$SAS_HOME_DIRECTORY/SASDataIntegrationStudioServerJARs/4.8
 			depjob_host="$HOSTNAME"
 			depjob_port=856$read_depjob_level
@@ -1760,7 +1762,7 @@ function deploy_or_redeploy_sas_jobs(){
 			depjob_serverusername=$read_depjob_serverusername
 			depjob_serverpassword=$read_depjob_serverpassword
 			depjob_batchserver="$read_depjob_appservername - SAS DATA Step Batch Server" 
-			depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_job_redeployment_util_$depjob_start_timestamp.log
+			depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_depjob_util_$depjob_start_timestamp.log
 			
 			# Debug
 			#echo depjobs_scripts_root_directory=$depjobs_scripts_root_directory
@@ -1805,7 +1807,10 @@ function deploy_or_redeploy_sas_jobs(){
             depjob_job_curr_count=1
             
             # Newlines
-			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it usually takes 10-12 minutes to finish so grab a cup of coffee or tea.${white}\n\n"
+            retrieve_a_key_value_pair $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE depjob_total_runtime
+                printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
+
+			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it usually takes "${retrieved_value:-'~950'}" seconds to finish so grab a cup of coffee or tea.${white}\n\n"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
@@ -1849,7 +1854,11 @@ function deploy_or_redeploy_sas_jobs(){
             end_datetime_of_session=`date +%s`
 
 			# Clear session
-            printf "${green}\nThe redeployment process completed at $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+            depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
+            printf "${green}\nThe redeployment process completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
+
+            # Store runtime for future use
+            store_a_key_value_pair $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE depjob_total_runtime $depjob_total_runtime
 
 			clear_session_and_exit
 		fi
@@ -2399,7 +2408,8 @@ RUNSAS_LAST_JOB_PID_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
 RUNSAS_FIRST_USER_INTRO_DONE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_intro.done
 SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
 RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
-RUNSAS_REDEPLOY_JOB_USER_PARMS_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_redeploy_job_user.parms
+RUNSAS_DEPJOB_USER_PARMS_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_depjob_user.parms
+RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_depjob_runtime.log
 
 # Bash color codes for the console
 set_colors_codes
