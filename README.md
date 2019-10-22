@@ -77,6 +77,9 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
   
   `./runSAS.sh -fuis <name or index> <name or index>` 
   
+# Can runSAS redeploy SAS DI jobs?
+Currently runSAS supports a simple time based delay. just add `--delay <time-in-seconds>` during the launch i.e. `./runSAS.sh --delay 3600` to delay a batch run by 1 hour.
+  
 # How to enable email alerts?
 The script can send email alerts on different scenarios, to enable it set `EMAIL_ALERTS=Y` inside the script with the email address(es) (in parameters section).
 * Sends an email when the batch has triggered
@@ -89,7 +92,9 @@ The script can send email alerts on different scenarios, to enable it set `EMAIL
 _Tip: To disable email alerts temporarily for a run, just append `--noemail` during the launch i.e. `./runSAS.sh --noemail`, this will not send any emails for that specific run._
 
 # Can I schedule a batch run?
-Currently runSAS supports a simple time based delay. just add `--delay <time-in-seconds>` during the launch i.e. `./runSAS.sh --delay 3600` to delay a batch run by 1 hour.
+Yes, it can. All you need to do is a build a list of jobs that need to be redeployed (unfortunately deploy is not implemented yet) and provide that as an argument to --redeploy option. Do note that the job name should also contain the full path (relative to SAS Folders)
+
+`./runSAS.sh --redeploy <job-list-file>` 
 
 # How do I stop/abort a runSAS run?
 Just press CTRL+C, runSAS is designed gracefully exit even in the case of user intervention. If `KILL_PROCESS_ON_USER_ABORT=Y` was set then the running job process will be killed/terminated on user abort, turn it off if you want the last job process to complete the run even when the user has aborted the batch run.
