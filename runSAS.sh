@@ -1794,14 +1794,11 @@ function deploy_or_redeploy_sas_jobs(){
 			# Add a newline at the end of the file
 			add_a_newline_char_to_eof $2
 
-			# Wait for the user to confirm
-			press_enter_key_to_continue 1 0 red
-
-            # Newlines
-			printf "\n"
-
             # Print the jobs file
             print_file_content_with_index $2 jobs
+
+			# Wait for the user to confirm
+			press_enter_key_to_continue 1 0 red
 
             # Counter
             depjob_job_total_count=`cat $2 | wc -l`
