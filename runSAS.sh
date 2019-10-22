@@ -1805,7 +1805,7 @@ function deploy_or_redeploy_sas_jobs(){
             depjob_job_curr_count=1
             
             # Newlines
-			printf "\nRedeployment process started at $start_datetime_of_session_timestamp, it usually takes 10-12 minutes to finish so grab a cup of coffee or tea.\n"
+			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it usually takes 10-12 minutes to finish so grab a cup of coffee or tea.${white}\n\n"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
@@ -1841,7 +1841,7 @@ function deploy_or_redeploy_sas_jobs(){
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
                 # Increment the counter
-                depjob_job_curr_count+=1
+                let depjob_job_curr_count+=1
 			done < $2
 
             # Capture session runtimes
@@ -1849,7 +1849,7 @@ function deploy_or_redeploy_sas_jobs(){
             end_datetime_of_session=`date +%s`
 
 			# Clear session
-            printf "${green}The redeployment process completed at $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+            printf "${green}\nThe redeployment process completed at $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
 
 			clear_session_and_exit
 		fi
