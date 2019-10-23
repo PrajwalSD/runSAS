@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.0                                                                                                  #
+#     Version: 13.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|0|
+|r|u|n|S|A|S| |v|1|3|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.0                                        
+	RUNSAS_CURRENT_VERSION=13.1                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1694,15 +1694,20 @@ function validate_job_list(){
 #------
 function store_a_key_value_pair(){
     # Parameters
-    local key=$1
-    local val=$2
-    local file=$3
+    str_key=$1
+    str_val=$2
+    str_file=$3
     # Set a temp file by the name of key if the file is not specified
-    if [[ "$file" == "" ]]; then
-        file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+    if [[ "$str_file" == "" ]]; then
+        str_file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+		create_a_new_file $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
     fi
-    sed -i "/$key/d" $file # Remove the previous entry
-    echo "$key $val" >> $file # Add a new entry 
+	# If the file exists remove the previous entry
+	if [ -f "$str_file" ]; then
+        sed -i "/$str_key/d" $str_file
+    fi 
+	# Add the new entry (or update the entry)
+    echo "$str_key $str_val" >> $str_file # Add a new entry 
 }
 #------
 # Name: retrieve_a_key_value_pair()
@@ -1712,15 +1717,18 @@ function store_a_key_value_pair(){
 #------
 function retrieve_a_key_value_pair(){
     # Parameters
-    local key=$1
-    local file=$2
+    ret_key=$1
+    ret_file=$2
+
     # Set a temp file by the name of key if the file is not specified
-    if [[ "$file" == "" ]]; then
-        file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+    if [[ "$ret_file" == "" ]]; then
+        ret_file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+		create_a_new_file $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
     fi
+	
     # Set the value found in the file to the key
-    if [ -f "$file" ]; then
-        eval ${!key}=`awk -v pat="$key" -F" " '$0~pat { print $2 }' $file`
+    if [ -f "$ret_file" ]; then
+        eval $ret_key=`awk -v pat="$ret_key" -F" " '$0~pat { print $2 }' $ret_file`
     fi   
 }
 #------
@@ -1733,16 +1741,18 @@ function get_updated_value_for_a_key_from_user(){
     # Parameters
     keyval_key=$1
     keyval_message=$2
-    keyval_message_color="${3:-'green'}"
-    keyval_val_color="${4:-'grey'}"
+    keyval_message_color="${3:-green}"
+    keyval_val_color="${4:-grey}"
     keyval_file=$4
-
+	
     # First retrieve the value for the key from the file if it is available.
     retrieve_a_key_value_pair $keyval_key
+	
     # Show the message with colors 
-    read -p "${!keyval_message_color}${keyval_message}${!keyval_val_color}" -i "$keyval_key" -e keyval_updated_value	
+    read -p "${!keyval_message_color}${keyval_message}${!keyval_val_color}" -i "${!keyval_key}" -e $keyval_key	
+	
     # Store the value (updated value)
-    store_a_key_value_pair $keyval_key $keyval_updated_value
+    store_a_key_value_pair $keyval_key ${!keyval_key}
 }
 #------
 # Name: deploy_or_redeploy_sas_jobs()
@@ -1767,7 +1777,7 @@ function deploy_or_redeploy_sas_jobs(){
 			
 			# Newlines
 			printf "\n"
-			
+						
 			# Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
             get_updated_value_for_a_key_from_user read_depjob_user "SAS Metadata username (e.g.: sas or sasadm@saspw): " 
 			get_updated_value_for_a_key_from_user read_depjob_password "SAS Metadata password: " 
@@ -1839,9 +1849,9 @@ function deploy_or_redeploy_sas_jobs(){
             depjob_job_curr_count=1
             
             # Newlines
-            retrieve_a_key_value_pair $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE depjob_total_runtime
+            retrieve_a_key_value_pair depjob_total_runtime
 
-			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it took "${retrieved_value:-'~950'}" seconds last time to finish, so grab a cup of coffee or tea.${white}\n\n"
+			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it took "${depjob_total_runtime:-'~950'}" seconds last time to finish, so grab a cup of coffee or tea.${white}\n\n"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
@@ -1889,7 +1899,7 @@ function deploy_or_redeploy_sas_jobs(){
             printf "${green}\nThe redeployment process completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
 
             # Store runtime for future use
-            store_a_key_value_pair $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE depjob_total_runtime $depjob_total_runtime
+            store_a_key_value_pair depjob_total_runtime $depjob_total_runtime
 
 			clear_session_and_exit
 		fi
