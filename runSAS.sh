@@ -1762,17 +1762,23 @@ function get_updated_value_for_a_key_from_user(){
 #  Out: <NA>
 #------
 function deploy_or_redeploy_sas_jobs(){
-	if [[ "$1" == "--redeploy" ]]; then
-		if [[ "$2" == "" ]]; then
+    # Parameters
+    depjob_mode=$1
+    depjob_job_file=$2
+
+    # Begin
+	if [[ "$depjob_mode" == "--redeploy" ]]; then
+        # Check for the jobs file (mandatory for this mode)
+		if [[ "$depjob_job_file" == "" ]]; then
             # Ensure the job list is provided
-			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $1 option (e.g.: ./runSAS.sh --redeploy ./deploy_jobs.list) ***${white}"
+			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $depjob_mode option (e.g.: ./runSAS.sh --redeploy ./deploy_jobs.list) ***${white}"
 			clear_session_and_exit
 		else
 			# Timestamp
 			depjob_start_timestamp=`date '+%Y%m%d_%H%M%S'`
-			
+
 			# Create an empty file
-			create_a_new_file $2
+			create_a_new_file $depjob_job_file
 			create_a_new_file $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE
 			
 			# Newlines
@@ -1811,23 +1817,6 @@ function deploy_or_redeploy_sas_jobs(){
 			depjob_batchserver="$read_depjob_appservername - SAS DATA Step Batch Server" 
 			depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_depjob_util_$depjob_start_timestamp.log
 			
-			# Debug
-			#echo depjobs_scripts_root_directory=$depjobs_scripts_root_directory
-			#echo depjob_host=$depjob_host
-			#echo depjob_port=$depjob_port
-			#echo depjob_user=$depjob_user
-			#echo depjob_password=$depjob_password
-			#echo depjob_deploytype=$depjob_deploytype
-			#echo depjob_sourcedir="$depjob_sourcedir"
-			#echo depjob_metarepository=$depjob_metarepository
-			#echo depjob_appservername=$depjob_appservername
-			#echo depjob_servermachine=$depjob_servermachine
-			#echo depjob_serverport=$depjob_serverport
-			#echo depjob_serverport=$depjob_serverport
-			#echo depjob_serverusername=$depjob_serverusername
-			#echo depjob_batchserver=$depjob_batchserver
-			#echo depjob_log=$depjob_log
-			
 			# Check if the utility exists? 
 			if [ ! -f "$depjobs_scripts_root_directory/DeployJobs" ]; then
 				printf "${red}*** ERROR: ${red_bg}${black}DeployJobs${white}${red} utility is not found on the server, cannot proceed with the $1 for now (try the manual option via SAS DI) *** ${white}"
@@ -1835,28 +1824,50 @@ function deploy_or_redeploy_sas_jobs(){
 			fi
 			
 			# Check if the redeploy job file list exists
-			check_if_the_file_exists $2
+			check_if_the_file_exists $depjob_job_file
 			
 			# If it exists, perform dos2unix
-			dos2unix $2
+			dos2unix $depjob_job_file
 			
 			# Add a newline at the end of the file
-			add_a_newline_char_to_eof $2
+			add_a_newline_char_to_eof $depjob_job_file
 
             # Print the jobs file
-            print_file_content_with_index $2 jobs
+            print_file_content_with_index $depjob_job_file jobs
 
 			# Wait for the user to confirm
 			press_enter_key_to_continue 1 0 red
 
             # Counter
-            depjob_job_total_count=`cat $2 | wc -l`
+            depjob_job_total_count=`cat $depjob_job_file | wc -l`
             depjob_job_curr_count=1
             
             # Newlines
             retrieve_a_key_value_pair depjob_total_runtime
 
+            # Message to user
 			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it took "${depjob_total_runtime:-'~950'}" seconds last time to finish, so grab a cup of coffee or tea.${white}\n\n"
+
+            # Add to audit log
+            print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
+            print_2_runsas_session_log "Redeployment start timestamp: $depjob_start_timestamp"
+            print_2_runsas_session_log "DepJobs SAS 9.x utility directory: $depjobs_scripts_root_directory"
+			print_2_runsas_session_log "Metadata server: $depjob_host"
+			print_2_runsas_session_log "Port: $depjob_port"
+			print_2_runsas_session_log "Metadata user: $read_depjob_user"
+			print_2_runsas_session_log "Metadata password (obfuscated): *******"
+			print_2_runsas_session_log "Deployment type: $depjob_deploytype"
+			print_2_runsas_session_log "Deployment directory: $depjob_sourcedir"
+			print_2_runsas_session_log "Job directory (Metadata): $depjob_metarepository"
+			print_2_runsas_session_log "Application server context: $depjob_appservername"
+			print_2_runsas_session_log "Application server: $depjob_servermachine"
+			print_2_runsas_session_log "Application server port: $depjob_serverport"
+			print_2_runsas_session_log "Application server user: $depjob_serverusername"
+			print_2_runsas_session_log "Application server password (obfuscated): *******"
+			print_2_runsas_session_log "Batch server: $depjob_batchserver" 
+			print_2_runsas_session_log "DepJobs SAS 9.x utility log: $depjob_log"
+            print_2_runsas_session_log "Total number of jobs: $depjob_job_total_count"
+            print_2_runsas_session_log "Deleted existing SAS job files?: $read_depjob_clear_files"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
@@ -1891,9 +1902,13 @@ function deploy_or_redeploy_sas_jobs(){
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
+                # Add it to audit log
+                print_2_runsas_session_log "Reploying job $depjob_job_curr_count of $depjob_job_total_count: $job"
+
                 # Increment the counter
                 let depjob_job_curr_count+=1
-			done < $2
+
+			done < $depjob_job_file
 
             # Capture session runtimes
             end_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -1901,11 +1916,22 @@ function deploy_or_redeploy_sas_jobs(){
 
 			# Clear session
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
-            printf "${green}\nThe redeployment process completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
+            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
 
             # Store runtime for future use
             store_a_key_value_pair depjob_total_runtime $depjob_total_runtime
 
+            # Send an email
+            if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]]; then
+                echo "The redeployment of $depjob_job_total_count jobs is complete, took a total of $depjob_total_runtime seconds to complete." > $EMAIL_BODY_MSG_FILE
+                add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
+                send_an_email -v "" "Redeployed $depjob_job_total_count jobs" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+                printf "\n\n"
+            fi
+
+            # End
+            print_2_runsas_session_log "Redeployment end timestamp: $end_datetime_of_session_timestamp"
+            print_2_runsas_session_log "Total time taken (in seconds): $depjob_total_runtime"
 			clear_session_and_exit
 		fi
 	fi
