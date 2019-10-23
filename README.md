@@ -2,7 +2,7 @@
 The script allows you to run a SAS program or a batch of SAS programs via Bash environment in various interactive and non-interactive execution modes.
 
 # Screenshots/Videos
-![runSAS in action](https://i.imgur.com/ixP3jzh.png)
+![runSAS in action](https://i.imgur.com/O3l7ReU.png)
 
 # Prerequisites
 SAS 9.x environment (Linux) with SAS BatchServer component is essential for the runSAS to execute or any equivalent would work (i.e. `sas.sh`, `sasbatch.sh` etc.). The core script dependencies are checked at every launch of the script automatically.
