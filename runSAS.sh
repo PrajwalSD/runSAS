@@ -1790,7 +1790,6 @@ function deploy_or_redeploy_sas_jobs(){
             # Clear deployment directory for a fresh start (based on user)
             if [[ "$read_depjob_clear_files" == "Y" ]]; then
                 printf "${white}\nPlease wait, clearing all existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...${white}"
-                sleep 7 # If user wants to abort, he has 5 seconds...:)
                 rm -rf $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
                 printf "${green}DONE\n\n${white}"
             fi
