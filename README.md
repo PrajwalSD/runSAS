@@ -91,8 +91,6 @@ The script can send email alerts on different scenarios, to enable it set `EMAIL
 * Sends an email when a job has failed (with log and error snippet in the email body)
 * Sends an email when the batch has completed (with a runtime statistics)
 
-![runSAS job failed email alert](https://i.imgur.com/OGGLMFo.png)
-
 _Tip: To disable email alerts temporarily for a run, just append `--noemail` during the launch i.e. `./runSAS.sh --noemail`, this will not send any emails for that specific run._
 
 # Can I schedule a batch run?
