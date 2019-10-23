@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 12.9                                                                                                  #
+#     Version: 13.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|2|.|9|
+|r|u|n|S|A|S| |v|1|3|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=12.9                                         
+	RUNSAS_CURRENT_VERSION=13.0                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1154,6 +1154,14 @@ function reset_runsas(){
 			rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_depjob_runtime.log
             printf "${green}...(DONE)${white}"
         fi
+        # Clear global user parameters file
+        printf "${red}\nClear global user parameters files? (Y/N): ${white}"
+        stty igncr < /dev/tty
+        read -n1 clear_global_user_parms
+        if [[ "$clear_global_user_parms" == "Y" ]] || [[ "$clear_global_user_parms" == "y" ]]; then    
+            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
+            printf "${green}...(DONE)${white}"
+        fi
 		
         clear_session_and_exit
     fi
@@ -1402,27 +1410,6 @@ function runsas_success_email(){
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE	
         send_an_email -v "" "Batch has completed successfully!" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
     fi
-}
-#------
-# Name: store_a_key_value_pair()
-# Desc: Stores a key-value pair in a file
-#   In: file, key, value
-#  Out: <NA>
-#------
-function store_a_key_value_pair(){
-    sed -i "/$2/d" $1 # Remove the previous entry
-    echo "$2 $3" >> $1 # Add a new entry 
-}
-#------
-# Name: retrieve_a_key_value_pair()
-# Desc: Check job runtime for the last batch run
-#   In: file, key
-#  Out: <NA>
-#------
-function retrieve_a_key_value_pair(){
-	if [ -f "$1" ]; then
-		retrieved_value=`awk -v pat="$2" -F" " '$0~pat { print $2 }' $1`
-	fi   
 }
 #------
 # Name: store_job_runtime_stats()
@@ -1700,10 +1687,68 @@ function validate_job_list(){
 	fi
 }
 #------
+# Name: store_a_key_value_pair()
+# Desc: Stores a key-value pair in a file
+#   In: key, value, file
+#  Out: <NA>
+#------
+function store_a_key_value_pair(){
+    # Parameters
+    local key=$1
+    local val=$2
+    local file=$3
+    # Set a temp file by the name of key if the file is not specified
+    if [[ "$file" == "" ]]; then
+        file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+    fi
+    sed -i "/$key/d" $file # Remove the previous entry
+    echo "$key $val" >> $file # Add a new entry 
+}
+#------
+# Name: retrieve_a_key_value_pair()
+# Desc: Check job runtime for the last batch run
+#   In: key, file
+#  Out: <NA>
+#------
+function retrieve_a_key_value_pair(){
+    # Parameters
+    local key=$1
+    local file=$2
+    # Set a temp file by the name of key if the file is not specified
+    if [[ "$file" == "" ]]; then
+        file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+    fi
+    # Set the value found in the file to the key
+    if [ -f "$file" ]; then
+        eval ${!key}=`awk -v pat="$key" -F" " '$0~pat { print $2 }' $file`
+    fi   
+}
+#------
+# Name: get_updated_value_for_a_key_from_user()
+# Desc: Ask user for a new value for a key (if user has specified an answer show it as prepopulated and finally store the updated value for future use)
+#   In: key, message, message-color, value-color, file (optional)
+#  Out: <NA>
+#------
+function get_updated_value_for_a_key_from_user(){
+    # Parameters
+    keyval_key=$1
+    keyval_message=$2
+    keyval_message_color="${3:-'green'}"
+    keyval_val_color="${4:-'grey'}"
+    keyval_file=$4
+
+    # First retrieve the value for the key from the file if it is available.
+    retrieve_a_key_value_pair $keyval_key
+    # Show the message with colors 
+    read -p "${!keyval_message_color}${keyval_message}${!keyval_val_color}" -i "$keyval_key" -e keyval_updated_value	
+    # Store the value (updated value)
+    store_a_key_value_pair $keyval_key $keyval_updated_value
+}
+#------
 # Name: deploy_or_redeploy_sas_jobs()
 # Desc: This function redeploys SAS jobs if user has requested for it (currently only supports REDEPLOY)
 #  Ref: http://support.sas.com/documentation/cdl/en/etlug/68225/HTML/default/viewer.htm#p1jxhqhaz10gj2n1pyr0hbzozv2f.htm)
-#   In: mode
+#   In: mode, jobs-file
 #  Out: <NA>
 #------
 function deploy_or_redeploy_sas_jobs(){
@@ -1724,29 +1769,12 @@ function deploy_or_redeploy_sas_jobs(){
 			printf "\n"
 			
 			# Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
-			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_user
-			read -p "${green}SAS Metadata username (e.g.: sasadm@saspw): ${grey}" -i "$retrieved_value" -e read_depjob_user	
-			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_user $read_depjob_user
-			
-			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_password
-			read -p "${green}SAS Metadata password: ${grey}" -i "$retrieved_value" -e read_depjob_password	
-			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_password $read_depjob_password
-
-			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_appservername
-			read -p "${green}SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): ${grey}" -i "$retrieved_value" -e read_depjob_appservername	
-			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_appservername $read_depjob_appservername
-			
-			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverusername
-			read -p "${green}SAS Application server username (e.g.: ${SUDO_USER:-$USER}): ${grey}" -i "$retrieved_value" -e read_depjob_serverusername	
-			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverusername $read_depjob_serverusername
-
-			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverpassword
-			read -p "${green}SAS Application server password: ${grey}" -i "$retrieved_value" -e read_depjob_serverpassword	
-			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_serverpassword $read_depjob_serverpassword
-			
-			retrieve_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_level
-			read -p "${green}SAS level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): ${grey}" -i "$retrieved_value" -e read_depjob_level	
-			store_a_key_value_pair $RUNSAS_DEPJOB_USER_PARMS_FILE read_depjob_level $read_depjob_level
+            get_updated_value_for_a_key_from_user read_depjob_user "SAS Metadata username (e.g.: sas or sasadm@saspw): " 
+			get_updated_value_for_a_key_from_user read_depjob_password "SAS Metadata password: " 
+            get_updated_value_for_a_key_from_user read_depjob_appservername "SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): " 
+            get_updated_value_for_a_key_from_user read_depjob_serverusername "SAS Application/Compute server username (e.g.: ${SUDO_USER:-$USER}): " 
+            get_updated_value_for_a_key_from_user read_depjob_serverpassword "SAS Application/Compute server password: " 
+            get_updated_value_for_a_key_from_user read_depjob_level "SAS Level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): " 
 			
 			# Newlines
 			printf "\n"
@@ -2413,6 +2441,7 @@ SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
 RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 RUNSAS_DEPJOB_USER_PARMS_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_depjob_user.parms
 RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_depjob_runtime.log
+RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
 
 # Bash color codes for the console
 set_colors_codes
