@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.1                                                                                                  #
+#     Version: 13.2                                                                                                  #
 #                                                                                                                    #
-#        Date: 21/10/2019                                                                                            #
+#        Date: 23/10/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|1|
+|r|u|n|S|A|S| |v|1|3|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.1                                        
+	RUNSAS_CURRENT_VERSION=13.2                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1707,7 +1707,7 @@ function store_a_key_value_pair(){
         sed -i "/$str_key/d" $str_file
     fi 
 	# Add the new entry (or update the entry)
-    echo "$str_key $str_val" >> $str_file # Add a new entry 
+    echo "$str_key: $str_val" >> $str_file # Add a new entry 
 }
 #------
 # Name: retrieve_a_key_value_pair()
@@ -1728,7 +1728,7 @@ function retrieve_a_key_value_pair(){
 	
     # Set the value found in the file to the key
     if [ -f "$ret_file" ]; then
-        eval $ret_key=`awk -v pat="$ret_key" -F" " '$0~pat { print $2 }' $ret_file`
+        eval $ret_key=`awk -v pat="$ret_key" -F": " '$0~pat { print $2 }' $ret_file`
     fi   
 }
 #------
@@ -1785,9 +1785,15 @@ function deploy_or_redeploy_sas_jobs(){
             get_updated_value_for_a_key_from_user read_depjob_serverusername "SAS Application/Compute server username (e.g.: ${SUDO_USER:-$USER}): " 
             get_updated_value_for_a_key_from_user read_depjob_serverpassword "SAS Application/Compute server password: " 
             get_updated_value_for_a_key_from_user read_depjob_level "SAS Level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): " 
-			
-			# Newlines
-			printf "\n"
+            get_updated_value_for_a_key_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
+
+            # Clear deployment directory for a fresh start (based on user)
+            if [[ "$read_depjob_clear_files" == "Y" ]]; then
+                printf "${white}\nPlease wait, clearing all existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...${white}"
+                sleep 7 # If user wants to abort, he has 5 seconds...:)
+                rm -rf $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
+                printf "${green}DONE\n\n${white}"
+            fi
 			
 			# Set the parameters (some are set to defaults and the rest is from the user inputs above)
 			depjobs_scripts_root_directory=$SAS_HOME_DIRECTORY/SASDataIntegrationStudioServerJARs/4.8
