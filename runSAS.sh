@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.4                                                                                                  #
+#     Version: 13.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 23/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|4|
+|r|u|n|S|A|S| |v|1|3|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.4                                        
+	RUNSAS_CURRENT_VERSION=13.5                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -638,7 +638,7 @@ function delete_a_file(){
         fi
     else
         if [[ ! "$delete_message" == "0" ]]; then 
-            printf "${red}...(file does not exist, no action taken)${white}"
+            printf "${grey}...(file does not exist, no action taken)${white}"
         fi
     fi        
 }
@@ -1821,8 +1821,8 @@ function deploy_or_redeploy_sas_jobs(){
             # Clear deployment directory for a fresh start (based on user input)
             if [[ "$read_depjob_clear_files" == "Y" ]]; then
                 printf "${white}\nPlease wait, clearing all the existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...${white}"
-                rm -rf $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
-                printf "${green}(DONE)\n\n${white}"
+                delete_a_file $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
+                printf "${green}\n\n${white}"
             fi
 			
 			# Set the parameters (some are set to defaults and the rest is from the user inputs above)
@@ -2685,11 +2685,12 @@ runsas_success_email
 
 # Clear the run history 
 if [[ "$ENABLE_RUNSAS_RUN_HISTORY" != "Y" ]]; then 
-    rm -rf $JOB_STATS_DELTA_FILE
+    delete_a_file $JOB_STATS_DELTA_FILE 0
 fi
 
 # Tidy up
-rm -rf $TMP_LOG_FILE $JOB_THAT_ERRORED_FILE
+delete_a_file $TMP_LOG_FILE 0
+delete_a_file $JOB_THAT_ERRORED_FILE 0
 
 # END: Clear the session, reset the console
 clear_session_and_exit
