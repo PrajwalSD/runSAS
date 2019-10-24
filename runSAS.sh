@@ -612,6 +612,37 @@ function check_if_the_file_exists(){
     done
 }
 #------
+# Name: delete_a_file()
+# Desc: Removes/deletes file(s) 
+#   In: file-name (wild-card "*" supported, multiple files not supported), post-delete-message (optional), delete-options(optional), post-delete-message-color(optional)
+#  Out: <NA>
+#------
+function delete_a_file(){
+    # Parameters
+    delete_filename=$1
+    delete_message="${2:-...(DONE)}"
+    delete_options="${3:--rf}"
+    delete_message_color="${4:-green}"
+
+    # Check if the file exists before attempting to delete it.
+    if ls $delete_filename 1> /dev/null 2>&1; then
+        rm $delete_options $delete_filename
+        # Check if the file exists post delete
+        if ls $delete_filename 1> /dev/null 2>&1; then
+            printf "${red}\n*** ERRROR: Request did not complete successfully, $delete_filename was not removed (possibly some issues with permissions?) ***\n${white}"
+            clear_session_and_exit
+        else
+            if [[ ! "$delete_message" == "0" ]]; then 
+                printf "${!delete_message_color}${delete_message}${white}"
+            fi
+        fi
+    else
+        if [[ ! "$delete_message" == "0" ]]; then 
+            printf "${red}...(file does not exist, no action taken)${white}"
+        fi
+    fi        
+}
+#------
 # Name: create_a_new_directory()
 # Desc: Create a specified directory if it doesn't exist
 #   In: directory-name (multiple could be specified)
@@ -1117,52 +1148,47 @@ function reset_runsas(){
         stty igncr < /dev/tty
         read -n1 clear_tmp_files
         if [[ "$clear_tmp_files" == "Y" ]] || [[ "$clear_tmp_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.tmp_s.log
-            rm -rf $RUNSAS_TMP_DIRECTORY/.tmp.log
-            rm -rf $RUNSAS_TMP_DIRECTORY/.email_body_msg.html
-            rm -rf $RUNSAS_TMP_DIRECTORY/.sastrace.check
-            rm -rf $RUNSAS_TMP_DIRECTORY/.errored_job.log
-            rm -rf $RUNSAS_TMP_DIRECTORY/.email_console_print.html
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_intro.done
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.tmp_s.log 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.tmp.log 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.email_body_msg.html 0 
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.sastrace.check 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.errored_job.log 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.email_console_print.html 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_intro.done 0
             printf "${green}...(DONE)${white}"
         fi
         # Clear the session history files
-        printf "${red}\nClear session history file? (Y/N): ${white}"
+        printf "${red}\nClear runSAS session history? (Y/N): ${white}"
         stty igncr < /dev/tty
-        read -n1 clear_sess_files
-        if [[ "$clear_sess_files" == "Y" ]] || [[ "$clear_sess_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
-            printf "${green}...(DONE)${white}"
+        read -n1 clear_session_files
+        if [[ "$clear_session_files" == "Y" ]] || [[ "$clear_session_files" == "y" ]]; then    
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
         fi
         # Clear the historical run stats
         printf "${red}\nClear historical runtime stats? (Y/N): ${white}"
         stty igncr < /dev/tty
         read -n1 clear_his_files
         if [[ "$clear_his_files" == "Y" ]] || [[ "$clear_his_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.job_delta*.*
-            rm -rf $RUNSAS_TMP_DIRECTORY/.job.stats
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.job_delta*.* 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.job.stats 0
             printf "${green}...(DONE)${white}"
         fi
 		# Clear redeploy parameters file
-        printf "${red}\nClear job redeployment parameter files? (Y/N): ${white}"
+        printf "${red}\nClear job redeployment logs? (Y/N): ${white}"
         stty igncr < /dev/tty
         read -n1 clear_depjob_files
         if [[ "$clear_depjob_files" == "Y" ]] || [[ "$clear_depjob_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_depjob_user.parms
-			rm -rf $RUNSAS_TMP_DIRECTORY/runsas_depjob_util_*.log
-			rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_depjob_runtime.log
-            printf "${green}...(DONE)${white}"
+			delete_a_file $RUNSAS_TMP_DIRECTORY/runsas_depjob_util*.log
         fi
         # Clear global user parameters file
-        printf "${red}\nClear global user parameters files? (Y/N): ${white}"
+        printf "${red}\nClear stored global user parameters? (Y/N): ${white}"
         stty igncr < /dev/tty
         read -n1 clear_global_user_parms
         if [[ "$clear_global_user_parms" == "Y" ]] || [[ "$clear_global_user_parms" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
-            printf "${green}...(DONE)${white}"
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
         fi
-		
+
         clear_session_and_exit
     fi
 }
@@ -1779,25 +1805,24 @@ function deploy_or_redeploy_sas_jobs(){
 
 			# Create an empty file
 			create_a_new_file $depjob_job_file
-			create_a_new_file $RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE
 			
 			# Newlines
 			printf "\n"
 						
 			# Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
+            get_updated_value_for_a_key_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
             get_updated_value_for_a_key_from_user read_depjob_user "SAS Metadata username (e.g.: sas or sasadm@saspw): " 
 			get_updated_value_for_a_key_from_user read_depjob_password "SAS Metadata password: " 
-            get_updated_value_for_a_key_from_user read_depjob_appservername "SAS Application server context (e.g.: $SAS_APP_SERVER_NAME): " 
+            get_updated_value_for_a_key_from_user read_depjob_appservername "SAS Application server name (e.g.: $SAS_APP_SERVER_NAME): " 
             get_updated_value_for_a_key_from_user read_depjob_serverusername "SAS Application/Compute server username (e.g.: ${SUDO_USER:-$USER}): " 
             get_updated_value_for_a_key_from_user read_depjob_serverpassword "SAS Application/Compute server password: " 
-            get_updated_value_for_a_key_from_user read_depjob_level "SAS Level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 etc.): " 
-            get_updated_value_for_a_key_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
+            get_updated_value_for_a_key_from_user read_depjob_level "SAS Level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 and so on...): " 
 
-            # Clear deployment directory for a fresh start (based on user)
+            # Clear deployment directory for a fresh start (based on user input)
             if [[ "$read_depjob_clear_files" == "Y" ]]; then
-                printf "${white}\nPlease wait, clearing all existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...${white}"
+                printf "${white}\nPlease wait, clearing all the existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...${white}"
                 rm -rf $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
-                printf "${green}DONE\n\n${white}"
+                printf "${green}(DONE)\n\n${white}"
             fi
 			
 			# Set the parameters (some are set to defaults and the rest is from the user inputs above)
@@ -1815,7 +1840,7 @@ function deploy_or_redeploy_sas_jobs(){
 			depjob_serverusername=$read_depjob_serverusername
 			depjob_serverpassword=$read_depjob_serverpassword
 			depjob_batchserver="$read_depjob_appservername - SAS DATA Step Batch Server" 
-			depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_depjob_util_$depjob_start_timestamp.log
+			depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_depjob_util.log
 			
 			# Check if the utility exists? 
 			if [ ! -f "$depjobs_scripts_root_directory/DeployJobs" ]; then
@@ -2479,8 +2504,6 @@ RUNSAS_LAST_JOB_PID_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
 RUNSAS_FIRST_USER_INTRO_DONE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_intro.done
 SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
 RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
-RUNSAS_DEPJOB_USER_PARMS_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_depjob_user.parms
-RUNSAS_DEPJOB_TOTAL_RUNTIME_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_depjob_runtime.log
 RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
 
 # Bash color codes for the console
