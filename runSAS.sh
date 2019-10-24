@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.3                                                                                                  #
+#     Version: 13.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 23/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|3|
+|r|u|n|S|A|S| |v|1|3|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.3                                        
+	RUNSAS_CURRENT_VERSION=13.4                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1916,17 +1916,16 @@ function deploy_or_redeploy_sas_jobs(){
 
 			# Clear session
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
-            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
+            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.\n\n${white}"
 
             # Store runtime for future use
             store_a_key_value_pair depjob_total_runtime $depjob_total_runtime
 
             # Send an email
-            if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]]; then
+            if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
                 echo "The redeployment of $depjob_job_total_count jobs is complete, took a total of $depjob_total_runtime seconds to complete." > $EMAIL_BODY_MSG_FILE
                 add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-                send_an_email -v "" "Redeployed $depjob_job_total_count jobs" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
-                printf "\n\n"
+                send_an_email -v "" "Jobs were redeployed" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
             fi
 
             # End
