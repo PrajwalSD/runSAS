@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.5                                                                                                  #
+#     Version: 13.6                                                                                                  #
 #                                                                                                                    #
-#        Date: 23/10/2019                                                                                            #
+#        Date: 25/10/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|5|
+|r|u|n|S|A|S| |v|1|3|.|6|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.5                                        
+	RUNSAS_CURRENT_VERSION=13.6                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -174,7 +174,7 @@ function print_the_help_menu(){
         printf "\n     --log or --last              runSAS will show the last script run details"
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
-        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file> (NOTE: DEPLOY option is not available yet)"
+        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file> (NOTE: DEPLOY option is not available)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -344,18 +344,18 @@ function check_dependencies(){
             if [[ -z "$check_dependency_cmd" ]]; then
                 printf "${red}\n*** ERROR: Dependency checks failed, ${white}${red_bg}$prg${white}${red} program is not found, runSAS requires this program to run. ***\n"
                 # If the package installer is available try installing the missing dependency
-                if [[ ! -z `which $PACKAGE_INSTALLER_PROGRAM` ]]; then
-                    printf "${green}\nPress Y to auto install $prg (requires $PACKAGE_INSTALLER_PROGRAM and sudo access if you're not root): ${white}"
+                if [[ ! -z `which $SERVER_PACKAGE_INSTALLER_PROGRAM` ]]; then
+                    printf "${green}\nPress Y to auto install $prg (requires $SERVER_PACKAGE_INSTALLER_PROGRAM and sudo access if you're not root): ${white}"
                     read read_install_dependency
                     if [[ "$read_install_dependency" == "Y" ]]; then
                         printf "${white}\nAttempting to install $prg, running ${green}sudo yum install $prg${white}...\n${white}"
                         # Command 
-                        sudo $PACKAGE_INSTALLER_PROGRAM install $prg
+                        sudo $SERVER_PACKAGE_INSTALLER_PROGRAM install $prg
                     else
-                        printf "${white}Try installing this using $PACKAGE_INSTALLER_PROGRAM, run ${green}sudo $PACKAGE_INSTALLER_PROGRAM install $prg${white} or download the $prg package from web (Goooooogle!)"
+                        printf "${white}Try installing this using $SERVER_PACKAGE_INSTALLER_PROGRAM, run ${green}sudo $SERVER_PACKAGE_INSTALLER_PROGRAM install $prg${white} or download the $prg package from web (Goooooogle!)"
                     fi
                 else
-                    printf "${green}\n$PACKAGE_INSTALLER_PROGRAM not found, skipping auto-install.\n${white}"
+                    printf "${green}\n$SERVER_PACKAGE_INSTALLER_PROGRAM not found, skipping auto-install.\n${white}"
                     printf "${white}\nLaunch runSAS after installing the ${green}$prg${white} program manually (Google is your friend!) or ask server administrator."
                 fi
                 clear_session_and_exit
@@ -629,7 +629,7 @@ function delete_a_file(){
         rm $delete_options $delete_filename
         # Check if the file exists post delete
         if ls $delete_filename 1> /dev/null 2>&1; then
-            printf "${red}\n*** ERRROR: Request did not complete successfully, $delete_filename was not removed (possibly some issues with permissions?) ***\n${white}"
+            printf "${red}\n*** ERRROR: Delete request did not complete successfully, $delete_filename was not removed (permissions issue?) ***\n${white}"
             clear_session_and_exit
         else
             if [[ ! "$delete_message" == "0" ]]; then 
@@ -1771,23 +1771,23 @@ function get_updated_value_for_a_key_from_user(){
     keyval_val_color="${4:-grey}"
     keyval_file=$4
 	
-    # First retrieve the value for the key from the file if it is available.
+    # First retrieve the value for the key from the global parameters file, if it is available.
     retrieve_a_key_value_pair $keyval_key
 	
-    # Show the message with colors 
+    # Prompt 
     read -p "${!keyval_message_color}${keyval_message}${!keyval_val_color}" -i "${!keyval_key}" -e $keyval_key	
 	
     # Store the value (updated value)
     store_a_key_value_pair $keyval_key ${!keyval_key}
 }
 #------
-# Name: deploy_or_redeploy_sas_jobs()
+# Name: redeploy_sas_jobs()
 # Desc: This function redeploys SAS jobs if user has requested for it (currently only supports REDEPLOY)
 #  Ref: http://support.sas.com/documentation/cdl/en/etlug/68225/HTML/default/viewer.htm#p1jxhqhaz10gj2n1pyr0hbzozv2f.htm)
 #   In: mode, jobs-file
 #  Out: <NA>
 #------
-function deploy_or_redeploy_sas_jobs(){
+function redeploy_sas_jobs(){
     # Parameters
     depjob_mode=$1
     depjob_job_file=$2
@@ -1800,9 +1800,6 @@ function deploy_or_redeploy_sas_jobs(){
 			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $depjob_mode option (e.g.: ./runSAS.sh --redeploy ./deploy_jobs.list) ***${white}"
 			clear_session_and_exit
 		else
-			# Timestamp
-			depjob_start_timestamp=`date '+%Y%m%d_%H%M%S'`
-
 			# Create an empty file
 			create_a_new_file $depjob_job_file
 			
@@ -1875,7 +1872,7 @@ function deploy_or_redeploy_sas_jobs(){
 
             # Add to audit log
             print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
-            print_2_runsas_session_log "Redeployment start timestamp: $depjob_start_timestamp"
+            print_2_runsas_session_log "Redeployment start timestamp: $start_datetime_of_session_timestamp"
             print_2_runsas_session_log "DepJobs SAS 9.x utility directory: $depjobs_scripts_root_directory"
 			print_2_runsas_session_log "Metadata server: $depjob_host"
 			print_2_runsas_session_log "Port: $depjob_port"
@@ -1902,7 +1899,7 @@ function deploy_or_redeploy_sas_jobs(){
 
 				# Make sure the metadata tree path is specified in the job list to use --redeploy feature
 				if [[ "${job%/*}" == "" ]]; then
-					printf "\n${red}*** ERROR: To use $1 feature in runSAS, you must specify full metadata path for the jobs in the list (relative to ${red_bg}${black}SAS Folders${end}${red} directory) *** ${white}"
+					printf "\n${red}*** ERROR: To use $depjob_mode feature in runSAS, you must specify full metadata path for the jobs in the list (relative to ${red_bg}${black}SAS Folders${end}${red} directory) ***\n${white}"
 					clear_session_and_exit
 				fi
 
@@ -1923,7 +1920,7 @@ function deploy_or_redeploy_sas_jobs(){
 															-batchserver "$depjob_batchserver" \
 															-log $depjob_log
 															
-				# Fix the file name with underscores (SAS DI does this by default, just to keep it in-sync with deployed job name referred in .jobs.list file)
+				# Fix the file name with underscores (SAS DI currently does this by default, just to keep it in-sync with deployed job name referred in .jobs.list file)
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
@@ -1948,9 +1945,9 @@ function deploy_or_redeploy_sas_jobs(){
 
             # Send an email
             if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
-                echo "The redeployment of $depjob_job_total_count jobs is complete, took a total of $depjob_total_runtime seconds to complete." > $EMAIL_BODY_MSG_FILE
+                echo "The redeployment of $depjob_job_total_count jobs is complete, took a total of $depjob_total_runtime seconds to complete. " > $EMAIL_BODY_MSG_FILE
                 add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-                send_an_email -v "" "Jobs were redeployed" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+                send_an_email -v "" "Redeployment of jobs is complete" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
             fi
 
             # End
@@ -2485,7 +2482,7 @@ INDEX_MODE_FIRST_JOB_NUMBER=-1
 INDEX_MODE_SECOND_JOB_NUMBER=-1
 EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
 DEFAULT_PROGRESS_BAR_COLOR="green_bg"
-PACKAGE_INSTALLER_PROGRAM=yum
+SERVER_PACKAGE_INSTALLER_PROGRAM=yum
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -2608,7 +2605,7 @@ fi
 run_a_job_mode_check
 
 # Redeploy jobs routine (--redeploy option)
-deploy_or_redeploy_sas_jobs $script_mode $script_mode_value_1
+redeploy_sas_jobs $script_mode $script_mode_value_1
 
 # Print job(s) list on console
 print_file_content_with_index .job.list jobs
