@@ -436,9 +436,14 @@ if ! [[ $curr_runsas_ver =~ $runsas_version_number_regex ]]; then
     clear_session_and_exit
 else
     if (( $(echo "$curr_runsas_ver < $compatible_runsas_ver" | bc -l) )); then
-		printf "${red}\n\n*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update ***\n${white}"
-		printf "${red}*** Download the latest version (and update it) manually from $RUNSAS_GITHUB_SOURCE_CODE_URL ***${white}"
-		clear_session_and_exit
+        if [[ "$script_mode_value_1" == "--force" ]]; then
+            printf "${red}\n\nAttempting a force update, this option will reset the current configuration so you need to have a back up of the existing configuration to restore the script to the current state manually. \n${white}"
+            press_enter_key_to_continue
+        else
+            printf "${red}\n\n*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update due to configuration section changes in the latest release ***\n${white}"
+            printf "${red}*** Download the latest version (and update it) manually from $RUNSAS_GITHUB_SOURCE_CODE_URL or use --force option to force update the script (may reset the config, take a backup) ***${white}"
+            clear_session_and_exit
+        fi
     fi
 fi
 
