@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.7                                                                                                  #
+#     Version: 13.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 25/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|7|
+|r|u|n|S|A|S| |v|1|3|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.7                                        
+	RUNSAS_CURRENT_VERSION=13.8                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -440,13 +440,13 @@ if ! [[ $curr_runsas_ver =~ $runsas_version_number_regex ]]; then
 else
     if (( $(echo "$curr_runsas_ver < $compatible_runsas_ver" | bc -l) )); then
         if [[ "$script_mode_value_1" == "--force" ]]; then
-            printf "${red}\n\nAttempting a force update, this option will reset the current configuration so you need to have a back up of the existing configuration to restore the script to the current state manually. \n${white}"
+            printf "${red}\n\nWARNING: Attempting a force update (you specified --force), this will reset the current configuration, do you want to continue? ${white}"
             press_enter_key_to_continue
             # Reset, so that user is shown a welcome message
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_intro.done 0
             # Force overwrite the config (old config is kept anyway)
             cat .runSAS.sh.downloaded | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
-            printf "${red}\n\nThe configuration section was reset, please make sure you configure it again (a backup was kept in ${red_bg}${black}.runSAS.config${end}${red} file).\n${white}"
+            printf "${red}\n\nThe configuration section was reset, please make sure you configure it again (a backup was kept in ${red_bg}${black}.runSAS.config${end}${red} file).\n\n${white}"
         else
             printf "${red}\n\n*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update due to configuration section changes in the latest release ***\n${white}"
             printf "${red}*** Download the latest version (and update it) manually from $RUNSAS_GITHUB_SOURCE_CODE_URL or use --force option to force update the script (may reset the config, take a backup) ***${white}"
