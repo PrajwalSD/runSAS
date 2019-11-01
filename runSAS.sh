@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.6                                                                                                  #
+#     Version: 13.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 25/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|6|
+|r|u|n|S|A|S| |v|1|3|.|7|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.6                                        
+	RUNSAS_CURRENT_VERSION=13.7                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -168,7 +168,7 @@ function print_the_help_menu(){
         printf "\n      -fu   <job-name> <job-name> runSAS will run from one job upto the other job."
         printf "\n      -fui  <job-name> <job-name> runSAS will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
         printf "\n      -fuis <job-name> <job-name> runSAS will run from one job upto the other job, but in an interactive mode (skips the rest)"
-        printf "\n     --update                     runSAS will update itself to the latest version from Github"
+        printf "\n     --update                     runSAS will update itself to the latest version from Github, if you want to force an update then use --force"
         printf "\n     --delay <time-in-seconds>    runSAS will launch after a specified time delay in seconds"
         printf "\n     --jobs or --show             runSAS will show a list of job(s) provided by the user in the script (quick preview)"
         printf "\n     --log or --last              runSAS will show the last script run details"
@@ -424,6 +424,9 @@ rm -rf .runSAS.sh.downloaded.ver
 # runSAS version number regex pattern (i.e. nn.nn e.g. 9.0 or 10.12)
 runsas_version_number_regex='^[0-9]+([.][0-9]+)?$' 
 
+# Extract the existing config
+cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
+
 # Check if the environment already has the latest version, a warning must be shown
 if (( $(echo "$curr_runsas_ver >= $new_runsas_ver" | bc -l) )); then
     printf "${red}\n\nWARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver). Do you still want to update?${white}"
@@ -439,6 +442,11 @@ else
         if [[ "$script_mode_value_1" == "--force" ]]; then
             printf "${red}\n\nAttempting a force update, this option will reset the current configuration so you need to have a back up of the existing configuration to restore the script to the current state manually. \n${white}"
             press_enter_key_to_continue
+            # Reset, so that user is shown a welcome message
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_intro.done 0
+            # Force overwrite the config (old config is kept anyway)
+            cat .runSAS.sh.downloaded | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
+            printf "${red}\n\nThe configuration section was reset, please make sure you configure it again (a backup was kept in ${red_bg}${black}.runSAS.config${end}${red} file).\n${white}"
         else
             printf "${red}\n\n*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update due to configuration section changes in the latest release ***\n${white}"
             printf "${red}*** Download the latest version (and update it) manually from $RUNSAS_GITHUB_SOURCE_CODE_URL or use --force option to force update the script (may reset the config, take a backup) ***${white}"
@@ -449,9 +457,6 @@ fi
 
 # Just to keep the console messages tidy
 printf "\n"
-
-# Get a config backup from existing script
-cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
 
 # Remove everything between the markers in the downloaded file
 sed -i '/^\#</,/^\#>/{/^\#</!{/^\#>/!d;};}' .runSAS.sh.downloaded
@@ -478,9 +483,6 @@ else
     printf "${red}\n\n*** You can recover the old version of runSAS from the backup created during this process, if needed. ***${white}\n"
 fi
 EOF
-
-# Continue
-press_enter_key_to_continue 1
    
 # Handover the execution to the update script 
 exec /bin/bash .runSAS_update.sh
