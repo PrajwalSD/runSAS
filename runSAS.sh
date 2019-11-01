@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.0                                                                                                  #
+#     Version: 14.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 25/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|0|
+|r|u|n|S|A|S| |v|1|4|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.0                                       
+	RUNSAS_CURRENT_VERSION=14.1                                       
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -450,7 +450,7 @@ else
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_intro.done 0
             # Force overwrite the config (old config is kept anyway)
             cat .runSAS.sh.downloaded | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
-            printf "${red}\n\nThe configuration section was reset, please make sure you configure it again (a backup was kept in ${red_bg}${black}.runSAS.config${end}${red} file).\n\n${white}"
+            printf "${red}The configuration section was reset, please make sure you configure it again (a backup was kept in ${red_bg}${black}.runSAS.config${end}${red} file).${white}"
         else
             printf "${red}\n\n*** ERROR: The current version of the script ($curr_runsas_ver${red}) is not compatible with auto-update due to configuration section changes in the latest release ***\n${white}"
             printf "${red}*** Download the latest version (and update it) manually from $RUNSAS_GITHUB_SOURCE_CODE_URL or use --force option to force update the script (may reset the config, take a backup) ***${white}"
