@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 13.8                                                                                                  #
+#     Version: 13.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 25/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|3|.|8|
+|r|u|n|S|A|S| |v|1|3|.|9|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=13.8                                        
+	RUNSAS_CURRENT_VERSION=13.9                                        
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -168,7 +168,7 @@ function print_the_help_menu(){
         printf "\n      -fu   <job-name> <job-name> runSAS will run from one job upto the other job."
         printf "\n      -fui  <job-name> <job-name> runSAS will run from one job upto the other job, but in an interactive mode (runs the rest in a non-interactive mode)"
         printf "\n      -fuis <job-name> <job-name> runSAS will run from one job upto the other job, but in an interactive mode (skips the rest)"
-        printf "\n     --update                     runSAS will update itself to the latest version from Github, if you want to force an update then use --force"
+        printf "\n     --update                     runSAS will update itself to the latest version from Github, if you want to force an update on version mismatch use --force"
         printf "\n     --delay <time-in-seconds>    runSAS will launch after a specified time delay in seconds"
         printf "\n     --jobs or --show             runSAS will show a list of job(s) provided by the user in the script (quick preview)"
         printf "\n     --log or --last              runSAS will show the last script run details"
@@ -429,7 +429,8 @@ cat runSAS.sh | sed -n '/^\#</,/^\#>/{/^\#</!{/^\#>/!p;};}' > .runSAS.config
 
 # Check if the environment already has the latest version, a warning must be shown
 if (( $(echo "$curr_runsas_ver >= $new_runsas_ver" | bc -l) )); then
-    printf "${red}\n\nWARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver). Do you still want to update?${white}"
+    printf "${red}\n\nWARNING: It looks like you already have the latest version of the script (i.e. $curr_runsas_ver). Do you still want to update?\n${white}"
+    press_enter_key_to_continue
 fi
 
 # Check if the current version is auto-update compatible? 
