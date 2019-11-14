@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.2                                                                                                  #
+#     Version: 14.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 25/10/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|2|
+|r|u|n|S|A|S| |v|1|4|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.2                                       
+	RUNSAS_CURRENT_VERSION=14.3                                       
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -867,16 +867,16 @@ function run_a_job_mode_check(){
     rjmode_sas_sh="${7:-$SAS_DEFAULT_SH}"
     rjmode_sas_logs_root_directory="${8:-$SAS_LOGS_ROOT_DIRECTORY}"
     rjmode_sas_deployed_jobs_root_directory="${9:-$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY}"
-      
+    
     if [[ "$rjmode_script_mode" == "-j" ]]; then
         if [[ "$rjmode_sas_job" == "" ]]; then
-            printf "${red}*** ERROR: You launched the script in $rjmode_script_mode(run-a-job) mode, a job name is also required (without the .sas extension) after $script_mode option ***${white}"
+            printf "${red}\n*** ERROR: You launched the script in $rjmode_script_mode(run-a-job) mode, a job name is also required (without the .sas extension) after $script_mode option ***${white}"
             clear_session_and_exit
         else
             check_if_the_file_exists $rjmode_sas_deployed_jobs_root_directory/$rjmode_sas_job.$PROGRAM_TYPE_EXTENSION
 			printf "\n"
 			TOTAL_NO_OF_JOBS_COUNTER_CMD=1
-			runSAS $rjmode_sas_job $rjmode_sas_opt $rjmode_sas_subopt $rjmode_sas_app_root_directory $rjmode_sas_batch_server_root_directory $rjmode_sas_sh $rjmode_sas_logs_root_directory $rjmode_sas_deployed_jobs_root_directory
+			runSAS ${rjmode_sas_job##/*/} "$rjmode_sas_opt" "$rjmode_sas_subopt" "$rjmode_sas_app_root_directory" "$rjmode_sas_batch_server_root_directory" "$rjmode_sas_sh" "$rjmode_sas_logs_root_directory" "$rjmode_sas_deployed_jobs_root_directory"
 			clear_session_and_exit
         fi
     fi
@@ -1559,7 +1559,7 @@ function clear_session_and_exit(){
         reset
     fi
     running_processes_housekeeping $job_pid
-    printf "${green}*** runSAS is exiting now ***${white}\n\n"
+    printf "${green}*** runSAS is exiting now ***${white}\n"
     exit 1
 }
 #------
@@ -2613,7 +2613,7 @@ if [[ ${#@} -ne 0 ]]; then
 fi
 
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
-run_a_job_mode_check
+run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
 
 # Redeploy jobs routine (--redeploy option)
 redeploy_sas_jobs $script_mode $script_mode_value_1
