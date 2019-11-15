@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.6                                                                                                  #
+#     Version: 14.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 03/11/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|6|
+|r|u|n|S|A|S| |v|1|4|.|7|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.6                                      
+	RUNSAS_CURRENT_VERSION=14.7                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1489,6 +1489,7 @@ function show_job_hist_runtime_stats(){
 function show_time_remaining_stats(){
 	get_job_hist_runtime_stats $1
 	if [[ "$hist_job_runtime" != "" ]]; then
+		# Record timestamp
 		time_remaining_stats_curr_timestamp=`date +%s`
 		
 		# Calculate the time remaining in secs.
@@ -1505,13 +1506,36 @@ function show_time_remaining_stats(){
 		
 		# Show the stats
         if [[ $time_remaining_in_secs -ge 0 ]]; then
-            time_remaining_msg=" ~$time_remaining_in_secs secs remaining..." 
+            time_stats_msg=" ~$time_remaining_in_secs secs remaining..." 
         else
-		    time_remaining_msg=" $time_remaining_in_secs secs..." 
+		    time_stats_msg=" $time_remaining_in_secs secs..." 
 		fi
-
+		
 		# Record the message last shown timestamp
 		time_remaining_stats_last_shown_timestamp=$time_remaining_stats_curr_timestamp
+	else
+		# Record timestamp
+		time_since_run_msg_curr_timestamp=`date +%s`
+		
+		# Calculate the time remaining in secs.
+		if [ ! -z "$time_since_run_msg_last_shown_timestamp" ]; then
+            let diff_in_seconds=$time_since_run_msg_curr_timestamp-$time_since_run_msg_last_shown_timestamp
+            if [[ $diff_in_seconds -lt 0 ]]; then
+                diff_in_seconds=0
+            fi
+			let time_since_run_in_secs=$time_since_run_in_secs+$diff_in_seconds
+		else
+			let time_since_run_in_secs=0
+            let diff_in_seconds=0
+		fi
+		
+		# Show the stats
+        if [[ $time_since_run_in_secs -ge 0 ]]; then
+            time_stats_msg=" ~$time_since_run_in_secs secs elapsed..." 
+		fi
+		
+		# Record the message last shown timestamp
+		time_since_run_msg_last_shown_timestamp=$time_since_run_msg_curr_timestamp
 	fi
 }
 #------
@@ -2202,9 +2226,9 @@ function runSAS(){
     let JOB_COUNTER_FOR_DISPLAY+=1
 	
 	# Reset these variables for each iteration
-	time_remaining_msg=""
+	time_stats_msg=""
 	time_remaining_stats_last_shown_timestamp=""
-	progressbar_current_cursor_position=""
+	time_since_run_msg_last_shown_timestamp=""
 
     # Capture job runtime
 	start_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -2358,7 +2382,7 @@ function runSAS(){
 		show_time_remaining_stats $local_sas_job
 
         # Show progress bar
-        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_remaining_msg" $progressbar_color
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
 		
         # Get runtime stats of the job
 		get_job_hist_runtime_stats $local_sas_job
