@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.5                                                                                                  #
+#     Version: 14.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 03/11/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|5|
+|r|u|n|S|A|S| |v|1|4|.|6|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.5                                      
+	RUNSAS_CURRENT_VERSION=14.6                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2444,7 +2444,7 @@ function runSAS(){
         end_datetime_of_job=`date +%s`
 
         # Print error(s)
-        printf "\b${white}${red}(FAILED rc=$job_rc-$script_rc, it took "
+        printf "\b${white}${red}(FAILED rc=$job_rc-$script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs. Failed on $end_datetime_of_job_timestamp)${white}\n"
 
@@ -2511,7 +2511,7 @@ function runSAS(){
         display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
 
         # Success (DONE) message
-        printf "\b${white}${green}(DONE, took "
+        printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs. Completed on $end_datetime_of_job_timestamp)${white}\n"
 
@@ -2552,7 +2552,7 @@ RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/master/runSAS.sh
 # System parameters
 RUNSAS_TOTAL_PARAMERTS_ALLOWED_COUNT=8
 DEBUG_MODE_CONSOLE_COLOR=white
-RUNSAS_DISPLAY_FILLER_COL_END_POS=127
+RUNSAS_DISPLAY_FILLER_COL_END_POS=114
 RUNSAS_FILLER_CHARACTER=.
 CONSOLE_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
