@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.4                                                                                                  #
+#     Version: 14.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 03/11/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|4|
+|r|u|n|S|A|S| |v|1|4|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.4                                      
+	RUNSAS_CURRENT_VERSION=14.5                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2149,7 +2149,7 @@ function display_progressbar_with_offset(){
 
     # Show the optional message after the progress bar
     if [ ! -z "$progressbar_post_message" ]; then
-        printf "${grey}$progressbar_post_message${end}"
+        printf "${white}$progressbar_post_message${end}"
     fi
 
     # Delay
