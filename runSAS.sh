@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.3                                                                                                  #
+#     Version: 14.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 25/10/2019                                                                                            #
+#        Date: 03/11/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|3|
+|r|u|n|S|A|S| |v|1|4|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.3                                       
+	RUNSAS_CURRENT_VERSION=14.4                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -531,12 +531,12 @@ function process_delayed_execution(){
 			for (( j=1; j<=$runsas_delay_time_in_secs; j++ )); do
 				progressbar_start_timestamp=`date +%s`
 				let delay_time_remaining=$runsas_delay_time_in_secs-$j
-				display_progressbar_with_offset $j $runsas_delay_time_in_secs -1
+				display_progressbar_with_offset $j $runsas_delay_time_in_secs -1 ""
 				progressbar_end_timestamp=`date +%s`
 				let sleep_delay_corrected_in_secs=1-$((progressbar_end_timestamp-progressbar_start_timestamp))
 				sleep $sleep_delay_corrected_in_secs
 			done
-			display_progressbar_with_offset $runsas_delay_time_in_secs $runsas_delay_time_in_secs 0
+			display_progressbar_with_offset $runsas_delay_time_in_secs $runsas_delay_time_in_secs 0 ""
 			printf "\n\n"
 		fi
 	}
@@ -1481,6 +1481,40 @@ function show_job_hist_runtime_stats(){
 	fi
 }
 #------
+# Name: show_time_remaining_stats()
+# Desc: Print details about time remaining (if history runtime stats is available)
+#   In: job-name
+#  Out: <NA>
+#------
+function show_time_remaining_stats(){
+	get_job_hist_runtime_stats $1
+	if [[ "$hist_job_runtime" != "" ]]; then
+		time_remaining_stats_curr_timestamp=`date +%s`
+		
+		# Calculate the time remaining in secs.
+		if [ ! -z "$time_remaining_stats_last_shown_timestamp" ]; then
+            let diff_in_seconds=$time_remaining_stats_curr_timestamp-$time_remaining_stats_last_shown_timestamp
+            if [[ $diff_in_seconds -lt 0 ]]; then
+                diff_in_seconds=0
+            fi
+			let time_remaining_in_secs=$time_remaining_in_secs-$diff_in_seconds
+		else
+			let time_remaining_in_secs=$hist_job_runtime
+            let diff_in_seconds=0
+		fi
+		
+		# Show the stats
+        if [[ $time_remaining_in_secs -ge 0 ]]; then
+            time_remaining_msg=" ~$time_remaining_in_secs secs remaining..." 
+        else
+		    time_remaining_msg=" $time_remaining_in_secs secs..." 
+		fi
+
+		# Record the message last shown timestamp
+		time_remaining_stats_last_shown_timestamp=$time_remaining_stats_curr_timestamp
+	fi
+}
+#------
 # Name: show_last_run_summary()
 # Desc: Print summary about last run (if available)
 #   In: script-launch-mode
@@ -2021,7 +2055,7 @@ function show_server_and_user_details(){
 #------
 # Name: display_progressbar_with_offset()
 # Desc: Calculates the progress bar parameters (https://en.wikipedia.org/wiki/Block_Elements#Character_table & https://www.rapidtables.com/code/text/unicode-characters.html, alternative: █)
-#   In: steps-completed, total-steps, offset (-1 or 0)
+#   In: steps-completed, total-steps, offset (-1 or 0), optional-message, active-color
 #  Out: <NA>
 #------
 function display_progressbar_with_offset(){
@@ -2040,7 +2074,8 @@ function display_progressbar_with_offset(){
     progressbar_steps_completed=$1
 	progressbar_total_steps=$2
     progressbar_offset=$3
-    progressbar_color=${4:-$progressbar_default_active_color}
+	progressbar_post_message=$4
+    progressbar_color=${5:-$progressbar_default_active_color}
 
     # Calculate the scale
     let progressbar_scale=100/$progressbar_width
@@ -2091,26 +2126,52 @@ function display_progressbar_with_offset(){
 
     # Show the completed "green" block
     if [[ $progress_bar_pct_completed -ne 0 ]]; then
-        printf "${!progressbar_color}"
-        printf "%0.s$progressbar_color_unicode_char" $(seq 1 $progress_bar_pct_completed)
+        printf "${!progressbar_color}"	
+		for (( i=1; i<=$progress_bar_pct_completed; i++ )); do
+			printf "$progressbar_color_unicode_char"
+		done		
+        #printf "%0.s$progressbar_color_unicode_char" $(seq 1 $progress_bar_pct_completed)
     fi
 
     # Show the remaining "grey" block
     if [[ $progress_bar_pct_remaining -ne 0 ]]; then
         printf "${darkgrey_bg}"
-        printf "%0.s$progressbar_grey_unicode_char" $(seq 1 $progress_bar_pct_remaining)
+		for (( i=1; i<=$progress_bar_pct_remaining; i++ )); do
+			printf "$progressbar_color_unicode_char"
+		done		
+        #printf "%0.s$progressbar_grey_unicode_char" $(seq 1 $progress_bar_pct_remaining)
+    fi
+    
+    # Reset the message when offset is 0 (to remove the message from last iteration, cleaning up)
+    if [[ $progressbar_offset -eq 0 ]]; then
+        progressbar_post_message="                                      "
+    fi
+
+    # Show the optional message after the progress bar
+    if [ ! -z "$progressbar_post_message" ]; then
+        printf "${grey}$progressbar_post_message${end}"
     fi
 
     # Delay
     printf "${white}"
     sleep $progressbar_sleep_interval_in_secs
 
-    # Reset the console, backspacing operation defined by the length of the progress bar.
+    # Erase the progress bar (reset)
     for (( i=1; i<=$progressbar_width; i++ )); do
         printf "\b"
     done
 
-    # Reset the percentage variables on last iteration (i.e. when the offset is 0)
+	# Width of the optional message 
+	progressbar_post_message_width=${#progressbar_post_message}
+	
+    # Erase the optional progress bar message 
+    if [ ! -z "$progressbar_post_message" ]; then
+        for (( i=1; i<=$progressbar_post_message_width; i++ )); do
+            printf "\b"
+        done
+    fi
+
+    # Erase the percent shown in the progress bar on the last call i.e. reset the percentage variables on last iteration (i.e. when the offset is 0)
     if [[ $progressbar_offset -eq 0 ]]; then
         progress_bar_pct_completed_charlength=0
         # Remove the percentages from console
@@ -2139,6 +2200,11 @@ function runSAS(){
 
     # Increment the job counter for console display
     let JOB_COUNTER_FOR_DISPLAY+=1
+	
+	# Reset these variables for each iteration
+	time_remaining_msg=""
+	time_remaining_stats_last_shown_timestamp=""
+	progressbar_current_cursor_position=""
 
     # Capture job runtime
 	start_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -2287,8 +2353,13 @@ function runSAS(){
 
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:'  $local_sas_logs_root_directory/$current_log_name | wc -l`
-        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 $progressbar_color
 
+        # Show time remaining statistics
+		show_time_remaining_stats $local_sas_job
+
+        # Show progress bar
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_remaining_msg" $progressbar_color
+		
         # Get runtime stats of the job
 		get_job_hist_runtime_stats $local_sas_job
         hist_job_runtime_for_current_job="${hist_job_runtime:-0}"
@@ -2327,7 +2398,7 @@ function runSAS(){
         if [ $script_rc -gt 4 ]; then
             progressbar_color=red_bg
             # Refresh the progress bar
-    		display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 $progressbar_color
+    		display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "" $progressbar_color
             # Optionally, abort the job run on seeing an error
             if [[ "$ABORT_ON_ERROR" == "Y" ]]; then
                 if [[ ! -z `ps -p $job_pid -o comm=` ]]; then
@@ -2427,7 +2498,7 @@ function runSAS(){
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:' $local_sas_logs_root_directory/$current_log_name | wc -l`
-        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0 ""
 
         # Capture job runtime
 		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -2440,7 +2511,7 @@ function runSAS(){
         display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
 
         # Success (DONE) message
-        printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, it took "
+        printf "\b${white}${green}(DONE, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs. Completed on $end_datetime_of_job_timestamp)${white}\n"
 
@@ -2481,7 +2552,7 @@ RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/master/runSAS.sh
 # System parameters
 RUNSAS_TOTAL_PARAMERTS_ALLOWED_COUNT=8
 DEBUG_MODE_CONSOLE_COLOR=white
-RUNSAS_DISPLAY_FILLER_COL_END_POS=114
+RUNSAS_DISPLAY_FILLER_COL_END_POS=127
 RUNSAS_FILLER_CHARACTER=.
 CONSOLE_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
