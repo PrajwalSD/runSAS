@@ -1993,7 +1993,7 @@ function redeploy_sas_jobs(){
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
                 
                 # A way to check if the job was deployed at all?
-                check_if_the_file_exists $deployed_job_sas_file
+                check_if_the_file_exists "$deployed_job_sas_file"
 
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
