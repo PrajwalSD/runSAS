@@ -2011,7 +2011,7 @@ function redeploy_sas_jobs(){
 
 			# Clear session
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
-            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.\n\n${white}"
+            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.\n${white}"
 
             # Store runtime for future use
             store_a_key_value_pair depjob_total_runtime $depjob_total_runtime
