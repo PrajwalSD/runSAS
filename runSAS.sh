@@ -268,7 +268,7 @@ function show_first_launch_intro_message(){
         printf "\n"
 
         # Do not show the message again
-        create_a_new_file $RUNSAS_FIRST_USER_INTRO_DONE_FILE  
+        create_a_file_if_not_exists $RUNSAS_FIRST_USER_INTRO_DONE_FILE  
     fi
 }
 #------
@@ -593,12 +593,12 @@ function check_if_the_dir_exists(){
     done
 }
 #------
-# Name: create_a_new_file()
+# Name: create_a_file_if_not_exists()
 # Desc: This function will create a new file if it doesn't exist, that's all.
 #   In: file-name (multiple files can be provided)
 #  Out: <NA>
 #------
-function create_a_new_file(){
+function create_a_file_if_not_exists(){
     for f in "$@"
     do
         if [[ ! -f $f ]]; then
@@ -1081,7 +1081,7 @@ function running_processes_housekeeping(){
 #------
 function check_if_there_are_any_rogue_runsas_processes(){
     # Create an empty file it it doesn't exist already
-    create_a_new_file $RUNSAS_LAST_JOB_PID_FILE
+    create_a_file_if_not_exists $RUNSAS_LAST_JOB_PID_FILE
 
     # Get the last known PID launched by runSAS
     runsas_last_job_pid="$(<$RUNSAS_LAST_JOB_PID_FILE)"
@@ -1562,7 +1562,7 @@ function show_last_run_summary(){
 #  Out: <NA>
 #------
 function print_2_runsas_session_log(){
-    create_a_new_file $RUNSAS_SESSION_LOG_FILE
+    create_a_file_if_not_exists $RUNSAS_SESSION_LOG_FILE
     printf "\n$1" >> $RUNSAS_SESSION_LOG_FILE
 }
 #------
@@ -1795,7 +1795,7 @@ function store_a_key_value_pair(){
     # Set a temp file by the name of key if the file is not specified
     if [[ "$str_file" == "" ]]; then
         str_file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
-		create_a_new_file $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+		create_a_file_if_not_exists $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
     fi
 	# If the file exists remove the previous entry
 	if [ -f "$str_file" ]; then
@@ -1818,7 +1818,7 @@ function retrieve_a_key_value_pair(){
     # Set a temp file by the name of key if the file is not specified
     if [[ "$ret_file" == "" ]]; then
         ret_file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
-		create_a_new_file $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
+		create_a_file_if_not_exists $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
     fi
 	
     # Set the value found in the file to the key
@@ -1870,7 +1870,7 @@ function redeploy_sas_jobs(){
 			clear_session_and_exit
 		else
 			# Create an empty file
-			create_a_new_file $depjob_job_file
+			create_a_file_if_not_exists $depjob_job_file
 			
 			# Newlines
 			printf "\n"
@@ -2082,7 +2082,7 @@ function show_server_and_user_details(){
 }
 #------
 # Name: display_progressbar_with_offset()
-# Desc: Calculates the progress bar parameters (https://en.wikipedia.org/wiki/Block_Elements#Character_table & https://www.rapidtables.com/code/text/unicode-characters.html, alternative: █)
+# Desc: Calculates the progress bar parameters (https://en.wikipedia.org/wiki/Block_Elements#Character_table & https://www.rapidtables.com/code/text/unicode-characters.html, alternative: â–ˆ)
 #   In: steps-completed, total-steps, offset (-1 or 0), optional-message, active-color
 #  Out: <NA>
 #------
@@ -2688,7 +2688,7 @@ show_first_launch_intro_message
 display_post_banner_messages
 
 # Housekeeping
-create_a_new_file $JOB_STATS_FILE
+create_a_file_if_not_exists $JOB_STATS_FILE
 archive_all_job_logs .job.list archives
 
 # Print session details on console
