@@ -1508,7 +1508,7 @@ function show_time_remaining_stats(){
         if [[ $time_remaining_in_secs -ge 0 ]]; then
             time_stats_msg=" ~$time_remaining_in_secs secs remaining..." 
         else
-		    time_stats_msg=" exceeded by $time_remaining_in_secs secs..." 
+		    time_stats_msg=" $time_remaining_in_secs secs elapsed......" 
 		fi
 		
 		# Record the message last shown timestamp
