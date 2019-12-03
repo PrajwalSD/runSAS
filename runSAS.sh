@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 14.9                                                                                                  #
+#     Version: 15.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 03/11/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|4|.|9|
+|r|u|n|S|A|S| |v|1|5|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=14.9                                      
+	RUNSAS_CURRENT_VERSION=15.0                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1508,7 +1508,7 @@ function show_time_remaining_stats(){
         if [[ $time_remaining_in_secs -ge 0 ]]; then
             time_stats_msg=" ~$time_remaining_in_secs secs remaining..." 
         else
-		    time_stats_msg=" $time_remaining_in_secs secs..." 
+		    time_stats_msg=" exceeded by $time_remaining_in_secs secs..." 
 		fi
 		
 		# Record the message last shown timestamp
