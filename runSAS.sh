@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.0                                                                                                  #
+#     Version: 15.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 03/11/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|0|
+|r|u|n|S|A|S| |v|1|5|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.0                                      
+	RUNSAS_CURRENT_VERSION=15.1                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1328,12 +1328,10 @@ To: $email_to_address_complete
 SUBJECT: $email_subject_full_line
 Mime-Version: 1.0
 Content-Type: multipart/mixed; BOUNDARY=\"$email_boundary_string\"
-
 --${email_boundary_string}
 Content-Type: text/html; charset=\"US-ASCII\"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-
 $email_body
 "
 # Loop over the attachments, guess the type and produce the corresponding part, encoded base64
@@ -1588,13 +1586,13 @@ function write_skipped_job_details_on_screen(){
     printf "${grey} of $TOTAL_NO_OF_JOBS_COUNTER_CMD: $1 has been skipped.\n${white}"
 }
 #------
-# Name: get_the_job_name_in_the_list()
+# Name: get_the_entry_from_the_list()
 # Desc: Get the jobname when user inputs a number/index (from the list)
-#   In: job-name
+#   In: job-name, job-list
 #  Out: <NA>
 #------
-function get_the_job_name_in_the_list(){
-    job_name_from_the_list_pre=`sed -n "${1}p" .job.list`
+function get_the_entry_from_the_list(){
+    job_name_from_the_list_pre=`sed -n "${1}p" $2`
     job_name_from_the_list=${job_name_from_the_list_pre%% *}
     if [[ -z $job_name_from_the_list ]]; then
         printf "${red}*** ERROR: Job index is out-of-range, no job found at $1 in the list above. Please review the specified index and launch the script again ***${white}"
@@ -1853,13 +1851,20 @@ function get_updated_value_for_a_key_from_user(){
 # Name: redeploy_sas_jobs()
 # Desc: This function redeploys SAS jobs if user has requested for it (currently only supports REDEPLOY)
 #  Ref: http://support.sas.com/documentation/cdl/en/etlug/68225/HTML/default/viewer.htm#p1jxhqhaz10gj2n1pyr0hbzozv2f.htm)
-#   In: mode, jobs-file
+#   In: mode, jobs-file, job-from, job-to
 #  Out: <NA>
 #------
 function redeploy_sas_jobs(){
     # Parameters
     depjob_mode=$1
     depjob_job_file=$2
+	
+	# Filters (can be index or can be job name with full path)
+	depjob_from_job=$3
+	depjob_to_job=${4:-$3}
+	
+	# Reset
+	depjob_in_filter_mode=0
 
     # Begin
 	if [[ "$depjob_mode" == "--redeploy" ]]; then
@@ -1869,6 +1874,32 @@ function redeploy_sas_jobs(){
 			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $depjob_mode option (e.g.: ./runSAS.sh --redeploy ./deploy_jobs.list) ***${white}"
 			clear_session_and_exit
 		else
+			# Check for the filters
+			if [ ! -z "$depjob_from_job" ]; then
+				# Show the list of jobs
+				if [[ "$depjob_from_job" == "--list" ]] || [[ "$depjob_from_job" == "--show" ]]; then
+					print_file_content_with_index $depjob_job_file jobs
+					clear_session_and_exit
+				fi
+				
+				# Set the flag 
+				depjob_in_filter_mode=1
+				
+				# Get the job name if it is the index
+				if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+					get_the_entry_from_the_list $depjob_from_job $depjob_job_file
+					depjob_from_job_index=$depjob_from_job
+					depjob_from_job=$job_name_from_the_list
+				fi
+				if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+					get_the_entry_from_the_list $depjob_to_job $depjob_job_file
+					depjob_to_job_index=$depjob_to_job
+					depjob_to_job=$job_name_from_the_list
+				fi
+			else
+				depjob_in_filter_mode=0
+			fi
+			
 			# Create an empty file
 			create_a_file_if_not_exists $depjob_job_file
 			
@@ -1930,7 +1961,7 @@ function redeploy_sas_jobs(){
 			press_enter_key_to_continue 1 0 red
 
             # Counter
-            depjob_job_total_count=`cat $depjob_job_file | wc -l`
+            depjob_to_jobtal_count=`cat $depjob_job_file | wc -l`
             depjob_job_curr_count=1
             
             # Newlines
@@ -1957,14 +1988,53 @@ function redeploy_sas_jobs(){
 			print_2_runsas_session_log "Application server password (obfuscated): *******"
 			print_2_runsas_session_log "Batch server: $depjob_batchserver" 
 			print_2_runsas_session_log "DepJobs SAS 9.x utility log: $depjob_log"
-            print_2_runsas_session_log "Total number of jobs: $depjob_job_total_count"
+            print_2_runsas_session_log "Total number of jobs: $depjob_to_jobtal_count"
             print_2_runsas_session_log "Deleted existing SAS job files?: $read_depjob_clear_files"
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
+				# Check if the current job is between the filters (only in filter mode)
+				if [[ "$depjob_in_filter_mode" -eq "1" ]]; then	
+					if [[ "$depjob_from_job" == "$job" ]]; then
+						if [[ $depjob_from_job_index -gt 0 ]]; then # In index mode (i.e. when a job number is specified), match the index too 
+							if [[ $JOB_COUNTER_FOR_DISPLAY -eq $depjob_from_job_index ]]; then
+								depjob_from_to_job_mode=1
+							fi
+						else
+							depjob_from_to_job_mode=1
+						fi
+					else
+						if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then
+							if [[ $depjob_to_job_index -gt 0 ]]; then # In index mode (i.e. when a job number is specified), match the index too
+								if [[ $JOB_COUNTER_FOR_DISPLAY -eq $depjob_to_job_index ]]; then
+									depjob_from_to_job_mode=2
+								fi
+							else
+								depjob_from_to_job_mode=2
+							fi
+						else
+							if  [[ $depjob_from_to_job_mode -eq 1 ]]; then
+								depjob_from_to_job_mode=1
+							else
+								if [[ $depjob_from_to_job_mode -eq 2 ]]; then
+									depjob_from_to_job_mode=0
+								fi
+							fi
+						fi
+					fi
+				else
+					depjob_from_to_job_mode=1
+				fi
+				
+				# Make a decision (skip or execute)
+				if [[ "$depjob_from_to_job_mode" -ne "1" ]]; then	
+					printf "${grey}[$depjob_job_curr_count/$depjob_to_jobtal_count]: Job $job has been skipped from redeployment.\n${white}"
+					continue
+				fi
+				
 				# Show the current state of the deployment
 				printf "${green}---${white}\n"
-				printf "${green}[$depjob_job_curr_count/$depjob_job_total_count]: Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
+				printf "${green}[$depjob_job_curr_count/$depjob_to_jobtal_count]: Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
 
 				# Make sure the metadata tree path is specified in the job list to use --redeploy feature
 				if [[ "${job%/*}" == "" ]]; then
@@ -1998,7 +2068,7 @@ function redeploy_sas_jobs(){
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
                 # Add it to audit log
-                print_2_runsas_session_log "Reploying job $depjob_job_curr_count of $depjob_job_total_count: $job"
+                print_2_runsas_session_log "Reploying job $depjob_job_curr_count of $depjob_to_jobtal_count: $job"
 
                 # Increment the counter
                 let depjob_job_curr_count+=1
@@ -2018,7 +2088,7 @@ function redeploy_sas_jobs(){
 
             # Send an email
             if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
-                echo "The redeployment of $depjob_job_total_count jobs is complete, took a total of $depjob_total_runtime seconds to complete. " > $EMAIL_BODY_MSG_FILE
+                echo "The redeployment of $depjob_to_jobtal_count jobs is complete, took a total of $depjob_total_runtime seconds to complete. " > $EMAIL_BODY_MSG_FILE
                 add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
                 send_an_email -v "" "Redeployment of jobs is complete" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
             fi
@@ -2730,7 +2800,7 @@ if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" 
 		INDEX_MODE_FIRST_JOB_NUMBER=0
 		if [[ ${#script_mode_value_1} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 			printf "\n"
-			get_the_job_name_in_the_list $script_mode_value_1
+			get_the_entry_from_the_list $script_mode_value_1 .job.list
 			INDEX_MODE_FIRST_JOB_NUMBER=$script_mode_value_1
 			script_mode_value_1=$job_name_from_the_list
 		else
@@ -2740,7 +2810,7 @@ if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" 
     if [[ "$script_mode_value_2" != "" ]]; then 
 		INDEX_MODE_SECOND_JOB_NUMBER=0
 		if [[ ${#script_mode_value_2} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-			get_the_job_name_in_the_list $script_mode_value_2
+			get_the_entry_from_the_list $script_mode_value_2 .job.list
 			INDEX_MODE_SECOND_JOB_NUMBER=$script_mode_value_2
 			script_mode_value_2=$job_name_from_the_list		
 		else
