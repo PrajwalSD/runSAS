@@ -174,7 +174,7 @@ function print_the_help_menu(){
         printf "\n     --log or --last              runSAS will show the last script run details"
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
-        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file> (NOTE: DEPLOY option is not available)"
+        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file>, job filters (name or index) can be added after <jobs-file>"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -2025,15 +2025,19 @@ function redeploy_sas_jobs(){
 								
 				# Make a decision (skip or execute)
 				if [[ "$depjob_from_to_job_mode" -lt "1" ]]; then	
-					printf "${grey}[$depjob_job_curr_count/$depjob_to_jobtal_count]: Job $job has been skipped from redeployment.\n${white}"
+					printf "${grey}Job ${grey}"
+					printf "%02d" $depjob_job_curr_count
+					printf "${grey} of $depjob_to_jobtal_count: $job  has been skipped.\n${white}"
 					let depjob_job_curr_count+=1
 					continue
 				fi
-				
+                
 				# Show the current state of the deployment
 				printf "${green}---${white}\n"
-				printf "${green}[$depjob_job_curr_count/$depjob_to_jobtal_count]: Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}" 
-
+                printf "${green}["
+                printf "%02d" $depjob_job_curr_count
+                printf "${green} of $depjob_to_jobtal_count]: Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}"
+                    
 				# Make sure the metadata tree path is specified in the job list to use --redeploy feature
 				if [[ "${job%/*}" == "" ]]; then
 					printf "\n${red}*** ERROR: To use $depjob_mode feature in runSAS, you must specify full metadata path for the jobs in the list (relative to ${red_bg}${black}SAS Folders${end}${red} directory) ***\n${white}"
