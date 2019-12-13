@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.1                                                                                                  #
+#     Version: 15.2                                                                                                  #
 #                                                                                                                    #
-#        Date: 03/11/2019                                                                                            #
+#        Date: 13/12/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|1|
+|r|u|n|S|A|S| |v|1|5|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.1                                      
+	RUNSAS_CURRENT_VERSION=15.2                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1592,13 +1592,12 @@ function write_skipped_job_details_on_screen(){
 #  Out: <NA>
 #------
 function get_the_entry_from_the_list(){
-    job_name_from_the_list_pre=`sed -n "${1}p" $2`
-    job_name_from_the_list=${job_name_from_the_list_pre%% *}
+    job_name_from_the_list=`sed -n "${1}p" $2`
     if [[ -z $job_name_from_the_list ]]; then
         printf "${red}*** ERROR: Job index is out-of-range, no job found at $1 in the list above. Please review the specified index and launch the script again ***${white}"
         clear_session_and_exit
     else
-        printf "${white}Job ${darkgrey_bg}$job_name_from_the_list${white} has been selected from the job list at $1.${white}\n"
+        printf "${white}Job ${darkgrey_bg}${job_name_from_the_list}${white} has been selected from the job list at $1.${white}\n"
     fi
 }
 #------
@@ -1887,14 +1886,15 @@ function redeploy_sas_jobs(){
 				
 				# Get the job name if it is the index
 				if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+					printf "\n"
 					get_the_entry_from_the_list $depjob_from_job $depjob_job_file
 					depjob_from_job_index=$depjob_from_job
-					depjob_from_job=$job_name_from_the_list
+					depjob_from_job=${job_name_from_the_list}
 				fi
 				if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 					get_the_entry_from_the_list $depjob_to_job $depjob_job_file
 					depjob_to_job_index=$depjob_to_job
-					depjob_to_job=$job_name_from_the_list
+					depjob_to_job=${job_name_from_the_list}
 				fi
 			else
 				depjob_in_filter_mode=0
@@ -1907,7 +1907,11 @@ function redeploy_sas_jobs(){
 			printf "\n"
 						
 			# Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
-            get_updated_value_for_a_key_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
+			if [[ "$depjob_in_filter_mode" -eq "0" ]]; then	
+				get_updated_value_for_a_key_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
+			else 
+				read_depjob_clear_files=N
+			fi
             get_updated_value_for_a_key_from_user read_depjob_user "SAS Metadata username (e.g.: sas or sasadm@saspw): " 
 			get_updated_value_for_a_key_from_user read_depjob_password "SAS Metadata password: " 
             get_updated_value_for_a_key_from_user read_depjob_appservername "SAS Application server name (e.g.: $SAS_APP_SERVER_NAME): " 
@@ -1917,7 +1921,7 @@ function redeploy_sas_jobs(){
 
             # Clear deployment directory for a fresh start (based on user input)
             if [[ "$read_depjob_clear_files" == "Y" ]]; then
-                printf "${white}\nPlease wait, clearing all the existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...${white}"
+                printf "${white}\nPlease wait, clearing all the existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...\n\n${white}"
                 delete_a_file $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
                 printf "${green}\n\n${white}"
             fi
@@ -1955,7 +1959,9 @@ function redeploy_sas_jobs(){
 			add_a_newline_char_to_eof $depjob_job_file
 
             # Print the jobs file
-            print_file_content_with_index $depjob_job_file jobs
+			if [[ "$depjob_in_filter_mode" -eq "0" ]]; then	
+				print_file_content_with_index $depjob_job_file jobs
+			fi
 
 			# Wait for the user to confirm
 			press_enter_key_to_continue 1 0 red
@@ -1995,23 +2001,11 @@ function redeploy_sas_jobs(){
 			while IFS='|' read -r job; do
 				# Check if the current job is between the filters (only in filter mode)
 				if [[ "$depjob_in_filter_mode" -eq "1" ]]; then	
-					if [[ "$depjob_from_job" == "$job" ]]; then
-						if [[ $depjob_from_job_index -gt 0 ]]; then # In index mode (i.e. when a job number is specified), match the index too 
-							if [[ $JOB_COUNTER_FOR_DISPLAY -eq $depjob_from_job_index ]]; then
-								depjob_from_to_job_mode=1
-							fi
-						else
-							depjob_from_to_job_mode=1
-						fi
+					if [[ "${depjob_from_job}" == "${job}" ]]; then
+						depjob_from_to_job_mode=1
 					else
-						if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then
-							if [[ $depjob_to_job_index -gt 0 ]]; then # In index mode (i.e. when a job number is specified), match the index too
-								if [[ $JOB_COUNTER_FOR_DISPLAY -eq $depjob_to_job_index ]]; then
-									depjob_from_to_job_mode=2
-								fi
-							else
-								depjob_from_to_job_mode=2
-							fi
+						if [[ "${depjob_to_job}" == "${job}" ]]; then
+							depjob_from_to_job_mode=2
 						else
 							if  [[ $depjob_from_to_job_mode -eq 1 ]]; then
 								depjob_from_to_job_mode=1
@@ -2020,15 +2014,19 @@ function redeploy_sas_jobs(){
 									depjob_from_to_job_mode=0
 								fi
 							fi
+							if [[ "${depjob_to_job}" == "${depjob_from_job}" ]]; then
+								depjob_from_to_job_mode=0
+							fi
 						fi
 					fi
 				else
 					depjob_from_to_job_mode=1
 				fi
-				
+								
 				# Make a decision (skip or execute)
-				if [[ "$depjob_from_to_job_mode" -ne "1" ]]; then	
+				if [[ "$depjob_from_to_job_mode" -lt "1" ]]; then	
 					printf "${grey}[$depjob_job_curr_count/$depjob_to_jobtal_count]: Job $job has been skipped from redeployment.\n${white}"
+					let depjob_job_curr_count+=1
 					continue
 				fi
 				
@@ -2081,7 +2079,7 @@ function redeploy_sas_jobs(){
 
 			# Clear session
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
-            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.\n${white}"
+            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
 
             # Store runtime for future use
             store_a_key_value_pair depjob_total_runtime $depjob_total_runtime
@@ -2785,7 +2783,7 @@ fi
 run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
 
 # Redeploy jobs routine (--redeploy option)
-redeploy_sas_jobs $script_mode $script_mode_value_1
+redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
 
 # Print job(s) list on console
 print_file_content_with_index .job.list jobs
