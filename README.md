@@ -83,6 +83,10 @@ Yes, it can. All you need to do is create a file that contains the list of jobs 
 
 `./runSAS.sh --redeploy <job-list-file>`
 
+If you want to display the jobs from the job list file, specify '--show or --list or --jobs' as shown below
+
+`./runSAS.sh --redeploy <job-list-file> --jobs`
+
 You can provide filters to the --redeploy option to redeploy a single job or range (from the jobs file)
 
 `./runSAS.sh --redeploy <job-list-file> <from-job-name or from-job-index> <to-job-name or to-job-index>`
