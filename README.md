@@ -44,44 +44,48 @@ The script has multiple modes of execution, see `./runSAS.sh --help` for more de
 * ### Run upto mode (-u)
   If you want to run until a specific job, the script will run all the jobs in the list until the specified job.
   
-  `./runSAS.sh -u <name or index>`
+  `./runSAS.sh -u <job-name or job-index>`
   
   *NOTE: `name` refers to the job name in the list and `index` refers to the job number (if you are lazy!), you have a choice of using     either of them during the launch the script will find the relevant job name from the list*
 
 * ### Run from mode (-f)
   If you want to run from a specific job, the script will skip the jobs and will start running from a specified job.
   
-  `./runSAS.sh -f <name or index>`
+  `./runSAS.sh -f <job-name or job-index>`
   
 * ### Run a single job mode (-o)
   If you want to run a specific job, the script will skip the other jobs and will start running only the specified job.
   
-  `./runSAS.sh -o <name or index>`
+  `./runSAS.sh -o <job-name or job-index>`
   
  * ### Run a single adhoc job mode (-j)
    If you want to run a specific job which is not in the list (adhoc run)
   
-   `./runSAS.sh -j <name or index>`
+   `./runSAS.sh -j <job-name or job-index>`
   
 * ### Run from a job up to a job mode (-fu)
   If you want to run a bunch of jobs from one point to the other.
   
-  `./runSAS.sh -fu <name or index> <name or index>` 
+  `./runSAS.sh -fu <from-job-name or from-job-index> <to-job-name or to-job-index>` 
   
 * ### Run from a job up to a job interactive mode (-fui)
   If you want to run in an interactive mode from one job to the other job (__runs the rest__ in a non-interactive mode)  
   
-  `./runSAS.sh -fui <name or index> <name or index>` 
+  `./runSAS.sh -fui <from-job-name or from-job-index> <to-job-name or to-job-index>` 
   
 * ### Run from a job to a job interactive skip mode (-fuis)
   If you want to run in an interactive mode from one job to the other job (__skips__ the rest)" 
   
-  `./runSAS.sh -fuis <name or index> <name or index>` 
+  `./runSAS.sh -fuis <from-job-name or from-job-index> <to-job-name or to-job-index>` 
   
 # Can runSAS redeploy SAS DI jobs?
 Yes, it can. All you need to do is create a file that contains the list of jobs that needs to be redeployed and provide that as an argument to --redeploy option. Do note that the job name should also contain the full path (relative to SAS Folders)
 
-`./runSAS.sh --redeploy <job-list-file>` 
+`./runSAS.sh --redeploy <job-list-file>`
+
+You can provide filters to the --redeploy option to redeploy a single job or range (from the jobs file)
+
+`./runSAS.sh --redeploy <job-list-file> <from-job-name or from-job-index> <to-job-name or to-job-index>`
 
 _NOTE: DEPLOY feature is not built into runSAS yet_
   
