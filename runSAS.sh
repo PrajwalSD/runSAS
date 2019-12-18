@@ -1870,13 +1870,13 @@ function redeploy_sas_jobs(){
         # Check for the jobs file (mandatory for this mode)
 		if [[ "$depjob_job_file" == "" ]]; then
             # Ensure the job list is provided
-			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $depjob_mode option (e.g.: ./runSAS.sh --redeploy ./deploy_jobs.list) ***${white}"
+			printf "${red}*** ERROR: A file that contains a list of jobs is required as a second arguement for $depjob_mode option (e.g.: ./runSAS.sh --redeploy redeployJobs.list) ***${white}"
 			clear_session_and_exit
 		else
 			# Check for the filters
 			if [ ! -z "$depjob_from_job" ]; then
 				# Show the list of jobs
-				if [[ "$depjob_from_job" == "--list" ]] || [[ "$depjob_from_job" == "--show" ]]; then
+				if [[ "$depjob_from_job" == "--list" ]] || [[ "$depjob_from_job" == "--show" ]] || [[ "$depjob_from_job" == "--jobs" ]]; then
 					print_file_content_with_index $depjob_job_file jobs
 					clear_session_and_exit
 				fi
