@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.2                                                                                                  #
+#     Version: 15.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 13/12/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|2|
+|r|u|n|S|A|S| |v|1|5|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.2                                      
+	RUNSAS_CURRENT_VERSION=15.3                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -520,7 +520,7 @@ function process_delayed_execution(){
 			clear_session_and_exit
 		else
 			# Disable carriage return (ENTER key) during the script run
-			stty igncr < /dev/tty
+			disable_enter_key
 			# Parameters
 			runsas_delay_time_in_secs=$1 
 			runsas_delay_start_timestamp=`date --date="+$runsas_delay_time_in_secs seconds" '+%Y-%m-%d %T'`
@@ -755,7 +755,7 @@ function run_in_interactive_mode_check(){
     if [[ "$script_mode" == "-i" ]] && [[ "$escape_interactive_mode" != "1" ]]; then
         interactive_mode=1
         printf "${red_bg}${black}Press ENTER key to continue OR type E to escape this interactive mode${white} "
-        stty -igncr < /dev/tty
+        enable_enter_key
         read run_in_interactive_mode_check_user_input < /dev/tty
         if [[ "$run_in_interactive_mode_check_user_input" == "E" ]] || [[ "$run_in_interactive_mode_check_user_input" == "e" ]]; then
             escape_interactive_mode=1
@@ -1060,12 +1060,12 @@ function running_processes_housekeeping(){
     if [[ ! -z ${1} ]]; then
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$KILL_PROCESS_ON_USER_ABORT" ==  "Y" ]]; then
-                stty igncr < /dev/tty
+                disable_enter_key
                 printf "${white}Process (pid) details for the currently running job:\n${white}"
                 # PID show & kill
                 show_pid_details $1
                 kill_a_pid $1               
-                stty -igncr < /dev/tty
+                enable_enter_key
             else
                 echo $1 > $RUNSAS_LAST_JOB_PID_FILE
                 printf "${red}WARNING: The last job submitted by runSAS with pid $1 is still running/active in the background, auto-kill is off, terminate it manually using ${green}kill -9 $1${white}${red} command.\n\n${white}"
@@ -1091,14 +1091,14 @@ function check_if_there_are_any_rogue_runsas_processes(){
         printf "${yellow}WARNING: There is a job (pid $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
         show_pid_details $runsas_last_job_pid
         printf "${red}\nDo you want to kill this process and continue? (Y/N): ${white}"
-        stty igncr < /dev/tty
+        disable_enter_key
         read -n1 ignore_process_warning
         if [[ "$ignore_process_warning" == "Y" ]] || [[ "$ignore_process_warning" == "y" ]]; then
             kill_a_pid $runsas_last_job_pid
         else
             printf "\n\n"
         fi
-        stty -igncr < /dev/tty
+        enable_enter_key
     fi
 }
 #------
@@ -1156,7 +1156,7 @@ function reset_runsas(){
     if [[ "$1" == "--reset" ]]; then
         # Clear the temporary files
         printf "${red}\nClear temporary files? (Y/N): ${white}"
-        stty igncr < /dev/tty
+        disable_enter_key
         read -n1 clear_tmp_files
         if [[ "$clear_tmp_files" == "Y" ]] || [[ "$clear_tmp_files" == "y" ]]; then    
             delete_a_file $RUNSAS_TMP_DIRECTORY/.tmp_s.log 0
@@ -1171,14 +1171,14 @@ function reset_runsas(){
         fi
         # Clear the session history files
         printf "${red}\nClear runSAS session history? (Y/N): ${white}"
-        stty igncr < /dev/tty
+        disable_enter_key
         read -n1 clear_session_files
         if [[ "$clear_session_files" == "Y" ]] || [[ "$clear_session_files" == "y" ]]; then    
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_session*.log
         fi
         # Clear the historical run stats
         printf "${red}\nClear historical runtime stats? (Y/N): ${white}"
-        stty igncr < /dev/tty
+        disable_enter_key
         read -n1 clear_his_files
         if [[ "$clear_his_files" == "Y" ]] || [[ "$clear_his_files" == "y" ]]; then    
             delete_a_file $RUNSAS_TMP_DIRECTORY/.job_delta*.* 0
@@ -1187,14 +1187,14 @@ function reset_runsas(){
         fi
 		# Clear redeploy parameters file
         printf "${red}\nClear job redeployment logs? (Y/N): ${white}"
-        stty igncr < /dev/tty
+        disable_enter_key
         read -n1 clear_depjob_files
         if [[ "$clear_depjob_files" == "Y" ]] || [[ "$clear_depjob_files" == "y" ]]; then    
 			delete_a_file $RUNSAS_TMP_DIRECTORY/runsas_depjob_util*.log
         fi
         # Clear global user parameters file
         printf "${red}\nClear stored global user parameters? (Y/N): ${white}"
-        stty igncr < /dev/tty
+        disable_enter_key
         read -n1 clear_global_user_parms
         if [[ "$clear_global_user_parms" == "Y" ]] || [[ "$clear_global_user_parms" == "y" ]]; then    
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
@@ -1608,7 +1608,7 @@ function get_the_entry_from_the_list(){
 #------
 function clear_session_and_exit(){
     printf "${white}\n\n${white}"
-    stty -igncr < /dev/tty
+    enable_enter_key
     setterm -cursor on
     if [[ $interactive_mode == 1 ]]; then
         reset
@@ -1680,6 +1680,26 @@ function display_message_fillers_on_console(){
     filler_char_count_prev=$filler_char_count
 }
 #------
+# Name: disable_enter_key()
+# Desc: This function will disable carriage return (ENTER key)
+#   In: <NA>
+#  Out: <NA>
+#------
+function disable_enter_key(){
+    # Disable carriage return (ENTER key) during the script run
+    stty igncr < /dev/tty
+}
+#------
+# Name: enable_enter_key()
+# Desc: This function will enable carriage return (ENTER key)
+#   In: <NA>
+#  Out: <NA>
+#------
+function enable_enter_key(){
+    # Enable carriage return (ENTER key) during the script run
+    stty -igncr < /dev/tty
+}
+#------
 # Name: press_enter_key_to_continue()
 # Desc: This function will pause the script and wait for the ENTER key to be pressed
 #   In: before-newline-count, after-newline-count, color (default is green)
@@ -1690,7 +1710,7 @@ function press_enter_key_to_continue(){
 	press_enter_key_to_continue_color=${3:-"green"}
 	
     # Enable carriage return (ENTER key) during the script run
-    stty -igncr < /dev/tty
+    enable_enter_key
 	
 	# Newlines (before)
     if [[ "$1" != "" ]] && [[ "$1" != "0" ]]; then
@@ -1711,7 +1731,7 @@ function press_enter_key_to_continue(){
     fi
 	
     # Disable carriage return (ENTER key) during the script run
-    stty -igncr < /dev/tty
+    enable_enter_key
 }
 #------
 # Name: check_for_multiple_instances_of_job()
@@ -1752,6 +1772,8 @@ function scan_sas_programs_for_debug_options(){
 #  Out: <NA>
 #------
 function validate_job_list(){
+    disable_enter_key
+
 	job_counter=0
 	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j(run-a-job) mode
 		while IFS=' ' read -r j o so bservdir bsh blogdir bjobdir; do
@@ -1777,6 +1799,8 @@ function validate_job_list(){
 			scan_sas_programs_for_debug_options $vjmode_sas_deployed_jobs_root_directory/$j.$PROGRAM_TYPE_EXTENSION
 		done < $1
 	fi
+
+    enable_enter_key
 }
 #------
 # Name: store_a_key_value_pair()
@@ -2394,7 +2418,7 @@ function runSAS(){
     # Check if the prompt option is set by the user for the job
     if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
         printf "${red}Do you want to run ${red_bg}${black}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
-        stty -igncr < /dev/tty
+        enable_enter_key
         read run_job_with_prompt < /dev/tty
         if [[ "$JOB_COUNTER_FOR_DISPLAY" == "1" ]]; then
             printf "\n"
@@ -2449,7 +2473,7 @@ function runSAS(){
     # Show current status of the run, poll for the PID and display the progress bar.
     while [ $? -eq 0 ]; do
         # Disable carriage return (ENTER key) during the script run
-        stty igncr < /dev/tty
+        disable_enter_key
 
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:'  $local_sas_logs_root_directory/$current_log_name | wc -l`
@@ -2475,9 +2499,9 @@ function runSAS(){
                 if [[ "$LONG_RUNNING_JOB_MSG_SHOWN" == "0" ]]; then
                     printf "${red}\nNOTE: The job is taking a bit more time than usual (previously it took $hist_job_runtime secs, it is $current_runtime_of_job secs already), Press ENTER key to continue or CTRL+C to abort this run.${white}"
                     printf "${red}\nNOTE: You can remove these warnings by setting the RUNTIME_COMPARE_FACTOR parameter in the script to a high value such as 999${white}"
-                    stty -igncr < /dev/tty
+                    enable_enter_key
                     read -s < /dev/tty
-                    stty igncr < /dev/tty
+                    disable_enter_key
                     LONG_RUNNING_JOB_MSG_SHOWN=1
                     printf "${white}\n${white}"
                     # Resume the run by displaying the last job run (note that the job wasn't terminated when the warning was shown)
@@ -2557,12 +2581,12 @@ function runSAS(){
         # Depending on user setting show the log details
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)"
-            printf " (...read full error on log)"
+            printf " (...read the log for more details)"
             print_2_runsas_session_log "Reason: ${red}\n"
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         else        
             printf "%s" "$(<$TMP_LOG_FILE)"
-            printf " (...read full error on log)"
+            printf " (...read the log for more details)"
             print_2_runsas_session_log "Reason: ${red}"
             printf "%s" "$(<$TMP_LOG_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         fi
