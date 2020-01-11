@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.3                                                                                                  #
+#     Version: 15.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 13/12/2019                                                                                            #
+#        Date: 12/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|3|
+|r|u|n|S|A|S| |v|1|5|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.3                                      
+	RUNSAS_CURRENT_VERSION=15.4                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1328,10 +1328,12 @@ To: $email_to_address_complete
 SUBJECT: $email_subject_full_line
 Mime-Version: 1.0
 Content-Type: multipart/mixed; BOUNDARY=\"$email_boundary_string\"
+
 --${email_boundary_string}
 Content-Type: text/html; charset=\"US-ASCII\"
 Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
+
 $email_body
 "
 # Loop over the attachments, guess the type and produce the corresponding part, encoded base64
