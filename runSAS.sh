@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.4                                                                                                  #
+#     Version: 15.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 12/01/2019                                                                                            #
+#        Date: 13/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|4|
+|r|u|n|S|A|S| |v|1|5|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.4                                      
+	RUNSAS_CURRENT_VERSION=15.5                                      
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -175,6 +175,7 @@ function print_the_help_menu(){
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
         printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file>, job filters (name or index) can be added after <jobs-file>"
+        printf "\n     --joblist <jobs-file>        runSAS will override the embedded jobs with the jobs specified in <jobs-file>. This can be added with usual filters"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -224,6 +225,7 @@ function validate_parameters_passed_to_script(){
          --job) ;;
         --show) ;;
         --list) ;;
+     --joblist) ;;
          --log) ;;
         --last) ;;
             -v) ;;
@@ -1013,6 +1015,34 @@ function run_from_to_job_interactive_skip_mode_check(){
         fi
     else
         run_from_to_job_interactive_skip_mode=3
+    fi
+}
+#------
+# Name: check_for_job_list_override
+# Desc: If user has specified a file of jobs for the run, override the embedded job list.
+#   In: --joblist, job-list-file
+#  Out: <NA>
+#------
+function check_for_job_list_override(){
+    if [[ ${#@} -ne 0 ]]; then
+        for (( p=1; p<=$RUNSAS_TOTAL_PARAMERTS_ALLOWED_COUNT; p++ ))
+        do
+            curr_p=$p
+            # Override the default setting
+            if [[ "${!curr_p}" == "--joblist" ]]; then
+                let next_p=p+1 
+		if [[ "${!next_p}" == "" ]]; then
+                    # Check for the jobs file (mandatory for this mode)
+                    printf "${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
+                    clear_session_and_exit
+                else
+                    # Check if the file exists
+                    check_if_the_file_exists ${!next_p}
+                    # Replace the file that's used by runSAS
+                    cp -f ${!next_p} .job.list
+                fi
+	    fi
+        done
     fi
 }
 #------
@@ -2757,6 +2787,9 @@ print_2_runsas_session_log "Script Mode Value 7: $script_mode_value_7"
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
+
+# Override the jobs list, if specified.
+check_for_job_list_override $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
 
 # Show the list, if the user wants to quickly preview before launching the script (--show or --jobs or --list)
 show_the_list $1
