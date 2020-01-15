@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.5                                                                                                  #
+#     Version: 15.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 14/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|5|
+|r|u|n|S|A|S| |v|1|5|.|7|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.5                                      
+	RUNSAS_CURRENT_VERSION=15.7                                     
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -175,7 +175,7 @@ function print_the_help_menu(){
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
         printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file>, job filters (name or index) can be added after <jobs-file>"
-        printf "\n     --joblist <jobs-file>        runSAS will override the embedded jobs with the jobs specified in <jobs-file>. Suffix this option with filters (e.g.: ./runSAS.sh -fu 1 2 --joblist jobs.txt)"
+        printf "\n     --joblist  <jobs-file>       runSAS will override the embedded jobs with the jobs specified in <jobs-file>. Suffix this option with filters (e.g.: ./runSAS.sh -fu 1 2 --joblist jobs.txt)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
@@ -554,7 +554,7 @@ function process_delayed_execution(){
 		fi
 	else
 		# Check if --delay mode is specified in combination with other modes (assumption: --delay will be followed by time delay in seconds) 
-		for (( i=1; i<=$RUNSAS_TOTAL_PARAMERTS_ALLOWED_COUNT; i++ )); do
+		for (( i=1; i<=$RUNSAS_MAX_PARAMETERS_COUNT; i++ )); do
 			delay_script_mode_value_i="script_mode_value_$i"
 			delay_script_mode_value="${!delay_script_mode_value_i}"
 			if [[ "$delay_script_mode_value" == "--delay" ]]; then
@@ -1020,30 +1020,30 @@ function run_from_to_job_interactive_skip_mode_check(){
 #------
 # Name: check_for_job_list_override
 # Desc: If user has specified a file of jobs for the run, override the embedded job list.
-#   In: --joblist, job-list-file
+#   In: --joblist
 #  Out: <NA>
 #------
 function check_for_job_list_override(){
-    if [[ ${#@} -ne 0 ]]; then
-        for (( p=1; p<=$RUNSAS_TOTAL_PARAMERTS_ALLOWED_COUNT; p++ ))
-        do
-            curr_p=$p
-            # Override the default setting
-            if [[ "${!curr_p}" == "--joblist" ]]; then
-                let next_p=p+1 
-		if [[ "${!next_p}" == "" ]]; then
-                    # Check for the jobs file (mandatory for this mode)
-                    printf "${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
-                    clear_session_and_exit
-                else
-                    # Check if the file exists
-                    check_if_the_file_exists ${!next_p}
+	for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
+		if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-f" ]]; then
+			if [[ "${RUNSAS_PARAMETERS_ARRAY[p+1]}" == "" ]]; then
+				# Check for the jobs file (mandatory for this mode)
+				printf "${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
+				clear_session_and_exit
+			else
+                # Check if the user has specified it before other arguments 
+				if [[ "${RUNSAS_PARAMETERS_ARRAY[p+2]}" == "" ]]; then
+                    check_if_the_file_exists ${RUNSAS_PARAMETERS_ARRAY[p+1]}
                     # Replace the file that's used by runSAS
-                    cp -f ${!next_p} .job.list
+                    cp -f ${RUNSAS_PARAMETERS_ARRAY[p+1]} .job.list
+				else 
+                    # Check for the jobs file (mandatory for this mode)
+                    printf "${red}*** ERROR: --joblist option must always be specified after all arguements (e.g. ./runSAS.sh -fu jobA jobB --joblist job.txt) ***${white}"
+                    clear_session_and_exit
                 fi
-	    fi
-        done
-    fi
+			fi
+		fi
+	done
 }
 #------
 # Name: kill_a_pid()
@@ -2706,7 +2706,9 @@ RUNSAS_GITHUB_PAGE=http://github.com/PrajwalSD/runSAS
 RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/master/runSAS.sh
 
 # System parameters
-RUNSAS_TOTAL_PARAMERTS_ALLOWED_COUNT=8
+RUNSAS_PARAMETERS_COUNT=$#
+RUNSAS_PARAMETERS_ARRAY=("$@")
+RUNSAS_MAX_PARAMETERS_COUNT=8
 DEBUG_MODE_CONSOLE_COLOR=white
 RUNSAS_DISPLAY_FILLER_COL_END_POS=114
 RUNSAS_FILLER_CHARACTER=.
@@ -2789,7 +2791,7 @@ print_2_runsas_session_log "Script Mode Value 7: $script_mode_value_7"
 validate_parameters_passed_to_script $1
 
 # Override the jobs list, if specified.
-check_for_job_list_override $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
+check_for_job_list_override 
 
 # Show the list, if the user wants to quickly preview before launching the script (--show or --jobs or --list)
 show_the_list $1
