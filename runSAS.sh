@@ -1025,7 +1025,7 @@ function run_from_to_job_interactive_skip_mode_check(){
 #------
 function check_for_job_list_override(){
 	for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
-		if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-f" ]]; then
+		if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--joblist" ]]; then
 			if [[ "${RUNSAS_PARAMETERS_ARRAY[p+1]}" == "" ]]; then
 				# Check for the jobs file (mandatory for this mode)
 				printf "${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
