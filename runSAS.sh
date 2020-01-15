@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.7                                                                                                  #
+#     Version: 15.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 14/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|7|
+|r|u|n|S|A|S| |v|1|5|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.7                                     
+	RUNSAS_CURRENT_VERSION=15.8                                     
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1028,17 +1028,19 @@ function check_for_job_list_override(){
 		if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--joblist" ]]; then
 			if [[ "${RUNSAS_PARAMETERS_ARRAY[p+1]}" == "" ]]; then
 				# Check for the jobs file (mandatory for this mode)
-				printf "${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
+				printf "\n${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
 				clear_session_and_exit
 			else
                 # Check if the user has specified it before other arguments 
 				if [[ "${RUNSAS_PARAMETERS_ARRAY[p+2]}" == "" ]]; then
                     check_if_the_file_exists ${RUNSAS_PARAMETERS_ARRAY[p+1]}
+                    remove_empty_lines_from_file ${RUNSAS_PARAMETERS_ARRAY[p+1]}
+                    add_a_newline_char_to_eof ${RUNSAS_PARAMETERS_ARRAY[p+1]}
                     # Replace the file that's used by runSAS
                     cp -f ${RUNSAS_PARAMETERS_ARRAY[p+1]} .job.list
 				else 
                     # Check for the jobs file (mandatory for this mode)
-                    printf "${red}*** ERROR: --joblist option must always be specified after all arguements (e.g. ./runSAS.sh -fu jobA jobB --joblist job.txt) ***${white}"
+                    printf "\n${red}*** ERROR: --joblist option must always be specified after all arguements (e.g. ./runSAS.sh -fu jobA jobB --joblist job.txt) ***${white}"
                     clear_session_and_exit
                 fi
 			fi
@@ -2168,6 +2170,15 @@ function add_a_newline_char_to_eof(){
     if [ "$(tail -c1 "$1"; echo x)" != $'\nx' ]; then     
         echo "" >> "$1"; 
     fi
+}
+#------
+# Name: remove_empty_lines_from_file()
+# Desc: This function removes any unwanted empty lines from the file
+#   In: file-name
+#  Out: <NA>
+#------
+function remove_empty_lines_from_file(){
+	sed -i '/^$/d' $1
 }
 #------
 # Name: archive_all_job_logs()
