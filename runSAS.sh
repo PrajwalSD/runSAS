@@ -8,7 +8,7 @@
 #                                                                                                                    #
 #     Version: 15.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 13/01/2019                                                                                            #
+#        Date: 14/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -175,7 +175,7 @@ function print_the_help_menu(){
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
         printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file>, job filters (name or index) can be added after <jobs-file>"
-        printf "\n     --joblist <jobs-file>        runSAS will override the embedded jobs with the jobs specified in <jobs-file>. This can be added with usual filters"
+        printf "\n     --joblist <jobs-file>        runSAS will override the embedded jobs with the jobs specified in <jobs-file>. Suffix this option with filters (e.g.: ./runSAS.sh -fu 1 2 --joblist jobs.txt)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
         printf "\n       Tip #1: You can use <job-index> instead of a <job-name> e.g.: ./runSAS.sh -fu 1 3 instead of ./runSAS.sh -fu jobA jobC"
