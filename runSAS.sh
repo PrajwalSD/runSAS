@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.8                                                                                                  #
+#     Version: 15.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 14/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|8|
+|r|u|n|S|A|S| |v|1|5|.|9|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.8                                     
+	RUNSAS_CURRENT_VERSION=15.9                                     
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -318,6 +318,8 @@ function set_colors_codes(){
     underline=$'\e[4m'
     # Reset text attributes to normal without clearing screen.
     alias reset_colors="tput sgr0" 
+    # Checkmark (green)
+    green_check_mark="\033[0;32m\xE2\x9C\x94\033[0m"
 }
 #------
 # Name: display_post_banner_messages()
@@ -1648,7 +1650,7 @@ function clear_session_and_exit(){
         reset
     fi
     running_processes_housekeeping $job_pid
-    printf "${green}*** runSAS is exiting now ***${white}\n"
+    printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
 #------
@@ -1759,7 +1761,7 @@ function press_enter_key_to_continue(){
 	
 	# Newlines (after)
     if [[ "$2" != "" ]] && [[ "$2" != "0" ]]; then
-        for (( i=1; i<=$1; i++ )); do
+        for (( i=1; i<=$2; i++ )); do
             printf "\n"
         done
     fi
@@ -1806,14 +1808,27 @@ function scan_sas_programs_for_debug_options(){
 #  Out: <NA>
 #------
 function validate_job_list(){
+    # For those enter key hitters :)
     disable_enter_key
-
+	
+	# Set the wait message parameters
+	vjmode_show_wait_message="Checking few things in the background, please wait...."  
+	
+	# Show message
+	printf "\n${red}$vjmode_show_wait_message${white}"
+	
+	# Reset the job counter for the validation routine
 	job_counter=0
+	
 	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j(run-a-job) mode
 		while IFS=' ' read -r j o so bservdir bsh blogdir bjobdir; do
+
+            # Counter for the job
 			let job_counter+=1
+
             # Set defaults if nothing is specified
             vjmode_sas_deployed_jobs_root_directory="${bjobdir:-$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY}"
+
             # If user has specified a different server context, switch it here
             if [[ "$o" == "--server" ]]; then
                 if [[ "$so" != "" ]]; then
@@ -1824,16 +1839,24 @@ function validate_job_list(){
                     printf "${yellow}WARNING: $so was specified for $j in the list without the server context name, defaulting to $SAS_APP_SERVER_NAME${white}"
                 fi
             fi
+
 			# Check if the file exists
 			if [[ "$o" != "--skip" ]] && [ ! -f "$vjmode_sas_deployed_jobs_root_directory/$j.$PROGRAM_TYPE_EXTENSION" ]; then
 				printf "\n${red}*** ERROR: Job #$job_counter ${black}${red_bg}$j${white}${red} has not been deployed or mispelled because $j.$PROGRAM_TYPE_EXTENSION was not found in $vjmode_sas_deployed_jobs_root_directory *** ${white}"
                 clear_session_and_exit
 			fi
+
 			# Check if there are any sastrace options enabled in the program file
 			scan_sas_programs_for_debug_options $vjmode_sas_deployed_jobs_root_directory/$j.$PROGRAM_TYPE_EXTENSION
 		done < $1
 	fi
-
+	
+	# Remove the message, reset the cursor
+	echo -ne "\r"
+	printf "%${#vjmode_show_wait_message}s" " "
+	echo -ne "\r"
+	
+	# Enable carriage return
     enable_enter_key
 }
 #------
