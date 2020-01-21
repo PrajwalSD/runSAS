@@ -2948,9 +2948,6 @@ redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script
 # Print job(s) list on console
 print_file_content_with_index .job.list jobs
 
-# Validate the jobs in list
-validate_job_list .job.list
-
 # Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different mode
 if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" ]] && [[ "$script_mode" != "--delay" ]] && [[ "$script_mode" != "--nomail" ]] && [[ "$script_mode" != "--noemail" ]] && [[ "$script_mode" != "--update" ]]; then
 	# Cycle through different states of job number variable (-1 > 0 > N), when a index is used it will be set to the index number else 0
@@ -2977,11 +2974,14 @@ if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" 
     fi
 fi
 
+# Validate the jobs in list
+validate_job_list .job.list
+
 # Debug mode
 print_to_console_debug_only "runSAS session variables"
 
 # Get the consent from the user to trigger the batch 
-press_enter_key_to_continue 0 1
+press_enter_key_to_continue 1 1
 
 # Check for rogue process(es), the last known pid is checked here
 check_if_there_are_any_rogue_runsas_processes
