@@ -1482,7 +1482,7 @@ function add_html_color_tags_for_keywords(){
 function runsas_triggered_email(){
     if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
 		# Reset the input parameters 
-        echo "runSAS was launched in ${1:-"a full batch"} mode with ${2:-"no parameters."} $3 $4 $5" > $EMAIL_BODY_MSG_FILE
+        echo "runSAS was launched in ${1:-"a full batch"} mode with ${2:-"no parameters."} $3 $4 $5 $6 $7 $8" > $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
         send_an_email -v "" "Batch has been triggered" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
         printf "\n\n"
@@ -2996,7 +2996,7 @@ run_job_with_prompt=N
 process_delayed_execution 
 
 # Send a launch email
-runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4
+runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
 
 # Run the jobs from the list one at a time (here's where everything is brought together!)
 while IFS=' ' read -r job opt subopt sappdir bservdir bsh blogdir bjobdir; do
