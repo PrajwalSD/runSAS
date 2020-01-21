@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 15.9                                                                                                  #
+#     Version: 16.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 14/01/2019                                                                                            #
+#        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|5|.|9|
+|r|u|n|S|A|S| |v|1|6|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=15.9                                     
+	RUNSAS_CURRENT_VERSION=16.0                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -183,6 +183,8 @@ function print_the_help_menu(){
 		printf "\n       Tip #3: You can add --skip option against job(s) when you provide a list, this will skip the job in every run."
         printf "\n       Tip #4: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
 		printf "\n       Tip #5: You can add --server option followed by server parameters (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
+        printf "\n       Tip #6: You can add --email option during the launch to override the email address setting during runtime (must be added at the end of all arguments)"        
+        printf "\n       Tip #7: You can add --message option during the launch for an additional user message for the batch (useful for tagging the batch runs)"        
         printf "${underline}"
         printf "\n\nVERSION\n"
         printf "${end}${blue}"
@@ -226,6 +228,8 @@ function validate_parameters_passed_to_script(){
         --show) ;;
         --list) ;;
      --joblist) ;;
+     --message) ;;
+       --email) ;;
          --log) ;;
         --last) ;;
             -v) ;;
@@ -1269,6 +1273,63 @@ function print_to_console_debug_only(){
     fi
 }
 #------
+# Name: check_for_noemail_option()
+# Desc: This function will check if the user has requested for --noemail or --nomail option (overrides the email flags to NNNN)
+#   In: <NA>
+#  Out: <NA> 
+#------
+function check_for_noemail_option(){
+    for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--noemail" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--nomail" ]]; then 
+            # Override the flags
+            ENABLE_EMAIL_ALERTS=NNNN
+        fi
+    done
+}
+#------
+# Name: check_for_email_option()
+# Desc: This function will check if the user has requested for --email option (overrides the email TO address)
+#   In: <NA>
+#  Out: <NA> 
+#------
+function check_for_email_option(){
+    for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--email" ]]; then
+            if [[ "${RUNSAS_PARAMETERS_ARRAY[p+1]}" == "" ]]; then
+                # Check for the email address(es)
+                printf "\n${red}*** ERROR: An email address (or addresses separated by semi-colon with no spaces in between) is required for --email option ***${white}"
+                clear_session_and_exit
+            else
+                # Check if the user has specified it before other arguments 
+                if [[ "${RUNSAS_PARAMETERS_ARRAY[p+2]}" == "" ]]; then
+                    # Override the flags
+                    ENABLE_EMAIL_ALERTS=$EMAIL_FLAGS_DEFAULT_SETTING
+                    # Override the email addresses
+                    EMAIL_ALERT_TO_ADDRESS=${RUNSAS_PARAMETERS_ARRAY[p+1]}
+                else 
+                    # Check for the jobs file (mandatory for this mode)
+                    printf "\n${red}*** ERROR: --email option must always be specified after all arguements (e.g. ./runSAS.sh -fu jobA jobB --email xyz@abc.com) ***${white}"
+                    clear_session_and_exit
+                fi
+            fi
+        fi
+    done
+}
+#------
+# Name: check_for_user_messages_option()
+# Desc: This function will check if the user has requested for --message option (sends this user message in the subject line)
+#   In: <NA>
+#  Out: <NA> 
+#------
+function check_for_user_messages_option(){
+    for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--message" ]]; then
+            # Override the flags
+            EMAIL_USER_MESSAGE="${RUNSAS_PARAMETERS_ARRAY[p+1]}"
+        fi
+    done
+}
+#------
 # Name: send_an_email()
 # Desc: This routine will send an email alert to the intended recipient(s)
 #   In: email-mode, subject-identifier, subject, to-address (separated by semi-colon), email-body-msg-html-file, 
@@ -1339,7 +1400,7 @@ email_body=$(<$email_body_file)
 # Build "To", "From" and "Subject"
 email_from_address_complete="$EMAIL_ALERT_USER_NAME <$USER@`hostname`>"
 email_to_address_complete="$email_to_address $email_optional_to_distribution_list" 
-email_subject_full_line="$email_subject_id $email_subject"
+email_subject_full_line="$email_subject_id $email_subject $EMAIL_USER_MESSAGE"
 
 # Remember the current directory and switch to attachments root directory (is switched back once the routine is complete)
 curr_directory=`pwd`
@@ -2739,7 +2800,7 @@ function runSAS(){
 RUNSAS_GITHUB_PAGE=http://github.com/PrajwalSD/runSAS
 RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/master/runSAS.sh
 
-# System parameters
+# System defaults 
 RUNSAS_PARAMETERS_COUNT=$#
 RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
@@ -2757,6 +2818,8 @@ INDEX_MODE_SECOND_JOB_NUMBER=-1
 EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
 DEFAULT_PROGRESS_BAR_COLOR="green_bg"
 SERVER_PACKAGE_INSTALLER_PROGRAM=yum
+EMAIL_USER_MESSAGE=""
+EMAIL_FLAGS_DEFAULT_SETTING=YNYY
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -2868,15 +2931,13 @@ trap clear_session_and_exit INT
 check_if_logged_in_user_is_root
 
 # Check if the user has specified a --nomail or --noemail option anywhere to override the email setting.
-if [[ ${#@} -ne 0 ]]; then
-    for e in "$@"
-    do
-        # Override the default setting
-        if [[ "$e" == "--noemail" ]] || [[ "$e" == "--nomail" ]]; then 
-			ENABLE_EMAIL_ALERTS=NNNN
-		fi
-    done
-fi
+check_for_noemail_option
+
+# Check if the user has specified --email option
+check_for_email_option
+
+# Check if the user has specified --message option
+check_for_user_messages_option
 
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
 run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
@@ -2890,7 +2951,7 @@ print_file_content_with_index .job.list jobs
 # Validate the jobs in list
 validate_job_list .job.list
 
-# Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different modes
+# Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different mode
 if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" ]] && [[ "$script_mode" != "--delay" ]] && [[ "$script_mode" != "--nomail" ]] && [[ "$script_mode" != "--noemail" ]] && [[ "$script_mode" != "--update" ]]; then
 	# Cycle through different states of job number variable (-1 > 0 > N), when a index is used it will be set to the index number else 0
     if [[ "$script_mode_value_1" != "" ]]; then 
