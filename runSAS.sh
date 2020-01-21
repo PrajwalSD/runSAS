@@ -2981,7 +2981,7 @@ validate_job_list .job.list
 print_to_console_debug_only "runSAS session variables"
 
 # Get the consent from the user to trigger the batch 
-press_enter_key_to_continue 1 1
+press_enter_key_to_continue 0 1
 
 # Check for rogue process(es), the last known pid is checked here
 check_if_there_are_any_rogue_runsas_processes
