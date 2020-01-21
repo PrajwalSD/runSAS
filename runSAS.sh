@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.0                                                                                                  #
+#     Version: 16.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|0|
+|r|u|n|S|A|S| |v|1|6|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.0                                    
+	RUNSAS_CURRENT_VERSION=16.1                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2637,6 +2637,9 @@ function runSAS(){
             fi
         fi
         
+        # Again, suppress unwanted lines in the log (typical SAS errors!)
+        remove_a_line_from_file "ERROR: Errors printed on pages" "$local_sas_logs_root_directory/$current_log_name"
+
         # Check if there are any errors in the logs (as it updates, in real-time)
         grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
 
@@ -2666,9 +2669,6 @@ function runSAS(){
 		# Get the PID again for the next iteration
         ps cax | grep -w $job_pid > /dev/null
     done
-
-    # Again, suppress unwanted lines in the log (typical SAS errors!)
-    remove_a_line_from_file "ERROR: Errors printed on pages" "$local_sas_logs_root_directory/$current_log_name"
 
     # Check if there are any errors in the logs
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
