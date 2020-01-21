@@ -1325,7 +1325,7 @@ function check_for_user_messages_option(){
     for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
         if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--message" ]]; then
             # Override the flags
-            EMAIL_USER_MESSAGE="${RUNSAS_PARAMETERS_ARRAY[p+1]}"
+            EMAIL_USER_MESSAGE="(${RUNSAS_PARAMETERS_ARRAY[p+1]})"
         fi
     done
 }
