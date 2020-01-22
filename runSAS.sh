@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.7                                                                                                  #
+#     Version: 16.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|7|
+|r|u|n|S|A|S| |v|1|6|.|8|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.7                                    
+	RUNSAS_CURRENT_VERSION=16.8                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1500,10 +1500,9 @@ function add_html_color_tags_for_keywords(){
 function runsas_notify_email(){
     if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
 		# Reset the input parameters 
-        echo "runSAS is waiting for the user input (it's currently paused) at $1" > $EMAIL_BODY_MSG_FILE
+        echo "The batch has been paused at $1 for user input" > $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-        send_an_email -v "" "Batch halted, awaiting user input" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
-        printf "\n\n"
+        send_an_email -v "" "Batch paused, awaiting user input" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
     fi
 }
 #------
@@ -2631,7 +2630,7 @@ function runSAS(){
     write_current_job_details_on_screen $1
 	
 	# Check if the prompt option is set by the user for the job
-    if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
+    if [[ "$local_sas_opt" == "--prompt" ]]; then
 		# Ask user
         run_or_skip_message="Do you want to run? (y/n): "
         printf "${red}$run_or_skip_message${white}"
@@ -2643,7 +2642,7 @@ function runSAS(){
         done
         # Check if read timed out
         if [[ "$run_job_with_prompt" == "" ]]; then
-            runsas_notify_email
+            runsas_notify_email $local_sas_job
             run_or_skip_message=" (notified) $run_or_skip_message" 
             printf "${red}$run_or_skip_message${white}"
             read -n1 run_job_with_prompt < /dev/tty
