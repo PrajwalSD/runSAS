@@ -2622,7 +2622,7 @@ function runSAS(){
         enable_enter_key
         read -n1 run_job_with_prompt < /dev/tty
 		# Reset the console
-		for (( i=1; i<=${#run_or_skip_message}+2; i++ )); do
+		for (( i=1; i<=${#run_or_skip_message}+1; i++ )); do
             printf "\b"
         done
 		
@@ -2655,7 +2655,7 @@ function runSAS(){
     pid_progress_counter=1
 
     # Paint the rest of the message on the console
-    printf "${white} is running with pid $job_pid${white}"
+    printf "${white}is running with pid $job_pid${white}"
 	
 	# Runtime (history)
 	show_job_hist_runtime_stats $1
