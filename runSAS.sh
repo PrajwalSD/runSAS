@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.5                                                                                                  #
+#     Version: 16.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|5|
+|r|u|n|S|A|S| |v|1|6|.|6|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.5                                    
+	RUNSAS_CURRENT_VERSION=16.6                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1687,7 +1687,7 @@ function print_2_runsas_session_log(){
 function write_current_job_details_on_screen(){
     printf "${white}Job ${white}"
     printf "%02d" $JOB_COUNTER_FOR_DISPLAY
-    printf "${white} of $TOTAL_NO_OF_JOBS_COUNTER_CMD${white}: ${darkgrey_bg}$1${white} is running ${white}"
+    printf "${white} of $TOTAL_NO_OF_JOBS_COUNTER_CMD${white}: ${darkgrey_bg}$1${white} ${white}"
 }
 #------
 # Name: write_skipped_job_details_on_screen()
@@ -1698,7 +1698,9 @@ function write_current_job_details_on_screen(){
 function write_skipped_job_details_on_screen(){
     printf "${grey}Job ${grey}"
     printf "%02d" $JOB_COUNTER_FOR_DISPLAY
-    printf "${grey} of $TOTAL_NO_OF_JOBS_COUNTER_CMD: $1 has been skipped.\n${white}"
+    printf "${grey} of $TOTAL_NO_OF_JOBS_COUNTER_CMD: $1${white}"
+	display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 2 grey
+	printf "${grey}(SKIPPED)\n${white}"
 }
 #------
 # Name: get_the_entry_from_the_list()
@@ -1766,6 +1768,7 @@ function display_message_fillers_on_console(){
     pre_filler_backspace_char_count=$3
     use_preserved_filler_char_count=$4
     post_filler_backspace_char_count=$5
+	filler_char_color=$6
 
     # Calculate no of fillers required to reach the specified column
     filler_char_count=$((filler_char_upto_col-cursor_col_pos))
@@ -1780,11 +1783,11 @@ function display_message_fillers_on_console(){
     # Display fillers
     if [[ "$use_preserved_filler_char_count" != "N" ]] && [[ "$use_preserved_filler_char_count" != "" ]]; then
         for (( i=1; i<=$filler_char_count_prev; i++ )); do
-            printf "$filler_char_to_display" 
+            printf "${!filler_char_color}$filler_char_to_display${white}" 
         done   
     else
         for (( i=1; i<=$filler_char_count; i++ )); do
-            printf "$filler_char_to_display" 
+            printf "${!filler_char_color}$filler_char_to_display${white}"         
         done   
     fi
 
@@ -2117,6 +2120,7 @@ function redeploy_sas_jobs(){
 			check_if_the_file_exists $depjob_job_file
 			
 			# If it exists, perform dos2unix
+			printf "\n"
 			dos2unix $depjob_job_file
 			
 			# Add a newline at the end of the file
@@ -2603,20 +2607,6 @@ function runSAS(){
     fi
 
     # Check if the prompt option is set by the user for the job
-    if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
-        printf "${red}Do you want to run ${red_bg}${black}$local_sas_job${end}${red} as part of this run? (Y/N): ${white}"
-        enable_enter_key
-        read run_job_with_prompt < /dev/tty
-        if [[ "$JOB_COUNTER_FOR_DISPLAY" == "1" ]]; then
-            printf "\n"
-        fi
-        if [[ $run_job_with_prompt != Y ]]; then
-            write_skipped_job_details_on_screen $1
-            continue
-        fi
-    fi
-
-    # Check if the prompt option is set by the user for the job
     if [[ "$local_sas_opt" == "--skip" ]]; then
 		write_skipped_job_details_on_screen $1
 		continue
@@ -2624,6 +2614,27 @@ function runSAS(){
 
     # Display current job details on console, jobname is passed to the function
     write_current_job_details_on_screen $1
+	
+	# Check if the prompt option is set by the user for the job
+    if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
+		run_or_skip_message="Do you want to run? (Y/N): "
+        printf "${red} $run_or_skip_message${white}"
+        enable_enter_key
+        read -n1 run_job_with_prompt < /dev/tty
+		# Reset the console
+		for (( i=1; i<=${#run_or_skip_message}+3; i++ )); do
+            printf "\b"
+        done
+		
+        if [[ $run_job_with_prompt != Y ]]; then
+			# Remove the message, reset the cursor
+			echo -ne "\r"
+			printf "%175s" " "
+			echo -ne "\r"
+            write_skipped_job_details_on_screen $1
+            continue
+        fi
+    fi
 
     # Check if the directory exists (specified by the user as configuration)
     check_if_the_dir_exists $local_sas_app_root_directory $local_sas_batch_server_root_directory $local_sas_logs_root_directory $local_sas_deployed_jobs_root_directory
@@ -2642,7 +2653,9 @@ function runSAS(){
     # Get the PID details
     job_pid=$!
     pid_progress_counter=1
-    printf "${white}with pid $job_pid${white}"
+
+    # Paint the rest of the message on the console
+    printf "${white} is running with pid $job_pid${white}"
 	
 	# Runtime (history)
 	show_job_hist_runtime_stats $1
