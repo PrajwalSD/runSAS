@@ -1703,11 +1703,15 @@ function write_skipped_job_details_on_screen(){
 #------
 # Name: get_the_entry_from_the_list()
 # Desc: Get the jobname when user inputs a number/index (from the list)
-#   In: job-name, job-list
+#   In: job-name, job-list, modifier
 #  Out: <NA>
 #------
 function get_the_entry_from_the_list(){
-    job_name_from_the_list=`sed -n "${1}p" $2 | awk '{print $1}'`
+    if [[ "$3" == "" ]]; then
+        job_name_from_the_list=`sed -n "${1}p" $2`
+    else
+        job_name_from_the_list=`sed -n "${1}p" $2 | awk '{print $1}'`
+    fi
     if [[ -z $job_name_from_the_list ]]; then
         printf "${red}*** ERROR: Job index is out-of-range, no job found at $1 in the list above. Please review the specified index and launch the script again ***${white}"
         clear_session_and_exit
@@ -2300,7 +2304,7 @@ function convert_job_index_to_names(){
                 INDEX_MODE_FIRST_JOB_NUMBER=0
                 if [[ ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
                     printf "\n"
-                    get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} .job.list
+                    get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} .job.list 1
                     INDEX_MODE_FIRST_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
                     eval "script_mode_value_$first_value_p='${job_name_from_the_list}'";
                 else
@@ -2310,7 +2314,7 @@ function convert_job_index_to_names(){
             if [[ "${RUNSAS_PARAMETERS_ARRAY[second_value_p]}" != "" ]]; then 
                 INDEX_MODE_SECOND_JOB_NUMBER=0
                 if [[ ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-                    get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} .job.list
+                    get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} .job.list 1
                     INDEX_MODE_SECOND_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
                     eval "script_mode_value_$second_value_p='${job_name_from_the_list}'";
                 else
