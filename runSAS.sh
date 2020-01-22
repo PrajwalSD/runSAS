@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.4                                                                                                  #
+#     Version: 16.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|4|
+|r|u|n|S|A|S| |v|1|6|.|5|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.4                                    
+	RUNSAS_CURRENT_VERSION=16.5                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -739,7 +739,7 @@ function remove_a_string_pattern_from_file(){
 #  Out: <NA>
 #------
 function remove_a_line_from_file(){
-    sed -i '/$1/d' $2
+    sed -i "/$1/d" $2
 }
 #------
 # Name: backup_directory()
