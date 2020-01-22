@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.3                                                                                                  #
+#     Version: 16.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|3|
+|r|u|n|S|A|S| |v|1|6|.|4|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.3                                    
+	RUNSAS_CURRENT_VERSION=16.4                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -724,13 +724,22 @@ function check_if_logged_in_user_is_root(){
     fi
 }
 #------
+# Name: remove_a_string_pattern_from_file()
+# Desc: Remove a string pattern from file 
+#   In: string, filename
+#  Out: <NA>
+#------
+function remove_a_string_pattern_from_file(){
+	sed -e "s/$1//" -i $2
+}
+#------
 # Name: remove_a_line_from_file()
 # Desc: Remove a line from a file
 #   In: string, filename
 #  Out: <NA>
 #------
 function remove_a_line_from_file(){
-	sed -e "s/$1//" -i $2
+    sed -i '/$1/d' $2
 }
 #------
 # Name: backup_directory()
@@ -2688,8 +2697,7 @@ function runSAS(){
         grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
 
         # Again, suppress unwanted lines in the log (typical SAS errors!)
-        remove_a_line_from_file "ERROR: Errors printed on pages" "$TMP_LOG_FILE"
-        sleep 0.1
+        remove_a_line_from_file "ERROR: Errors printed on page" "$TMP_LOG_FILE"
 
         # Return code check
         if [ -s $TMP_LOG_FILE ]; then
