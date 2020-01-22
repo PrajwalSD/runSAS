@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.2                                                                                                  #
+#     Version: 16.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|2|
+|r|u|n|S|A|S| |v|1|6|.|3|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.2                                    
+	RUNSAS_CURRENT_VERSION=16.3                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -910,7 +910,7 @@ function run_from_to_job_mode_check(){
 					run_from_to_job_mode=1
 				fi
             else
-                if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then
+				if [[ "$script_mode_value_2" == "$local_sas_job" ]]; then 
 					if [[ $INDEX_MODE_SECOND_JOB_NUMBER -gt 0 ]]; then # In index mode (i.e. when a job number is specified), match the index too
 						if [[ $JOB_COUNTER_FOR_DISPLAY -eq $INDEX_MODE_SECOND_JOB_NUMBER ]]; then
 							run_from_to_job_mode=2
@@ -918,15 +918,18 @@ function run_from_to_job_mode_check(){
 					else
 						run_from_to_job_mode=2
 					fi
-                else
-                    if  [[ $run_from_to_job_mode -eq 1 ]]; then
-                        run_from_to_job_mode=1
-                    else
-                        if [[ $run_from_to_job_mode -eq 2 ]]; then
-                            run_from_to_job_mode=0
-                        fi
-                    fi
-                fi
+				else
+					if  [[ $run_from_to_job_mode -eq 1 ]]; then
+						run_from_to_job_mode=1
+						if [[ "$script_mode_value_2" == "$script_mode_value_1" ]]; then
+							run_from_to_job_mode=0
+						fi
+					else
+						if [[ $run_from_to_job_mode -eq 2 ]]; then
+							run_from_to_job_mode=0
+						fi
+					fi
+				fi
             fi
         fi
     else
@@ -965,6 +968,9 @@ function run_from_to_job_interactive_mode_check(){
                 else
                     if  [[ $run_from_to_job_interactive_mode -eq 1 ]]; then
                         run_from_to_job_interactive_mode=1
+						if [[ "$script_mode_value_2" == "$script_mode_value_1" ]]; then
+							run_from_to_job_interactive_mode=0
+						fi
                     else
                         if [[ $run_from_to_job_interactive_mode -eq 2 ]]; then
                             run_from_to_job_interactive_mode=0
@@ -1011,6 +1017,9 @@ function run_from_to_job_interactive_skip_mode_check(){
                 else
                     if  [[ $run_from_to_job_interactive_skip_mode -eq 1 ]]; then
                         run_from_to_job_interactive_skip_mode=1
+						if [[ "$script_mode_value_2" == "$script_mode_value_1" ]]; then
+							run_from_to_job_interactive_skip_mode=0
+						fi
                     else
                         if [[ $run_from_to_job_interactive_skip_mode -eq 2 ]]; then
                             run_from_to_job_interactive_skip_mode=0
@@ -2273,7 +2282,7 @@ function remove_empty_lines_from_file(){
 function convert_job_index_to_names(){
     for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
         # Single-value modes
-        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-o" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-f" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-u" ]] \
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-o" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-f" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-u" ]] || \
            [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fu" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fui" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fuis" ]]; then
             # Get value pointers for the modes
             let first_value_p=p+1
@@ -2284,7 +2293,7 @@ function convert_job_index_to_names(){
                     printf "\n"
                     get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} .job.list
                     INDEX_MODE_FIRST_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
-                    eval "script_mode_value_$first_value_p=$job_name_from_the_list";
+                    eval "script_mode_value_$first_value_p='${job_name_from_the_list}'";
                 else
                     check_for_multiple_instances_of_job ${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
                 fi
@@ -2294,7 +2303,7 @@ function convert_job_index_to_names(){
                 if [[ ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
                     get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} .job.list
                     INDEX_MODE_SECOND_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
-                    eval "script_mode_value_$second_value_p=$job_name_from_the_list";
+                    eval "script_mode_value_$second_value_p='${job_name_from_the_list}'";
                 else
                     check_for_multiple_instances_of_job ${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
                 fi
@@ -2675,11 +2684,12 @@ function runSAS(){
             fi
         fi
         
-        # Again, suppress unwanted lines in the log (typical SAS errors!)
-        remove_a_line_from_file "ERROR: Errors printed on pages" "$local_sas_logs_root_directory/$current_log_name"
-
         # Check if there are any errors in the logs (as it updates, in real-time)
         grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
+
+        # Again, suppress unwanted lines in the log (typical SAS errors!)
+        remove_a_line_from_file "ERROR: Errors printed on pages" "$TMP_LOG_FILE"
+        sleep 0.1
 
         # Return code check
         if [ -s $TMP_LOG_FILE ]; then
