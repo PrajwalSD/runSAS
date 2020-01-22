@@ -2644,7 +2644,7 @@ function runSAS(){
         # Check if read timed out
         if [[ "$run_job_with_prompt" == "" ]]; then
             runsas_notify_email
-            run_or_skip_message="(notified) $run_or_skip_message" 
+            run_or_skip_message=" (notified) $run_or_skip_message" 
             printf "${red}$run_or_skip_message${white}"
             read -n1 run_job_with_prompt < /dev/tty
         fi
