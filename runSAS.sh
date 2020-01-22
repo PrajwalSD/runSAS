@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.1                                                                                                  #
+#     Version: 16.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|1|
+|r|u|n|S|A|S| |v|1|6|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.1                                    
+	RUNSAS_CURRENT_VERSION=16.2                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2265,6 +2265,44 @@ function remove_empty_lines_from_file(){
 	sed -i '/^$/d' $1
 }
 #------
+# Name: convert_job_index_to_names()
+# Desc: This function will retreive job names for the job index specified by the user 
+#   In: <NA>
+#  Out: <NA> 
+#------
+function convert_job_index_to_names(){
+    for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
+        # Single-value modes
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-o" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-f" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-u" ]] \
+           [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fu" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fui" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fuis" ]]; then
+            # Get value pointers for the modes
+            let first_value_p=p+1
+            let second_value_p=p+2
+            if [[ "${RUNSAS_PARAMETERS_ARRAY[first_value_p]}" != "" ]]; then
+                INDEX_MODE_FIRST_JOB_NUMBER=0
+                if [[ ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+                    printf "\n"
+                    get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} .job.list
+                    INDEX_MODE_FIRST_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
+                    eval "script_mode_value_$first_value_p=$job_name_from_the_list";
+                else
+                    check_for_multiple_instances_of_job ${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
+                fi
+            fi
+            if [[ "${RUNSAS_PARAMETERS_ARRAY[second_value_p]}" != "" ]]; then 
+                INDEX_MODE_SECOND_JOB_NUMBER=0
+                if [[ ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+                    get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} .job.list
+                    INDEX_MODE_SECOND_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
+                    eval "script_mode_value_$second_value_p=$job_name_from_the_list";
+                else
+                    check_for_multiple_instances_of_job ${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
+                fi
+            fi
+        fi
+    done
+}
+#------
 # Name: archive_all_job_logs()
 # Desc: This function archives all logs in the directory in preparation for a fresh batch run
 #   In: job-list-filename, archive-folder-name
@@ -2949,30 +2987,7 @@ redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script
 print_file_content_with_index .job.list jobs
 
 # Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different mode
-if [[ ${#@} -ne 0 ]] && [[ "$script_mode" != "" ]] && [[ "$script_mode" != "-i" ]] && [[ "$script_mode" != "--delay" ]] && [[ "$script_mode" != "--nomail" ]] && [[ "$script_mode" != "--noemail" ]] && [[ "$script_mode" != "--update" ]]; then
-	# Cycle through different states of job number variable (-1 > 0 > N), when a index is used it will be set to the index number else 0
-    if [[ "$script_mode_value_1" != "" ]]; then 
-		INDEX_MODE_FIRST_JOB_NUMBER=0
-		if [[ ${#script_mode_value_1} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-			printf "\n"
-			get_the_entry_from_the_list $script_mode_value_1 .job.list
-			INDEX_MODE_FIRST_JOB_NUMBER=$script_mode_value_1
-			script_mode_value_1=$job_name_from_the_list
-		else
-			check_for_multiple_instances_of_job $script_mode_value_1
-		fi
-    fi
-    if [[ "$script_mode_value_2" != "" ]]; then 
-		INDEX_MODE_SECOND_JOB_NUMBER=0
-		if [[ ${#script_mode_value_2} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-			get_the_entry_from_the_list $script_mode_value_2 .job.list
-			INDEX_MODE_SECOND_JOB_NUMBER=$script_mode_value_2
-			script_mode_value_2=$job_name_from_the_list		
-		else
-			check_for_multiple_instances_of_job $script_mode_value_2
-		fi
-    fi
-fi
+convert_job_index_to_names
 
 # Validate the jobs in list
 validate_job_list .job.list
