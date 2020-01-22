@@ -2618,11 +2618,11 @@ function runSAS(){
 	# Check if the prompt option is set by the user for the job
     if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
 		run_or_skip_message="Do you want to run? (Y/N): "
-        printf "${red} $run_or_skip_message${white}"
+        printf "${red}$run_or_skip_message${white}"
         enable_enter_key
         read -n1 run_job_with_prompt < /dev/tty
 		# Reset the console
-		for (( i=1; i<=${#run_or_skip_message}+3; i++ )); do
+		for (( i=1; i<=${#run_or_skip_message}+2; i++ )); do
             printf "\b"
         done
 		
