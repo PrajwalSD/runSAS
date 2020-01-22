@@ -1698,7 +1698,7 @@ function write_skipped_job_details_on_screen(){
 #  Out: <NA>
 #------
 function get_the_entry_from_the_list(){
-    job_name_from_the_list=`sed -n "${1}p" $2`
+    job_name_from_the_list=`sed -n "${1}p" $2 | awk '{print $1}'`
     if [[ -z $job_name_from_the_list ]]; then
         printf "${red}*** ERROR: Job index is out-of-range, no job found at $1 in the list above. Please review the specified index and launch the script again ***${white}"
         clear_session_and_exit
