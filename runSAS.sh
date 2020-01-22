@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.8                                                                                                  #
+#     Version: 16.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|8|
+|r|u|n|S|A|S| |v|1|6|.|9|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.8                                    
+	RUNSAS_CURRENT_VERSION=16.9                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2629,28 +2629,50 @@ function runSAS(){
     # Display current job details on console, jobname is passed to the function
     write_current_job_details_on_screen $1
 	
-	# Check if the prompt option is set by the user for the job
+	# Check if the prompt option is set by the user for the job (over engineered!)
     if [[ "$local_sas_opt" == "--prompt" ]]; then
+		# Disable enter key
+		disable_enter_key
+		
 		# Ask user
-        run_or_skip_message="Do you want to run? (y/n): "
-        printf "${red}$run_or_skip_message${white}"
-        # Read the values entered by user
-        read -t 120 -n1 run_job_with_prompt < /dev/tty
-        # Reset the console
-		for (( i=1; i<=${#run_or_skip_message}+1; i++ )); do
-            printf "\b"
-        done
-        # Check if read timed out
-        if [[ "$run_job_with_prompt" == "" ]]; then
-            runsas_notify_email $local_sas_job
-            run_or_skip_message=" (notified) $run_or_skip_message" 
-            printf "${red}$run_or_skip_message${white}"
-            read -n1 run_job_with_prompt < /dev/tty
-        fi
-        # Reset the console
-		for (( i=1; i<=${#run_or_skip_message}+1; i++ )); do
-            printf "\b"
-        done
+        run_or_skip_message="Do you want to run? (y/n): "		
+		printf "${red}$run_or_skip_message${white}"
+		
+		# Make sure the user has pressed a valid answer (i.e. y/n) with time out (and email notification to user after the time out)
+		function read_until_user_provides_right_input(){
+			while read -t $EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS -n1 run_job_with_prompt < /dev/tty; do
+				# Reset the console
+				for (( i=1; i<=${#run_or_skip_message}+$1; i++ )); do
+					printf "\b"
+				done
+				if [[ "$run_job_with_prompt" == "y" ]] || [[ "$run_job_with_prompt" == "Y" ]] || [[ "$run_job_with_prompt" == "n" ]] || [[ "$run_job_with_prompt" == "N" ]]; then
+					break;
+				else
+					run_or_skip_message="$run_or_skip_message" 
+				fi
+				printf "${red}$run_or_skip_message${white}"
+			done;
+		}
+		
+		# First iterations
+		read_until_user_provides_right_input 1
+		
+        # On time outs
+        while [[ "$run_job_with_prompt" == "" ]]; do
+			# Reset the console
+			for (( i=1; i<=${#run_or_skip_message}; i++ )); do
+				printf "\b"
+			done
+			# Notify the user once
+			if [[ "$user_notified" != "Y" ]]; then 
+				runsas_notify_email $local_sas_job
+				user_notified=Y
+			fi
+			run_or_skip_message="(notified) $run_or_skip_message" 
+			printf "${red}$run_or_skip_message${white}"
+            read_until_user_provides_right_input 1
+        done;
+        
 		# Act on the user request
         if [[ $run_job_with_prompt != Y ]] && [[ $run_job_with_prompt != y ]]; then
 			# Remove the message, reset the cursor
@@ -2919,6 +2941,7 @@ DEFAULT_PROGRESS_BAR_COLOR="green_bg"
 SERVER_PACKAGE_INSTALLER_PROGRAM=yum
 EMAIL_USER_MESSAGE=""
 EMAIL_FLAGS_DEFAULT_SETTING=YNYY
+EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=300
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
