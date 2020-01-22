@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.6                                                                                                  #
+#     Version: 16.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|6|
+|r|u|n|S|A|S| |v|1|6|.|7|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.6                                    
+	RUNSAS_CURRENT_VERSION=16.7                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1492,6 +1492,21 @@ function add_html_color_tags_for_keywords(){
 	sed -e "s/Step:/<font size=\"2\" face=\"courier\"color=\"RED\">Step:<\/font>/g"         -i  $1
 }
 #------
+# Name: runsas_notify_email()
+# Desc: Send an email when runSAS is waiting for user input
+#   In: <NA>
+#  Out: <NA>
+#------
+function runsas_notify_email(){
+    if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
+		# Reset the input parameters 
+        echo "runSAS is waiting for the user input (it's currently paused) at $1" > $EMAIL_BODY_MSG_FILE
+        add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
+        send_an_email -v "" "Batch halted, awaiting user input" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+        printf "\n\n"
+    fi
+}
+#------
 # Name: runsas_triggered_email()
 # Desc: Send an email when runSAS is triggered
 #   In: <NA>
@@ -2617,15 +2632,27 @@ function runSAS(){
 	
 	# Check if the prompt option is set by the user for the job
     if [[ "$local_sas_opt" == "--prompt" ]] || [[ "$local_sas_opt" == "-p" ]]; then
-		run_or_skip_message="Do you want to run? (y/n): "
+		# Ask user
+        run_or_skip_message="Do you want to run? (y/n): "
         printf "${red}$run_or_skip_message${white}"
-        enable_enter_key
-        read -n1 run_job_with_prompt < /dev/tty
-		# Reset the console
+        # Read the values entered by user
+        read -t 120 -n1 run_job_with_prompt < /dev/tty
+        # Reset the console
 		for (( i=1; i<=${#run_or_skip_message}+1; i++ )); do
             printf "\b"
         done
-		
+        # Check if read timed out
+        if [[ "$run_job_with_prompt" == "" ]]; then
+            runsas_notify_email
+            run_or_skip_message="(notified) $run_or_skip_message" 
+            printf "${red}$run_or_skip_message${white}"
+            read -n1 run_job_with_prompt < /dev/tty
+        fi
+        # Reset the console
+		for (( i=1; i<=${#run_or_skip_message}+1; i++ )); do
+            printf "\b"
+        done
+		# Act on the user request
         if [[ $run_job_with_prompt != Y ]] && [[ $run_job_with_prompt != y ]]; then
 			# Remove the message, reset the cursor
 			echo -ne "\r"
