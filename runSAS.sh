@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 16.9                                                                                                  #
+#     Version: 17.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|6|.|9|
+|r|u|n|S|A|S| |v|1|7|.|0|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=16.9                                    
+	RUNSAS_CURRENT_VERSION=17.0                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2797,6 +2797,20 @@ function runSAS(){
 
     # Job return code check (process rc)
     job_rc=$?
+
+    # Double check to ensure the job had no errors after the job completion
+    if [ $script_rc -le 4 ] || [ $job_rc -le 4 ]; then
+        # Check if there are any errors in the logs (as it updates, in real-time)
+        grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
+        
+        # Again, suppress unwanted lines in the log (typical SAS errors!)
+        remove_a_line_from_file "ERROR: Errors printed on page" "$TMP_LOG_FILE"
+
+        # Return code check
+        if [ -s $TMP_LOG_FILE ]; then
+            script_rc=9
+        fi
+    fi
 
     # ERROR: Check return code, abort if there's an error in the job run
     if [ $script_rc -gt 4 ] || [ $job_rc -gt 4 ]; then
