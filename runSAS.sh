@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.1                                                                                                  #
+#     Version: 17.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|7|.|1|
+|r|u|n|S|A|S| |v|1|7|.|2|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.1                                    
+	RUNSAS_CURRENT_VERSION=17.2                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1912,7 +1912,7 @@ function validate_job_list(){
     disable_enter_key
 	
 	# Set the wait message parameters
-	vjmode_show_wait_message="Checking few things in the background, please wait...."  
+	vjmode_show_wait_message="Checking few things in the server and getting things ready, please wait...."  
 	
 	# Show message
 	printf "\n${red}$vjmode_show_wait_message${white}"
@@ -2801,7 +2801,7 @@ function runSAS(){
     # Job return code check (process rc)
     job_rc=$?
 
-    # Double check to ensure the job had no errors after the job completion
+    # Double-check to ensure the job had no errors after the job completion
     if [ $script_rc -le 4 ] || [ $job_rc -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
