@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.2                                                                                                  #
+#     Version: 17.3                                                                                                  #
 #                                                                                                                    #
-#        Date: 21/01/2019                                                                                            #
+#        Date: 23/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -96,14 +96,13 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 #  Out: <NA>
 #------
 function display_welcome_ascii_banner(){
-# Banner
 printf "\n${green}"
 cat << "EOF"
-+-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|7|.|2|
-+-+-+-+-+-+-+ +-+-+-+-+-+
-|P|r|a|j|w|a|l|S|D|
-+-+-+-+-+-+-+-+-+-+
++-+-+-+-+-+-+
+|r|u|n|S|A|S|
++-+-+-+-+-+-+
+|v|1|7|.|3|
++-+-+-+-+-+
 EOF
 printf "\n${white}"
 }
@@ -115,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.2                                    
+	RUNSAS_CURRENT_VERSION=17.3                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -192,7 +191,7 @@ function print_the_help_menu(){
 		printf "${underline}"
         printf "\n\nAUTHOR\n"
         printf "${end}${blue}"
-        printf "\n       Written by Prajwal Shetty D"
+        printf "\n       Written by Prajwal Shetty D (GPL v3 license)"
         printf "${underline}"
         printf "\nGITHUB\n"
         printf "${end}${blue}"
