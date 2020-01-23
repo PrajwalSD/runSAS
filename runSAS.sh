@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.0                                                                                                  #
+#     Version: 17.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/01/2019                                                                                            #
 #                                                                                                                    #
@@ -100,7 +100,7 @@ function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
 +-+-+-+-+-+-+ +-+-+-+-+-+
-|r|u|n|S|A|S| |v|1|7|.|0|
+|r|u|n|S|A|S| |v|1|7|.|1|
 +-+-+-+-+-+-+ +-+-+-+-+-+
 |P|r|a|j|w|a|l|S|D|
 +-+-+-+-+-+-+-+-+-+
@@ -115,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.0                                    
+	RUNSAS_CURRENT_VERSION=17.1                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1502,7 +1502,7 @@ function runsas_notify_email(){
 		# Reset the input parameters 
         echo "The batch has been paused at $1 for user input" > $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-        send_an_email -v "" "Batch paused, awaiting user input" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+        send_an_email -s "" "Batch paused, awaiting user input" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
     fi
 }
 #------
@@ -2312,15 +2312,14 @@ function remove_empty_lines_from_file(){
 #------
 function convert_job_index_to_names(){
     for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
-        # Single-value modes
+        # Convert first index to job name for all modes (single and double value modes)
         if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-o" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-f" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-u" ]] || \
            [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fu" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fui" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fuis" ]]; then
             # Get value pointers for the modes
             let first_value_p=p+1
-            let second_value_p=p+2
             if [[ "${RUNSAS_PARAMETERS_ARRAY[first_value_p]}" != "" ]]; then
                 INDEX_MODE_FIRST_JOB_NUMBER=0
-                if [[ ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+                if [[ ${#RUNSAS_PARAMETERS_ARRAY[first_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
                     printf "\n"
                     get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} .job.list 1
                     INDEX_MODE_FIRST_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
@@ -2329,9 +2328,13 @@ function convert_job_index_to_names(){
                     check_for_multiple_instances_of_job ${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
                 fi
             fi
+        fi
+        # Convert second index to job name only for double value modes)
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fu" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fui" ]] || [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-fuis" ]]; then
+            let second_value_p=p+2
             if [[ "${RUNSAS_PARAMETERS_ARRAY[second_value_p]}" != "" ]]; then 
                 INDEX_MODE_SECOND_JOB_NUMBER=0
-                if [[ ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+                if [[ ${#RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
                     get_the_entry_from_the_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} .job.list 1
                     INDEX_MODE_SECOND_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
                     eval "script_mode_value_$second_value_p='${job_name_from_the_list}'";
