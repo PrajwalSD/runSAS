@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.3                                                                                                  #
+#     Version: 17.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 23/01/2019                                                                                            #
 #                                                                                                                    #
@@ -101,7 +101,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|7|.|3|
+|v|1|7|.|4|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -114,7 +114,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.3                                    
+	RUNSAS_CURRENT_VERSION=17.4                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2666,9 +2666,9 @@ function runSAS(){
 				printf "\b"
 			done
 			# Notify the user once
-			if [[ "$user_notified" != "Y" ]]; then 
+			if [[ "$user_notified_job" != "$local_sas_job" ]]; then 
 				runsas_notify_email $local_sas_job
-				user_notified=Y
+				user_notified_job=$local_sas_job
 			fi
 			run_or_skip_message="(notified) $run_or_skip_message" 
 			printf "${red}$run_or_skip_message${white}"
