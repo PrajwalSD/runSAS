@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.4                                                                                                  #
+#     Version: 17.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 23/01/2019                                                                                            #
+#        Date: 27/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -36,8 +36,8 @@
 #------------------------USER CONFIGURATION: Set the parameters below as per the environment-------------------------#
 #
 # 1/4: Set SAS 9.x environment related parameters.
-#      Ideally, setting just the first four parameters should work but amend the rest if needed as per the environment
-#      Always enclose the value with double-quotes (NOT single-quotes, everything is case-sensitive)
+#      Ideally, setting just the first four parameters should work but amend the rest if needed as per the environment.
+#      Strictly enclose the parameter value with double-quotes (everything is case-sensitive)
 #
 SAS_HOME_DIRECTORY="/SASInside/SASHome"
 SAS_INSTALLATION_ROOT_DIRECTORY="/SASInside/SAS"
@@ -51,14 +51,15 @@ SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode
 #
 # 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
 #      Do not include ".sas" in the name.
-#      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters
+#      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters.
 #
 cat << EOF > .job.list
-XXXXX --prompt
-YYYYY
+XXXXXXXXXXXXXXX --prompt
+YYYYYYYYYYYYYYY --skip
+ZZZZZZZZZZZZZZZ
 EOF
 #
-# 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs.
+# 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs. 
 #
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
 ENABLE_RUNTIME_COMPARE=N                                                # Default is N                    ---> Compares job run times between batches, specify Y/N
@@ -101,7 +102,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|7|.|4|
+|v|1|7|.|5|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -114,7 +115,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.4                                    
+	RUNSAS_CURRENT_VERSION=17.5                                    
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -182,7 +183,7 @@ function print_the_help_menu(){
 		printf "\n       Tip #3: You can add --skip option against job(s) when you provide a list, this will skip the job in every run."
         printf "\n       Tip #4: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
 		printf "\n       Tip #5: You can add --server option followed by server parameters (syntax: <jobname> --server <sas-server-name><sasapp-dir><batch-server-dir><sas-sh><logs-dir><deployed-jobs-dir>)" 
-        printf "\n       Tip #6: You can add --email option during the launch to override the email address setting during runtime (must be added at the end of all arguments)"        
+        printf "\n       Tip #6: You can add --email <email-address> option during the launch to override the email address setting during runtime (must be added at the end of all arguments)"        
         printf "\n       Tip #7: You can add --message option during the launch for an additional user message for the batch (useful for tagging the batch runs)"        
         printf "${underline}"
         printf "\n\nVERSION\n"
@@ -1078,7 +1079,7 @@ function check_for_job_list_override(){
 #------
 function kill_a_pid(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
-        kill -9 $1
+        pkill -TERM -P $1
         printf "${red}\nTerminating the running job (pid $1), please wait...${white}"
         sleep 2
         if [[ -z `ps -p $1 -o comm=` ]]; then
@@ -1123,7 +1124,7 @@ function running_processes_housekeeping(){
                 enable_enter_key
             else
                 echo $1 > $RUNSAS_LAST_JOB_PID_FILE
-                printf "${red}WARNING: The last job submitted by runSAS with pid $1 is still running/active in the background, auto-kill is off, terminate it manually using ${green}kill -9 $1${white}${red} command.\n\n${white}"
+                printf "${red}WARNING: The last job submitted by runSAS with pid $1 is still running/active in the background, auto-kill is off, terminate it manually using ${green}pkill -TERM -P $1${white}${red} command.\n\n${white}"
             fi
         fi
     fi
@@ -2779,7 +2780,7 @@ function runSAS(){
             # Optionally, abort the job run on seeing an error
             if [[ "$ABORT_ON_ERROR" == "Y" ]]; then
                 if [[ ! -z `ps -p $job_pid -o comm=` ]]; then
-                    kill -9 $job_pid
+                    pkill -TERM -P $job_pid
                     wait $job_pid 2>/dev/null
                     break
                 fi
@@ -2845,12 +2846,12 @@ function runSAS(){
         # Depending on user setting show the log details
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)"
-            printf " (...read the log for more details)"
+            printf "${grey}...read the log for more details${white}"
             print_2_runsas_session_log "Reason: ${red}\n"
             printf "%s" "$(<$TMP_LOG_WITH_STEPS_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         else        
             printf "%s" "$(<$TMP_LOG_FILE)"
-            printf " (...read the log for more details)"
+            printf "${grey}...read the log for more details${white}"
             print_2_runsas_session_log "Reason: ${red}"
             printf "%s" "$(<$TMP_LOG_FILE)" >> $RUNSAS_SESSION_LOG_FILE
         fi
@@ -2957,7 +2958,7 @@ DEFAULT_PROGRESS_BAR_COLOR="green_bg"
 SERVER_PACKAGE_INSTALLER_PROGRAM=yum
 EMAIL_USER_MESSAGE=""
 EMAIL_FLAGS_DEFAULT_SETTING=YNYY
-EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=300
+EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=120
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
