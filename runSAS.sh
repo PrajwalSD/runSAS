@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.5                                                                                                  #
+#     Version: 17.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 27/01/2019                                                                                            #
 #                                                                                                                    #
@@ -37,7 +37,7 @@
 #
 # 1/4: Set SAS 9.x environment related parameters.
 #      Ideally, setting just the first four parameters should work but amend the rest if needed as per the environment.
-#      Strictly enclose the parameter value with double-quotes (everything is case-sensitive)
+#      Strictly enclose the parameter value within the double-quotes (everything is case-sensitive)
 #
 SAS_HOME_DIRECTORY="/SASInside/SASHome"
 SAS_INSTALLATION_ROOT_DIRECTORY="/SASInside/SAS"
@@ -49,9 +49,11 @@ SAS_BATCH_SERVER_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer"
 SAS_LOGS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/BatchServer/Logs"
 SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode/Jobs"
 #
-# 2/4: Provide a list of SAS program(s) or SAS Data Integration Studio deployed job(s).
-#      Do not include ".sas" in the name.
-#      You can optionally add "--prompt" after the job to halt/pause the run, --skip to skip the job run, and --server to override default app server parameters.
+# 2/4: Provide a list of SAS Data Integration Studio deployed job(s) or list of base SAS progam(s)
+#      Do not include ".sas" in the name of the deployed job.
+#      Add "--prompt" after the job to halt/pause the run in every batch
+#      Add "--skip" after the job to skip the job run in every batch
+#      Add "--server" after the job to override default app server parameters (see --help menu for more details on this)
 #
 cat << EOF > .job.list
 XXXXXXXXXXXXXXX --prompt
@@ -102,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|7|.|5|
+|v|1|7|.|6|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -115,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.5                                    
+	RUNSAS_CURRENT_VERSION=17.6                                   
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1073,20 +1075,21 @@ function check_for_job_list_override(){
 }
 #------
 # Name: kill_a_pid()
-# Desc: Terminate the process using kill command
+# Desc: Terminate the (parent and child) process using pkill command
 #   In: pid
 #  Out: <NA>
 #------
 function kill_a_pid(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         pkill -TERM -P $1
-        printf "${red}\nTerminating the running job (pid $1), please wait...${white}"
+        printf "${red}\nTerminating the running job (pid $1 and the descendants), please wait...${white}"
         sleep 2
-        if [[ -z `ps -p $1 -o comm=` ]]; then
+        if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
             printf "${green}(DONE)${white}\n\n${white}"
         else
-            printf "${red}\n\n*** ERROR: Attempt to terminate the job (pid $1) failed. It is likely due to user permissions, review the details below. ***\n${white}"
+            printf "${red}\n\n*** ERROR: Attempt to terminate the job (pid $1 and the descendants) failed. It is likely due to user permissions, review the process/child process details below. ***\n${white}"
             show_pid_details $1
+            show_child_pid_details $1
             printf "\n"
         fi
     else
@@ -1095,7 +1098,7 @@ function kill_a_pid(){
 }
 #------
 # Name: show_pid_details()
-# Desc: Show PID details
+# Desc: Show process details
 #   In: pid
 #  Out: <NA>
 #------
@@ -1103,6 +1106,20 @@ function show_pid_details(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
         ps $1 # Show process details
+        printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n${white}"
+    fi
+}
+#------
+# Name: show_child_pid_details()
+# Desc: Show child/descendant processes
+#   In: pid
+#  Out: <NA>
+#------
+function show_child_pid_details(){
+    if [[ ! -z `pgrep -P $1` ]]; then
+        printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
+        printf "${white}Child Process(es):\n"
+        pgrep -P $1 # Show child process details
         printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n${white}"
     fi
 }
@@ -2780,7 +2797,7 @@ function runSAS(){
             # Optionally, abort the job run on seeing an error
             if [[ "$ABORT_ON_ERROR" == "Y" ]]; then
                 if [[ ! -z `ps -p $job_pid -o comm=` ]]; then
-                    pkill -TERM -P $job_pid
+                    kill_a_pid $job_pid
                     wait $job_pid 2>/dev/null
                     break
                 fi
