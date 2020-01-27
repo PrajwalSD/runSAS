@@ -1083,7 +1083,7 @@ function kill_a_pid(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         pkill -TERM -P $1
         printf "${red}\nTerminating the running job (pid $1 and the descendants), please wait...${white}"
-        sleep 2
+        sleep 10
         if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
             printf "${green}(DONE)${white}\n\n${white}"
         else
@@ -2168,6 +2168,7 @@ function redeploy_sas_jobs(){
             # Counter
             depjob_to_jobtal_count=`cat $depjob_job_file | wc -l`
             depjob_job_curr_count=1
+            depjob_job_deployed_count=0
             
             # Newlines
             retrieve_a_key_value_pair depjob_total_runtime
@@ -2266,13 +2267,17 @@ function redeploy_sas_jobs(){
                 # A way to check if the job was deployed at all?
                 check_if_the_file_exists "$deployed_job_sas_file"
 
+                # Fix the names (add underscores etc.)
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
                 # Add it to audit log
                 print_2_runsas_session_log "Reploying job $depjob_job_curr_count of $depjob_to_jobtal_count: $job"
 
-                # Increment the counter
+                # Increment the job counter
                 let depjob_job_curr_count+=1
+
+                # Increment the deployed job counter
+                let depjob_job_deployed_count+=1
 
 			done < $depjob_job_file
 
@@ -2282,16 +2287,16 @@ function redeploy_sas_jobs(){
 
 			# Clear session
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
-            printf "${green}\nThe redeployment of jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
+            printf "${green}\nThe redeployment of $depjob_job_deployed_count jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
 
             # Store runtime for future use
             store_a_key_value_pair depjob_total_runtime $depjob_total_runtime
 
             # Send an email
-            if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
-                echo "The redeployment of $depjob_to_jobtal_count jobs is complete, took a total of $depjob_total_runtime seconds to complete. " > $EMAIL_BODY_MSG_FILE
-                add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-                send_an_email -v "" "Redeployment of jobs is complete" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+			if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
+				echo "The redeployment of $depjob_job_deployed_count job(s) is complete, took a total of $depjob_total_runtime seconds to complete. " > $EMAIL_BODY_MSG_FILE
+				add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
+				send_an_email -v "" "$depjob_job_deployed_count job(s) redeployed" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
             fi
 
             # End
