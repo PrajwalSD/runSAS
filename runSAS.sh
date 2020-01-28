@@ -489,7 +489,7 @@ white=$'\e[0m'
 if mv .runSAS.sh.downloaded runSAS.sh; then
     sleep 0.5
     chmod 775 runSAS.sh
-    printf "${green}NOTE: runSAS script has been successfully updated to ${white}"
+    printf "\n${green}NOTE: runSAS script has been successfully updated to ${white}"
     ./runSAS.sh --version
     printf "\n\n"
 else
