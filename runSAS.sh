@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.6                                                                                                  #
+#     Version: 17.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 27/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|7|.|6|
+|v|1|7|.|7|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.6                                   
+	RUNSAS_CURRENT_VERSION=17.7                                  
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1117,7 +1117,6 @@ function show_pid_details(){
 #------
 function show_child_pid_details(){
     if [[ ! -z `pgrep -P $1` ]]; then
-        printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
         printf "${white}Child Process(es):\n"
         pgrep -P $1 # Show child process details
         printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n${white}"
