@@ -1135,8 +1135,9 @@ function running_processes_housekeeping(){
             if [[ "$KILL_PROCESS_ON_USER_ABORT" ==  "Y" ]]; then
                 disable_enter_key
                 printf "${white}Process (pid) details for the currently running job:\n${white}"
-                # PID show & kill
+                # Show & kill!
                 show_pid_details $1
+                show_child_pid_details $1
                 kill_a_pid $1               
                 enable_enter_key
             else
