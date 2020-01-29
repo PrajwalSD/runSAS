@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.8                                                                                                  #
+#     Version: 17.7                                                                                                  #
 #                                                                                                                    #
-#        Date: 28/01/2019                                                                                            #
+#        Date: 27/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|7|.|8|
+|v|1|7|.|7|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.8                                  
+	RUNSAS_CURRENT_VERSION=17.7                                  
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1650,9 +1650,9 @@ function show_time_remaining_stats(){
 		
 		# Show the stats
         if [[ $time_remaining_in_secs -ge 0 ]]; then
-            time_stats_msg=" ${grey}~$time_remaining_in_secs secs remaining...${white}" 
+            time_stats_msg=" ~$time_remaining_in_secs secs remaining..." 
         else
-		    time_stats_msg=" ${red}$time_remaining_in_secs secs elapsed......${white}" 
+		    time_stats_msg=" $time_remaining_in_secs secs elapsed......" 
 		fi
 		
 		# Record the message last shown timestamp
@@ -1675,7 +1675,7 @@ function show_time_remaining_stats(){
 		
 		# Show the stats
         if [[ $time_since_run_in_secs -ge 0 ]]; then
-            time_stats_msg=" ${grey}~$time_since_run_in_secs secs elapsed...${white}" 
+            time_stats_msg=" ~$time_since_run_in_secs secs elapsed..." 
 		fi
 		
 		# Record the message last shown timestamp
@@ -2823,12 +2823,14 @@ function runSAS(){
     # Job return code check (process rc)
     job_rc=$?
 
-    # Double-check to ensure the job had no errors after the run.
+    # Double-check to ensure the job had no errors after the job completion
     if [ $script_rc -le 4 ] || [ $job_rc -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
+        
         # Again, suppress unwanted lines in the log (typical SAS errors!)
         remove_a_line_from_file "ERROR: Errors printed on page" "$TMP_LOG_FILE"
+
         # Return code check
         if [ -s $TMP_LOG_FILE ]; then
             script_rc=9
