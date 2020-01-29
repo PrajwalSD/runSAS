@@ -2106,37 +2106,38 @@ function redeploy_sas_jobs(){
 				fi
 			else
                 # Check if the user wants to redeploy only few jobs
-			    printf "${red}Press ENTER key to redeploy all jobs in the list or specify <from-job-index> and <to-job-index> (e.g. 2 3)${white}"
-                read -a read_depjob_filters_required_parms_array < /dev/tty
+				printf "\n"
+				read_depjob_filters_required_parms_array_count=0
+				while [[ $read_depjob_filters_required_parms_array_count -ne 2 ]]; do
+					read -ea read_depjob_filters_required_parms_array -p "${red}Press ENTER key to redeploy all jobs in the list or specify from & to job names (e.g. specify 2 3 to redeploy just two jobs): ${white}" < /dev/tty
+					# Process the parameter array
+					read_depjob_filters_required_parms_array_count=${#read_depjob_filters_required_parms_array[@]}
+				done
+						
+				if [[ "${read_depjob_filters_required_parms_array[0]}" == "" ]]; then
+					# Deploy all mode is invoked
+					depjob_in_filter_mode=0
+				else
+					# Deploy all mode is invoked
+					depjob_in_filter_mode=1
 
-                # Process the parameter array
-                read_depjob_filters_required_parms_array_count=${#read_depjob_filters_required_parms_array[@]}
-                for (( p=0; p<read_depjob_filters_required_parms_array_count; p++ )); do
-                    if [[ "${read_depjob_filters_required_parms_array[p]}" == "" ]]; then
-                        # Deploy all mode is invoked
-				        depjob_in_filter_mode=0
-                    else
-                        # Deploy all mode is invoked
-				        depjob_in_filter_mode=1
+					# Assign from and to jobs, if index is used get the names
+					depjob_from_job=${read_depjob_filters_required_parms_array[0]}
+					depjob_to_job=${read_depjob_filters_required_parms_array[1]}
 
-                        # Assign from and to jobs, if index is used get the names
-                        depjob_from_job=${read_depjob_filters_required_parms_array[p]}
-                        depjob_to_job=${read_depjob_filters_required_parms_array[p+1]}
-
-                        # Get the job name if it is the index
-                        if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-                            printf "\n"
-                            get_the_entry_from_the_list $depjob_from_job $depjob_job_file
-                            depjob_from_job_index=$depjob_from_job
-                            depjob_from_job=${job_name_from_the_list}
-                        fi
-                        if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-                            get_the_entry_from_the_list $depjob_to_job $depjob_job_file
-                            depjob_to_job_index=$depjob_to_job
-                            depjob_to_job=${job_name_from_the_list}
-                        fi
-                    fi
-                done
+					# Get the job name if it is the index
+					if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+						printf "\n"
+						get_the_entry_from_the_list $depjob_from_job $depjob_job_file
+						depjob_from_job_index=$depjob_from_job
+						depjob_from_job=${job_name_from_the_list}
+					fi
+					if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+						get_the_entry_from_the_list $depjob_to_job $depjob_job_file
+						depjob_to_job_index=$depjob_to_job
+						depjob_to_job=${job_name_from_the_list}
+					fi
+				fi
 			fi
 			
 			# Create an empty file
