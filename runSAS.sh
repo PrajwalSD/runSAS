@@ -1915,7 +1915,7 @@ function scan_sas_programs_for_debug_options(){
 	grep -i "$SASTRACE_SEARCH_STRING" $1 > $SASTRACE_CHECK_FILE
 	# Show a warning to the user
 	if [ -s $SASTRACE_CHECK_FILE ]; then
-		printf "\n${yellow}WARNING: SAS global options sastrace is detected in the $1 code file\n"
+		printf "\n${yellow}WARNING: SAS global options sastrace is detected in $1 deployed code file (usually harmless but can degrade job runtime performance)\n\n"
 	fi
 }
 #------
