@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.1                                                                                                  #
+#     Version: 18.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 29/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|1|
+|v|1|8|.|2|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.1                                 
+	RUNSAS_CURRENT_VERSION=18.2                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2690,6 +2690,7 @@ function runSAS(){
 		
 		# Ask user
         run_or_skip_message="Do you want to run? (y/n): "		
+        run_or_skip_message_orig=$run_or_skip_message		
 		printf "${red}$run_or_skip_message${white}"
 		
 		# Make sure the user has pressed a valid answer (i.e. y/n) with time out (and email notification to user after the time out)
@@ -2722,7 +2723,7 @@ function runSAS(){
 				runsas_notify_email $local_sas_job
 				user_notified_job=$local_sas_job
 			fi
-			run_or_skip_message="(notified) $run_or_skip_message" 
+			run_or_skip_message="(notified) $run_or_skip_message_orig" 
 			printf "${red}$run_or_skip_message${white}"
             read_until_user_provides_right_input 1
         done;
