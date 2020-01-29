@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 17.9                                                                                                  #
+#     Version: 18.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 27/01/2019                                                                                            #
+#        Date: 29/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|7|.|9|
+|v|1|8|.|0|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=17.9                                  
+	RUNSAS_CURRENT_VERSION=18.0                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2065,6 +2065,16 @@ function redeploy_sas_jobs(){
 
     # Begin
 	if [[ "$depjob_mode" == "--redeploy" ]]; then
+        # Firstly, check if the job file list exists
+        check_if_the_file_exists $depjob_job_file
+        
+        # If it exists, perform dos2unix and apply newline in the file
+        dos2unix $depjob_job_file
+        add_a_newline_char_to_eof $depjob_job_file
+
+        # Print the jobs file
+        print_file_content_with_index $depjob_job_file jobs
+
         # Check for the jobs file (mandatory for this mode)
 		if [[ "$depjob_job_file" == "" ]]; then
             # Ensure the job list is provided
@@ -2095,7 +2105,38 @@ function redeploy_sas_jobs(){
 					depjob_to_job=${job_name_from_the_list}
 				fi
 			else
-				depjob_in_filter_mode=0
+                # Check if the user wants to redeploy only few jobs
+			    printf "${red}Press ENTER key to redeploy all jobs in the list or specify <from-job-index> and <to-job-index> (e.g. 2 3)${white}"
+                read -a read_depjob_filters_required_parms_array < /dev/tty
+
+                # Process the parameter array
+                read_depjob_filters_required_parms_array_count=${#read_depjob_filters_required_parms_array[@]}
+                for (( p=0; p<read_depjob_filters_required_parms_array_count; p++ )); do
+                    if [[ "${read_depjob_filters_required_parms_array[p]}" == "" ]]; then
+                        # Deploy all mode is invoked
+				        depjob_in_filter_mode=0
+                    else
+                        # Deploy all mode is invoked
+				        depjob_in_filter_mode=1
+
+                        # Assign from and to jobs, if index is used get the names
+                        depjob_from_job=${read_depjob_filters_required_parms_array[p]}
+                        depjob_to_job=${read_depjob_filters_required_parms_array[p+1]}
+
+                        # Get the job name if it is the index
+                        if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+                            printf "\n"
+                            get_the_entry_from_the_list $depjob_from_job $depjob_job_file
+                            depjob_from_job_index=$depjob_from_job
+                            depjob_from_job=${job_name_from_the_list}
+                        fi
+                        if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+                            get_the_entry_from_the_list $depjob_to_job $depjob_job_file
+                            depjob_to_job_index=$depjob_to_job
+                            depjob_to_job=${job_name_from_the_list}
+                        fi
+                    fi
+                done
 			fi
 			
 			# Create an empty file
@@ -2140,27 +2181,14 @@ function redeploy_sas_jobs(){
 			depjob_serverpassword=$read_depjob_serverpassword
 			depjob_batchserver="$read_depjob_appservername - SAS DATA Step Batch Server" 
 			depjob_log=$RUNSAS_TMP_DIRECTORY/runsas_depjob_util.log
-			
+
 			# Check if the utility exists? 
 			if [ ! -f "$depjobs_scripts_root_directory/DeployJobs" ]; then
 				printf "${red}*** ERROR: ${red_bg}${black}DeployJobs${white}${red} utility is not found on the server, cannot proceed with the $1 for now (try the manual option via SAS DI) *** ${white}"
 				clear_session_and_exit
 			fi
-			
-			# Check if the redeploy job file list exists
-			check_if_the_file_exists $depjob_job_file
-			
-			# If it exists, perform dos2unix
-			printf "\n"
-			dos2unix $depjob_job_file
-			
-			# Add a newline at the end of the file
-			add_a_newline_char_to_eof $depjob_job_file
 
-            # Print the jobs file
-			if [[ "$depjob_in_filter_mode" -eq "0" ]]; then	
-				print_file_content_with_index $depjob_job_file jobs
-			fi
+            printf "\n"
 
 			# Wait for the user to confirm
 			press_enter_key_to_continue 1 0 red
