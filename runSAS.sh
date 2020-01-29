@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.0                                                                                                  #
+#     Version: 18.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 29/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|0|
+|v|1|8|.|1|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.0                                 
+	RUNSAS_CURRENT_VERSION=18.1                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2189,8 +2189,6 @@ function redeploy_sas_jobs(){
 				clear_session_and_exit
 			fi
 
-            printf "\n"
-
 			# Wait for the user to confirm
 			press_enter_key_to_continue 1 0 red
 
@@ -2256,10 +2254,12 @@ function redeploy_sas_jobs(){
 				if [[ "$depjob_from_to_job_mode" -lt "1" ]]; then	
 					printf "${grey}Job ${grey}"
 					printf "%02d" $depjob_job_curr_count
-					printf "${grey} of $depjob_to_jobtal_count: $job  has been skipped.\n${white}"
-					let depjob_job_curr_count+=1
+                    printf "${grey} of $depjob_to_jobtal_count: $job${white}"
+                    display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 2 grey
+                    printf "${grey}(SKIPPED)\n${white}"
+                    let depjob_job_curr_count+=1
 					continue
-				fi
+				fi	
                 
 				# Show the current state of the deployment
 				printf "${green}---${white}\n"
