@@ -2255,7 +2255,7 @@ function redeploy_sas_jobs(){
 					printf "${grey}Job ${grey}"
 					printf "%02d" $depjob_job_curr_count
                     printf "${grey} of $depjob_to_jobtal_count: $job${white}"
-                    display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 2 grey
+                    display_message_fillers_on_console $((RUNSAS_DISPLAY_FILLER_COL_END_POS+75)) $RUNSAS_FILLER_CHARACTER 0 N 2 grey
                     printf "${grey}(SKIPPED)\n${white}"
                     let depjob_job_curr_count+=1
 					continue
