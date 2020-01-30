@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.2                                                                                                  #
+#     Version: 18.3                                                                                                  #
 #                                                                                                                    #
-#        Date: 29/01/2019                                                                                            #
+#        Date: 30/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|2|
+|v|1|8|.|3|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.2                                 
+	RUNSAS_CURRENT_VERSION=18.3                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -176,7 +176,7 @@ function print_the_help_menu(){
         printf "\n     --log or --last              runSAS will show the last script run details"
         printf "\n     --reset                      runSAS will remove temporary files"
         printf "\n     --parameters or --parms      runSAS will show the user & script parameters"
-        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file>, job filters (name or index) can be added after <jobs-file>"
+        printf "\n     --redeploy <jobs-file>       runSAS will redeploy the jobs specified in the <jobs-file>, job filters (name or index) can be added after <jobs-file> or you can specify filters after the launch too."
         printf "\n     --joblist  <jobs-file>       runSAS will override the embedded jobs with the jobs specified in <jobs-file>. Suffix this option with filters (e.g.: ./runSAS.sh -fu 1 2 --joblist jobs.txt)"
         printf "\n     --help                       Display this help and exit"
         printf "\n"
@@ -272,7 +272,6 @@ function show_first_launch_intro_message(){
 		show_runsas_parameters --parms
 		printf "\n"
 		press_enter_key_to_continue 1
-
         printf "\n"
 
         # Do not show the message again
@@ -2108,8 +2107,20 @@ function redeploy_sas_jobs(){
                 # Check if the user wants to redeploy only few jobs
 				printf "\n"
 				read_depjob_filters_required_parms_array_count=0
+
+                # Ensure the user has specified at most two parameters
 				while [[ $read_depjob_filters_required_parms_array_count -ne 2 ]]; do
-					read -ea read_depjob_filters_required_parms_array -p "${red}Press ENTER key to redeploy all jobs in the list or specify from & to job names (e.g. specify 2 3 to redeploy just two jobs): ${white}" < /dev/tty
+					# Show message
+					depjob_filters_required_message="Press ENTER to redeploy all OR specify a from & to job names filter (e.g. 2 3): "
+					printf "${red}$depjob_filters_required_message${white}"
+					read -ea read_depjob_filters_required_parms_array < /dev/tty
+					
+					# Continue if enter key was pressed.
+					if [[ "$read_depjob_filters_required_parms_array" == "" ]]; then
+						printf "\n${green}No filters provided, getting ready to redeploy all jobs...\n${white}"
+						break
+					fi
+					
 					# Process the parameter array
 					read_depjob_filters_required_parms_array_count=${#read_depjob_filters_required_parms_array[@]}
 				done
@@ -2255,7 +2266,7 @@ function redeploy_sas_jobs(){
 					printf "${grey}Job ${grey}"
 					printf "%02d" $depjob_job_curr_count
                     printf "${grey} of $depjob_to_jobtal_count: $job${white}"
-                    display_message_fillers_on_console $((RUNSAS_DISPLAY_FILLER_COL_END_POS+75)) $RUNSAS_FILLER_CHARACTER 0 N 2 grey
+                    display_message_fillers_on_console $((RUNSAS_DISPLAY_FILLER_COL_END_POS+35)) $RUNSAS_FILLER_CHARACTER 0 N 2 grey
                     printf "${grey}(SKIPPED)\n${white}"
                     let depjob_job_curr_count+=1
 					continue
