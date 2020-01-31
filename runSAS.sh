@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.3                                                                                                  #
+#     Version: 18.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 30/01/2019                                                                                            #
+#        Date: 31/01/2019                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|3|
+|v|1|8|.|4|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.3                                 
+	RUNSAS_CURRENT_VERSION=18.4                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1609,7 +1609,7 @@ function store_job_runtime_stats(){
 #  Out: <NA>
 #------
 function get_job_hist_runtime_stats(){
-    hist_job_runtime=`awk -v pat="$1" -F" " '$0~pat { print $2 }' $JOB_STATS_FILE`
+    hist_job_runtime=`awk -v pat="$1" -F" " '$0~pat { print $2 }' $JOB_STATS_FILE | head -1`
 }
 #------
 # Name: show_job_hist_runtime_stats()
