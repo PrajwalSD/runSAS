@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.5                                                                                                  #
+#     Version: 18.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 31/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|5|
+|v|1|8|.|6|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.5                                 
+	RUNSAS_CURRENT_VERSION=18.6                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1608,8 +1608,8 @@ function store_job_runtime_stats(){
     # Remove the previous entry
     sed -i "/$1/d" $JOB_STATS_FILE
     # Add new entry 
-    echo "$1 $2 ${job_runtime_diff_pct}\% $3 $4 $5" >> $JOB_STATS_FILE # Add a new entry 
-	echo "$1 $2 ${job_runtime_diff_pct}\% $3 $4 $5" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
+    echo "$1 $2 ${job_runtime_diff_pct}% $3 $4 $5" >> $JOB_STATS_FILE # Add a new entry 
+	echo "$1 $2 ${job_runtime_diff_pct}% $3 $4 $5" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
 }
 #------
 # Name: get_job_hist_runtime_stats()
@@ -2244,6 +2244,9 @@ function redeploy_sas_jobs(){
             print_2_runsas_session_log "Total number of jobs: $depjob_to_jobtal_count"
             print_2_runsas_session_log "Deleted existing SAS job files?: $read_depjob_clear_files"
 
+            # Disable enter key
+            disable_enter_key
+
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
 				# Check if the current job is between the filters (only in filter mode)
@@ -2351,6 +2354,10 @@ function redeploy_sas_jobs(){
             # End
             print_2_runsas_session_log "Redeployment end timestamp: $end_datetime_of_session_timestamp"
             print_2_runsas_session_log "Total time taken (in seconds): $depjob_total_runtime"
+
+            # Enable enter key
+            enable_enter_key
+
 			clear_session_and_exit
 		fi
 	fi
