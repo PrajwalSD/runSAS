@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.6                                                                                                  #
+#     Version: 18.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 31/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|6|
+|v|1|8|.|7|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.6                                 
+	RUNSAS_CURRENT_VERSION=18.7                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
