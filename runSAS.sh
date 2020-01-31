@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.4                                                                                                  #
+#     Version: 18.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 31/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|4|
+|v|1|8|.|5|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.4                                 
+	RUNSAS_CURRENT_VERSION=18.5                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -1598,9 +1598,18 @@ function runsas_success_email(){
 #  Out: <NA>
 #------
 function store_job_runtime_stats(){
-    sed -i "/$1/d" $JOB_STATS_FILE # Remove the previous entry
-    echo "$1 $2 $3 $4 $5" >> $JOB_STATS_FILE # Add a new entry 
-	echo "$1 $2 $3 $4 $5" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
+    get_job_hist_runtime_stats $local_sas_job
+    # Calc the percentage difference between runs and store it.
+    if [[ "$hist_job_runtime" != "" ]]; then
+        job_runtime_diff_pct=`bc <<< "scale = 0; ($2 - $hist_job_runtime) * 100 / $hist_job_runtime"`
+    else
+        job_runtime_diff_pct=0
+    fi
+    # Remove the previous entry
+    sed -i "/$1/d" $JOB_STATS_FILE
+    # Add new entry 
+    echo "$1 $2 ${job_runtime_diff_pct}\% $3 $4 $5" >> $JOB_STATS_FILE # Add a new entry 
+	echo "$1 $2 ${job_runtime_diff_pct}\% $3 $4 $5" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
 }
 #------
 # Name: get_job_hist_runtime_stats()
