@@ -1594,22 +1594,15 @@ function runsas_success_email(){
 #------
 # Name: store_job_runtime_stats()
 # Desc: Capture job runtime stats, single version of history is kept per job
-#   In: job-name, total-time-taken-by-job, logname, start-timestamp, end-timestamp
+#   In: job-name, total-time-taken-by-job, change-in-runtime, logname, start-timestamp, end-timestamp
 #  Out: <NA>
 #------
 function store_job_runtime_stats(){
-    get_job_hist_runtime_stats $local_sas_job
-    # Calc the percentage difference between runs and store it.
-    if [[ "$hist_job_runtime" != "" ]]; then
-        job_runtime_diff_pct=`bc <<< "scale = 0; ($2 - $hist_job_runtime) * 100 / $hist_job_runtime"`
-    else
-        job_runtime_diff_pct=0
-    fi
     # Remove the previous entry
     sed -i "/$1/d" $JOB_STATS_FILE
     # Add new entry 
-    echo "$1 $2 ${job_runtime_diff_pct}% $3 $4 $5" >> $JOB_STATS_FILE # Add a new entry 
-	echo "$1 $2 ${job_runtime_diff_pct}% $3 $4 $5" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
+    echo "$1 $2 ${3}% $4 $5 $6" >> $JOB_STATS_FILE # Add a new entry 
+	echo "$1 $2 ${3}% $4 $5 $6" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
 }
 #------
 # Name: get_job_hist_runtime_stats()
@@ -2971,9 +2964,29 @@ function runSAS(){
         # Capture job runtime
 		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
         end_datetime_of_job=`date +%s`
+		
+		# Get last runtime stats for difference calc.
+		get_job_hist_runtime_stats $local_sas_job
+		if [[ "$hist_job_runtime" != "" ]]; then
+			job_runtime_diff_pct=`bc <<< "scale = 0; (($end_datetime_of_job - $start_datetime_of_job) - $hist_job_runtime) * 100 / $hist_job_runtime"`
+		else
+			job_runtime_diff_pct=0
+		fi
+		
+		# Construct console message
+		if [[ $job_runtime_diff_pct -eq 0 ]]; then
+			job_runtime_diff_pct_string=". "
+		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
+			job_runtime_diff_pct_string=", ${red}up by ${job_runtime_diff_pct}%%${green}. "
+		elif [[ $job_runtime_diff_pct -lt $RUNTIME_COMPARE_FACTOR ]]; then
+			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
+			job_runtime_diff_pct_string=", down by ${job_runtime_diff_pct}%%. "
+		else
+			job_runtime_diff_pct_string=". "
+		fi
 
         # Store the stats for the next time
-        store_job_runtime_stats $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $current_log_name $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
+        store_job_runtime_stats $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $job_runtime_diff_pct $current_log_name $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
         # Display fillers (tabulated console output)
         display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
@@ -2981,7 +2994,7 @@ function runSAS(){
         # Success (DONE) message
         printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
-        printf " secs. Completed on $end_datetime_of_job_timestamp)${white}\n"
+        printf " secs${job_runtime_diff_pct_string}Completed on $end_datetime_of_job_timestamp)${white}\n"
 
         # Log
         print_2_runsas_session_log "Job Status: ${green}DONE${white}"
