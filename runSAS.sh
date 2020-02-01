@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.7                                                                                                  #
+#     Version: 18.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 31/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|7|
+|v|1|8|.|8|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.7                                 
+	RUNSAS_CURRENT_VERSION=18.8                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2965,7 +2965,7 @@ function runSAS(){
 		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
         end_datetime_of_job=`date +%s`
 		
-		# Get last runtime stats for difference calc.
+		# Get last runtime stats to calculate the difference.
 		get_job_hist_runtime_stats $local_sas_job
 		if [[ "$hist_job_runtime" != "" ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; (($end_datetime_of_job - $start_datetime_of_job) - $hist_job_runtime) * 100 / $hist_job_runtime"`
@@ -2973,14 +2973,14 @@ function runSAS(){
 			job_runtime_diff_pct=0
 		fi
 		
-		# Construct console message
+		# Construct runtime difference messages, appears only when it crosses a threshold (i.e. RUNTIME_COMPARE_FACTOR, default is 50%)
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=". "
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
-			job_runtime_diff_pct_string=", ${red}up by ${job_runtime_diff_pct}%%${green}. "
-		elif [[ $job_runtime_diff_pct -lt $RUNTIME_COMPARE_FACTOR ]]; then
+			job_runtime_diff_pct_string=", ${red}up by ${job_runtime_diff_pct}%%.${green} "
+		elif [[ $job_runtime_diff_pct -lt -$RUNTIME_COMPARE_FACTOR ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
-			job_runtime_diff_pct_string=", down by ${job_runtime_diff_pct}%%. "
+			job_runtime_diff_pct_string=", ${blue}down by ${job_runtime_diff_pct}%%.${green} "
 		else
 			job_runtime_diff_pct_string=". "
 		fi
