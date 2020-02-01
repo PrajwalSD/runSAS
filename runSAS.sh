@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.8                                                                                                  #
+#     Version: 18.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 31/01/2019                                                                                            #
 #                                                                                                                    #
@@ -104,7 +104,7 @@ cat << "EOF"
 +-+-+-+-+-+-+
 |r|u|n|S|A|S|
 +-+-+-+-+-+-+
-|v|1|8|.|8|
+|v|1|8|.|9|
 +-+-+-+-+-+
 EOF
 printf "\n${white}"
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.8                                 
+	RUNSAS_CURRENT_VERSION=18.9                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -2973,7 +2973,7 @@ function runSAS(){
 			job_runtime_diff_pct=0
 		fi
 		
-		# Construct runtime difference messages, appears only when it crosses a threshold (i.e. RUNTIME_COMPARE_FACTOR, default is 50%)
+		# Construct runtime difference messages, appears only when it crosses a threshold (i.e. reusing RUNTIME_COMPARE_FACTOR parameter here, default is 50%)
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=". "
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
@@ -3000,6 +3000,7 @@ function runSAS(){
         print_2_runsas_session_log "Job Status: ${green}DONE${white}"
         print_2_runsas_session_log "Log: $local_sas_logs_root_directory/$current_log_name"
         print_2_runsas_session_log "End: $end_datetime_of_job_timestamp"
+        print_2_runsas_session_log "Diff: $job_runtime_diff_pct"
 
         # Send an email (silently)
         runsas_job_completed_email $local_sas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
@@ -3035,7 +3036,7 @@ RUNSAS_PARAMETERS_COUNT=$#
 RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
 DEBUG_MODE_CONSOLE_COLOR=white
-RUNSAS_DISPLAY_FILLER_COL_END_POS=114
+RUNSAS_DISPLAY_FILLER_COL_END_POS=110
 RUNSAS_FILLER_CHARACTER=.
 CONSOLE_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
