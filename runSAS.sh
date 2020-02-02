@@ -2811,7 +2811,7 @@ function runSAS(){
                                                                     -batch \
                                                                     -noterminal \
                                                                     -logparm "rollover=session" \
-                                                                    -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_TMP_DIRECTORY/$RUNSAS_SAS_SH_TRACE_FILE
+                                                                    -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
 
     # Count the no. of steps in the job
     total_no_of_steps_in_a_job=`grep -o 'Step:' $local_sas_deployed_jobs_root_directory/$local_sas_job.$PROGRAM_TYPE_EXTENSION | wc -l`
