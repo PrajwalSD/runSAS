@@ -2811,7 +2811,7 @@ function runSAS(){
                                                                     -batch \
                                                                     -noterminal \
                                                                     -logparm "rollover=session" \
-                                                                    -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$PROGRAM_TYPE_EXTENSION &
+                                                                    -sysin $local_sas_deployed_jobs_root_directory/$local_sas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_TMP_DIRECTORY/$RUNSAS_SAS_SH_TRACE_FILE
 
     # Count the no. of steps in the job
     total_no_of_steps_in_a_job=`grep -o 'Step:' $local_sas_deployed_jobs_root_directory/$local_sas_job.$PROGRAM_TYPE_EXTENSION | wc -l`
@@ -2939,7 +2939,7 @@ function runSAS(){
         # Set RC
         if [ ! -s $TMP_LOG_FILE ]; then
             script_rc=95
-            echo "ERROR: runSAS detected that the job was terminated by the server abruptly (error code 95), the log is incomplete." > $TMP_LOG_FILE
+            echo "ERROR: runSAS detected abnormal termination of the job, log is incomplete and session trace is found in $RUNSAS_SAS_SH_TRACE_FILE file." > $TMP_LOG_FILE 
         fi
     fi
 
@@ -3128,6 +3128,7 @@ RUNSAS_FIRST_USER_INTRO_DONE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_intro.done
 SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
 RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
+RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
 
 # Bash color codes for the console
 set_colors_codes
