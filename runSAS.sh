@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.0                                                                                                  #
+#     Version: 19.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -116,7 +116,7 @@ printf "${grey}\nv$RUNSAS_CURRENT_VERSION\n\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.0
+	RUNSAS_CURRENT_VERSION=19.1
     # Compatible version for the in-place upgrade (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -286,7 +286,7 @@ function show_first_launch_intro_message(){
 #------
 function show_the_list(){
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--jobs"}" = "" ]] || [[ "${@#"--list"}" = "" ]] || [[ "${@#"--job"}" = "" ]] || [[ "${@#"--show"}" = "" ]]); then
-        print_file_content_with_index .job.list jobs
+        print_file_content_with_index .job.list jobs --prompt --skip --server
         printf "\n"
         exit 0;
     fi;
@@ -304,10 +304,12 @@ function set_colors_codes(){
     green=$'\e[1;32m'
     yellow=$'\e[1;33m'
     blue=$'\e[1;34m'
+    light_blue=$'\e[94m'
     magenta=$'\e[1;35m'
     cyan=$'\e[1;36m'
     grey=$'\e[38;5;243m'
     white=$'\e[0m'
+    light_yellow=$'\e[38;5;101m' 
     # Color term
     end=$'\e[0m'
     # Background colors
@@ -731,13 +733,13 @@ function print_file_content_with_index(){
     for (( p=2; p<$printfile_parameters_array_element_count; p++ )); do
         if [[ ! "${printfile_parameters_array[p]}" == "" ]]; then
             # Highlight keywords
-            add_bash_color_tags_for_keywords $printfile ${printfile_parameters_array[p]} ${green} ${white} 
+            add_bash_color_tags_for_keywords $printfile ${printfile_parameters_array[p]} ${light_yellow} ${white} 
         fi
     done
 
     # Print the file
     awk '{printf("%02d) %s\n", NR, $0)}' $printfile
-    
+
     # Wrappers
     printf "${white}---${white}\n"
 }
@@ -3216,7 +3218,7 @@ run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $scr
 redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
 
 # Print job(s) list on console
-print_file_content_with_index .job.list jobs
+print_file_content_with_index .job.list jobs --prompt --skip --server
 
 # Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different mode
 convert_job_index_to_names
