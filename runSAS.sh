@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.2                                                                                                  #
+#     Version: 19.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,11 +117,9 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.2
-
+	RUNSAS_CURRENT_VERSION=19.3
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
-
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$RUNSAS_CURRENT_VERSION"
@@ -2932,14 +2930,14 @@ function runSAS(){
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
     # We are lookig for a two lines at the end of the file
-    if [ $script_rc -le 4 ] || [ $job_rc -le 4 ]; then
+    if [ $script_rc -le 4 ] && [ $job_rc -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $local_sas_logs_root_directory/$current_log_name | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $TMP_LOG_FILE
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $local_sas_logs_root_directory/$current_log_name | grep "NOTE: The SAS System used:" >> $TMP_LOG_FILE
         # Set RC
         if [ ! -s $TMP_LOG_FILE ]; then
             script_rc=95
-            echo "ERROR: runSAS detected abnormal termination of the job, log is incomplete and session trace is found in $RUNSAS_SAS_SH_TRACE_FILE file." > $TMP_LOG_FILE 
+            echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $TMP_LOG_FILE 
         fi
     fi
 
