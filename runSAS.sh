@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 18.9                                                                                                  #
+#     Version: 19.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 31/01/2019                                                                                            #
+#        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -51,9 +51,9 @@ SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode
 #
 # 2/4: Provide a list of SAS Data Integration Studio deployed job(s) or list of base SAS progam(s)
 #      Do not include ".sas" in the name of the deployed job.
-#      Add "--prompt" after the job to halt/pause the run in every batch
-#      Add "--skip" after the job to skip the job run in every batch
-#      Add "--server" after the job to override default app server parameters (see --help menu for more details on this)
+#      Tips: Add "--prompt" after the job name to prompt for a user confirmation to run the job
+#            Add "--skip" after the job name to skip a job run in every batch run
+#            Add "--server" after the job name to override default SAS app server parameters, e.g. SASAppX (see --help menu for more details on this)
 #
 cat << EOF > .job.list
 XXXXXXXXXXXXXXX --prompt
@@ -61,7 +61,7 @@ YYYYYYYYYYYYYYY --skip
 ZZZZZZZZZZZZZZZ
 EOF
 #
-# 3/4: Script behaviors, defaults should work just fine but amend as per the environment needs. 
+# 3/4: Script behaviors, defaults should work just fine but amend as per your needs. 
 #
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
 ENABLE_RUNTIME_COMPARE=N                                                # Default is N                    ---> Compares job run times between batches, specify Y/N
@@ -101,13 +101,12 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 function display_welcome_ascii_banner(){
 printf "\n${green}"
 cat << "EOF"
-+-+-+-+-+-+-+
-|r|u|n|S|A|S|
-+-+-+-+-+-+-+
-|v|1|8|.|9|
-+-+-+-+-+-+
+             _____ _____ _____ 
+ ___ _ _ ___|   __|  _  |   __|
+|  _| | |   |__   |     |__   |
+|_| |___|_|_|_____|__|__|_____|
 EOF
-printf "\n${white}"
+printf "${grey}\nv$RUNSAS_CURRENT_VERSION\n\n${white}"
 }
 #------
 # Name: show_the_script_version_number()
@@ -116,8 +115,9 @@ printf "\n${white}"
 #  Out: <NA>
 #------
 function show_the_script_version_number(){
-	# Version numbers
-	RUNSAS_CURRENT_VERSION=18.9                                 
+	# Current version
+	RUNSAS_CURRENT_VERSION=19.0
+    # Compatible version for the in-place upgrade (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
@@ -702,14 +702,43 @@ function print_file_to_console(){
 #------
 # Name: print_file_content_with_index()
 # Desc: This function prints the file content with a index
-#   In: file-name, file-line-content-type
+#   In: file-name, file-line-content-type, highlight-keywords (optional)
 #  Out: <NA>
 #------
 function print_file_content_with_index(){
-    total_lines_in_the_file=`cat $1 | wc -l`
+    # Create an array of parameters passed
+    printfile_parameters_array_element_count=$#
+    printfile_parameters_array=("$@")
+
+    # If the count > 2, then highlight is requested so create a temporary file
+    if [[ $printfile_parameters_array_element_count -gt 2 ]]; then 
+        printfile=.printfile.tmp
+        cp $1 $printfile
+    else
+        printfile=$1
+    fi
+
+    # Get total line count
+    total_lines_in_the_file=`cat $printfile | wc -l`
+
+    # Default message 
     printf "\n${white}There are $total_lines_in_the_file $2 in the list:${white}\n"
+
+    # Wrappers
     printf "${white}---${white}\n"
-    awk '{printf("%02d) %s\n", NR, $0)}' $1
+
+    # Show the list (highlight keywords, ignore the first two parameters)
+    for (( p=2; p<$printfile_parameters_array_element_count; p++ )); do
+        if [[ ! "${printfile_parameters_array[p]}" == "" ]]; then
+            # Highlight keywords
+            add_bash_color_tags_for_keywords $printfile ${printfile_parameters_array[p]} ${green} ${white} 
+        fi
+    done
+
+    # Print the file
+    awk '{printf("%02d) %s\n", NR, $0)}' $printfile
+    
+    # Wrappers
     printf "${white}---${white}\n"
 }
 #------
@@ -1506,6 +1535,15 @@ function add_html_color_tags_for_keywords(){
 	sed -e "s/Log:/<font size=\"2\" face=\"courier\"color=\"RED\">Log:<\/font>/g"         	-i  $1
 	sed -e "s/Job:/<font size=\"2\" face=\"courier\"color=\"RED\">Job:<\/font>/g"        	-i  $1
 	sed -e "s/Step:/<font size=\"2\" face=\"courier\"color=\"RED\">Step:<\/font>/g"         -i  $1
+}
+#------
+# Name: add_bash_color_tags_for_keywords()
+# Desc: This adds bash color tags to a keyword in a file (in file replacement)
+#   In: file-name, keyword, begin-color-code, end-color-code
+#  Out: <NA>
+#------
+function add_bash_color_tags_for_keywords(){
+	sed -e "s/$2/$3$2$4/g" -i $1
 }
 #------
 # Name: runsas_notify_email()
