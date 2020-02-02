@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.1                                                                                                  #
+#     Version: 19.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -100,13 +100,14 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 #------
 function display_welcome_ascii_banner(){
 printf "\n${green}"
-cat << "EOF"
+cat << EOF
              _____ _____ _____ 
  ___ _ _ ___|   __|  _  |   __|
 |  _| | |   |__   |     |__   |
-|_| |___|_|_|_____|__|__|_____|
+|_| |___|_|_|_____|__|__|_____| v$RUNSAS_CURRENT_VERSION
+
 EOF
-printf "${grey}\nv$RUNSAS_CURRENT_VERSION\n\n${white}"
+printf "\n${white}"
 }
 #------
 # Name: show_the_script_version_number()
@@ -116,9 +117,11 @@ printf "${grey}\nv$RUNSAS_CURRENT_VERSION\n\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.1
-    # Compatible version for the in-place upgrade (set by the developer, do not change this)                                 
+	RUNSAS_CURRENT_VERSION=19.2
+
+    # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
+
     # Show version numbers
     if [[ ${#@} -ne 0 ]] && ([[ "${@#"--version"}" = "" ]] || [[ "${@#"-v"}" = "" ]] || [[ "${@#"--v"}" = "" ]]); then
         printf "$RUNSAS_CURRENT_VERSION"
@@ -2927,9 +2930,22 @@ function runSAS(){
         fi
     fi
 
+    # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
+    # We are lookig for a two lines at the end of the file
+    if [ $script_rc -le 4 ] || [ $job_rc -le 4 ]; then
+        # Check if there are any errors in the logs (as it updates, in real-time)
+        tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $local_sas_logs_root_directory/$current_log_name | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $TMP_LOG_FILE
+        tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $local_sas_logs_root_directory/$current_log_name | grep "NOTE: The SAS System used:" >> $TMP_LOG_FILE
+        # Set RC
+        if [ ! -s $TMP_LOG_FILE ]; then
+            script_rc=95
+            echo "ERROR: runSAS detected that the job was terminated by the server abruptly (error code 95), the log is incomplete." > $TMP_LOG_FILE
+        fi
+    fi
+
     # ERROR: Check return code, abort if there's an error in the job run
     if [ $script_rc -gt 4 ] || [ $job_rc -gt 4 ]; then
-        # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS)
+        # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS!)
         sed -n '1,/^ERROR:/ p' $local_sas_logs_root_directory/$current_log_name | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $JOB_THAT_ERRORED_FILE
 
         # Format the job name for display
@@ -3075,8 +3091,9 @@ RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/master/runSAS.sh
 RUNSAS_PARAMETERS_COUNT=$#
 RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
+RUNSAS_SAS_LOG_TAIL_LINECOUNT=10
 DEBUG_MODE_CONSOLE_COLOR=white
-RUNSAS_DISPLAY_FILLER_COL_END_POS=110
+RUNSAS_DISPLAY_FILLER_COL_END_POS=111
 RUNSAS_FILLER_CHARACTER=.
 CONSOLE_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
