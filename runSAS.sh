@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.4                                                                                                  #
+#     Version: 19.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.4
+	RUNSAS_CURRENT_VERSION=19.5
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -3031,10 +3031,10 @@ function runSAS(){
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=". "
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
-			job_runtime_diff_pct_string=", ${red}▲${job_runtime_diff_pct}%%.${green} "
+			job_runtime_diff_pct_string=" ${red}▲${job_runtime_diff_pct}%%.${green} "
 		elif [[ $job_runtime_diff_pct -lt -$RUNTIME_COMPARE_FACTOR ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
-			job_runtime_diff_pct_string=", ${blue}▼${job_runtime_diff_pct}%%.${green} "
+			job_runtime_diff_pct_string=" ${blue}▼${job_runtime_diff_pct}%%.${green} "
 		else
 			job_runtime_diff_pct_string=". "
 		fi
