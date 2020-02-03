@@ -1663,7 +1663,7 @@ function get_job_hist_runtime_stats(){
 function show_job_hist_runtime_stats(){
 	get_job_hist_runtime_stats $1
 	if [[ "$hist_job_runtime" != "" ]]; then
-		printf "${white} (took ~$hist_job_runtime secs last time)${white}"
+		printf "${white} (~$hist_job_runtime secs previously)${white}"
 	fi
 }
 #------
@@ -2255,7 +2255,7 @@ function redeploy_sas_jobs(){
             retrieve_a_key_value_pair depjob_total_runtime
 
             # Message to user
-			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it took "${depjob_total_runtime:-'~950'}" seconds last time to finish, so grab a cup of coffee or tea.${white}\n\n"
+			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it may take a while, so grab a cup of coffee or tea.${white}\n\n"
 
             # Add to audit log
             print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
@@ -3091,7 +3091,7 @@ RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
 RUNSAS_SAS_LOG_TAIL_LINECOUNT=25
 DEBUG_MODE_CONSOLE_COLOR=white
-RUNSAS_DISPLAY_FILLER_COL_END_POS=111
+RUNSAS_DISPLAY_FILLER_COL_END_POS=108
 RUNSAS_FILLER_CHARACTER=.
 CONSOLE_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
