@@ -1694,7 +1694,7 @@ function show_time_remaining_stats(){
         if [[ $time_remaining_in_secs -ge 0 ]]; then
             time_stats_msg=" ~$time_remaining_in_secs secs remaining..." 
         else
-		    time_stats_msg=" $time_remaining_in_secs secs elapsed......" 
+		    time_stats_msg=" additional $((time_remaining_in_secs*-1)) secs elapsed......" 
 		fi
 		
 		# Record the message last shown timestamp
