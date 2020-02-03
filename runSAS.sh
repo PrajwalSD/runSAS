@@ -3031,10 +3031,10 @@ function runSAS(){
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=". "
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
-			job_runtime_diff_pct_string=", ${red}▲ ${job_runtime_diff_pct}%%.${green} "
+			job_runtime_diff_pct_string=", ${red}▲${job_runtime_diff_pct}%%.${green} "
 		elif [[ $job_runtime_diff_pct -lt -$RUNTIME_COMPARE_FACTOR ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
-			job_runtime_diff_pct_string=", ${blue}▼ ${job_runtime_diff_pct}%%.${green} "
+			job_runtime_diff_pct_string=", ${blue}▼${job_runtime_diff_pct}%%.${green} "
 		else
 			job_runtime_diff_pct_string=". "
 		fi
