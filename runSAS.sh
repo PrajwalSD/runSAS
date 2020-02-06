@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.4                                                                                                  #
+#     Version: 20.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 06/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.4
+	RUNSAS_CURRENT_VERSION=20.5
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -2920,7 +2920,7 @@ function runSAS(){
         fi
         
         # Check if there are any errors in the logs (as it updates, in real-time)
-        grep -m${JOB_ERROR_DISPLAY_COUNT} "$ERROR_CHECK_SEARCH_STRING" $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
+        $RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} -E --color "$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $local_sas_logs_root_directory/$current_log_name > $TMP_LOG_FILE
 
         # Again, suppress unwanted lines in the log (typical SAS errors!)
         remove_a_line_from_file "ERROR: Errors printed on page" "$TMP_LOG_FILE"
@@ -3149,6 +3149,7 @@ INDEX_MODE_SECOND_JOB_NUMBER=-1
 EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
 DEFAULT_PROGRESS_BAR_COLOR="green_bg"
 SERVER_PACKAGE_INSTALLER_PROGRAM=yum
+RUNSAS_LOG_SEARCH_FUNCTION=grep
 EMAIL_USER_MESSAGE=""
 EMAIL_FLAGS_DEFAULT_SETTING=YNYY
 EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=120
