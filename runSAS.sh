@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.0                                                                                                  #
+#     Version: 20.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.0
+	RUNSAS_CURRENT_VERSION=20.1
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -1118,10 +1118,17 @@ function kill_a_pid(){
         if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
             printf "${green}(DONE)${white}\n\n${white}"
         else
-            printf "${red}\n\n*** ERROR: Attempt to terminate the job (pid $1 and the descendants) failed. It is likely due to user permissions, review the process/child process details below. ***\n${white}"
-            show_pid_details $1
-            show_child_pid_details $1
-            printf "\n"
+            # Attempting second time...
+            printf "${red}taking a bit more time than usual, hold on...${white}"
+            sleep 10
+            if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
+                printf "${green}(DONE)${white}\n\n${white}"
+            else
+                printf "${red}\n\n*** ERROR: Attempt to terminate the job (pid $1 and the descendants) failed. It is likely due to user permissions, review the process/child process details below. ***\n${white}"
+                show_pid_details $1
+                show_child_pid_details $1
+                printf "\n"
+            fi
         fi
     else
         printf "${red}\n(pid is missing anyway, no action taken)${white}\n\n"
@@ -2964,10 +2971,10 @@ function runSAS(){
 		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
         end_datetime_of_job=`date +%s`
 
-        # Print error(s)
-        printf "\b${white}${red}(FAILED rc=$job_rc-$script_rc, took "
+        # Failure (FAILED) message
+        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=$job_rc-$script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
-        printf " secs. Failed on $end_datetime_of_job_timestamp)${white}\n"
+        printf " secs)${white}\n"
 
         # Wrappers
         printf "${red}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}\n"
@@ -3052,9 +3059,9 @@ function runSAS(){
         display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
 
         # Success (DONE) message
-        printf "\b${white}${green}(DONE rc=$job_rc-$script_rc, took "
+        printf "\b${white}${green}(DONE on ${end_datetime_of_job_timestamp}, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
-        printf " secs${job_runtime_diff_pct_string}Completed on $end_datetime_of_job_timestamp)${white}\n"
+        printf " secs)${job_runtime_diff_pct_string}${white}\n"
 
         # Log
         print_2_runsas_session_log "Job Status: ${green}DONE${white}"
