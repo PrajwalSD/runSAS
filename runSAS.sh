@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.3                                                                                                  #
+#     Version: 20.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 02/02/2020                                                                                            #
+#        Date: 06/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.3
+	RUNSAS_CURRENT_VERSION=20.4
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -1123,7 +1123,7 @@ function kill_a_pid(){
             printf "${red}taking a bit more time than usual, hold on...${white}"
 			kill -9 `ps -p $1 -o comm=` 2>/dev/null
 			kill -9 $1 2>/dev/null
-            sleep 15
+            sleep 10
             if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
                 printf "${green}(DONE)${white}\n\n${white}"
             else
