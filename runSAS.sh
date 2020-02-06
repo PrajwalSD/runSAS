@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.8                                                                                                  #
+#     Version: 19.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.8
+	RUNSAS_CURRENT_VERSION=19.9
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -2835,10 +2835,10 @@ function runSAS(){
     current_log_name=`ls -tr $local_sas_logs_root_directory | tail -1`
 	
     # Wait until the log is generated...
-    while [[ ! "$current_log_name" =~ "log" ]]; then 
+    while [[ ! "$current_log_name" =~ "log" ]]; do 
         sleep 0.25 
         current_log_name=`ls -tr $local_sas_logs_root_directory | tail -1`
-    fi
+    done
 
     # Show current status of the run, poll for the PID and display the progress bar.
     while [ $? -eq 0 ]; do
