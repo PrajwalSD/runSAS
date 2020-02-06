@@ -2829,7 +2829,7 @@ function runSAS(){
     printf "${white} ${green}"
 
     # Sleep before the log is generated
-    sleep 2
+    sleep 1
 
     # Get the current job log filename (absolute path)
     current_log_name=`ls -tr $local_sas_logs_root_directory | tail -1`
