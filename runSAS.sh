@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.6                                                                                                  #
+#     Version: 19.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.6
+	RUNSAS_CURRENT_VERSION=19.7
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -2828,8 +2828,8 @@ function runSAS(){
     ps cax | grep -w $job_pid > /dev/null
     printf "${white} ${green}"
 
-    # Sleep between pid fetches
-    sleep 0.5
+    # Sleep before the log is generated
+    sleep 2
 
     # Get the current job log filename (absolute path)
     current_log_name=`ls -tr $local_sas_logs_root_directory | tail -1`
