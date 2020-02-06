@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.2                                                                                                  #
+#     Version: 20.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.2
+	RUNSAS_CURRENT_VERSION=20.3
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -532,7 +532,7 @@ function process_delayed_execution(){
 			clear_session_and_exit
 		else
 			# Disable carriage return (ENTER key) during the script run
-			disable_enter_key
+			disable_enter_key keyboard
 			# Parameters
 			runsas_delay_time_in_secs=$1 
 			runsas_delay_start_timestamp=`date --date="+$runsas_delay_time_in_secs seconds" '+%Y-%m-%d %T'`
@@ -805,7 +805,7 @@ function run_in_interactive_mode_check(){
     if [[ "$script_mode" == "-i" ]] && [[ "$escape_interactive_mode" != "1" ]]; then
         interactive_mode=1
         printf "${red_bg}${black}Press ENTER key to continue OR type E to escape this interactive mode${white} "
-        enable_enter_key
+        enable_enter_key keyboard
         read run_in_interactive_mode_check_user_input < /dev/tty
         if [[ "$run_in_interactive_mode_check_user_input" == "E" ]] || [[ "$run_in_interactive_mode_check_user_input" == "e" ]]; then
             escape_interactive_mode=1
@@ -1111,16 +1111,19 @@ function check_for_job_list_override(){
 #  Out: <NA>
 #------
 function kill_a_pid(){
+    disable_enter_key keyboard
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         pkill -TERM -P $1
         printf "${red}\nTerminating the running job (pid $1 and the descendants), please wait...${white}"
-        sleep 10
+        sleep 7
         if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
             printf "${green}(DONE)${white}\n\n${white}"
         else
-            # Attempting second time...
+            # Attempting second time...with force kill command 
             printf "${red}taking a bit more time than usual, hold on...${white}"
-            sleep 10
+			kill -9 `ps -p $1 -o comm=` 2>/dev/null
+			kill -9 $1 2>/dev/null
+            sleep 15
             if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
                 printf "${green}(DONE)${white}\n\n${white}"
             else
@@ -1133,6 +1136,7 @@ function kill_a_pid(){
     else
         printf "${red}\n(pid is missing anyway, no action taken)${white}\n\n"
     fi
+    enable_enter_key keyboard
 }
 #------
 # Name: show_pid_details()
@@ -1809,7 +1813,7 @@ function get_the_entry_from_the_list(){
 #------
 function clear_session_and_exit(){
     printf "${white}\n\n${white}"
-    enable_enter_key
+    enable_enter_key keyboard
     setterm -cursor on
     if [[ $interactive_mode == 1 ]]; then
         reset
@@ -1882,6 +1886,26 @@ function display_message_fillers_on_console(){
     filler_char_count_prev=$filler_char_count
 }
 #------
+# Name: disable_keyboard_inputs()
+# Desc: This function will disable user inputs via keyboard
+#   In: <NA>
+#  Out: <NA>
+#------
+function disable_keyboard_inputs(){
+    # Disable user inputs via keyboard
+    stty -echo < /dev/tty
+}
+#------
+# Name: enable_keyboard_inputs()
+# Desc: This function will enable user inputs via keyboard
+#   In: <NA>
+#  Out: <NA>
+#------
+function enable_keyboard_inputs(){
+    # Enable user inputs via keyboard
+    stty echo < /dev/tty
+}
+#------
 # Name: disable_enter_key()
 # Desc: This function will disable carriage return (ENTER key)
 #   In: <NA>
@@ -1890,6 +1914,10 @@ function display_message_fillers_on_console(){
 function disable_enter_key(){
     # Disable carriage return (ENTER key) during the script run
     stty igncr < /dev/tty
+    # Disable keyboard inputs too if user has asked for it
+    if [[ ! "$1" == "" ]]; then
+        disable_keyboard_inputs
+    fi
 }
 #------
 # Name: enable_enter_key()
@@ -1900,6 +1928,10 @@ function disable_enter_key(){
 function enable_enter_key(){
     # Enable carriage return (ENTER key) during the script run
     stty -igncr < /dev/tty
+    # Enable keyboard inputs too if user has asked for it
+    if [[ ! "$1" == "" ]]; then
+        enable_keyboard_inputs
+    fi
 }
 #------
 # Name: press_enter_key_to_continue()
@@ -1975,7 +2007,7 @@ function scan_sas_programs_for_debug_options(){
 #------
 function validate_job_list(){
     # For those enter key hitters :)
-    disable_enter_key
+    disable_enter_key keyboard
 	
 	# Set the wait message parameters
 	vjmode_show_wait_message="Checking few things in the server and getting things ready, please wait...."  
@@ -2023,7 +2055,7 @@ function validate_job_list(){
 	echo -ne "\r"
 	
 	# Enable carriage return
-    enable_enter_key
+    enable_enter_key keyboard
 }
 #------
 # Name: store_a_key_value_pair()
@@ -2286,7 +2318,7 @@ function redeploy_sas_jobs(){
             print_2_runsas_session_log "Deleted existing SAS job files?: $read_depjob_clear_files"
 
             # Disable enter key
-            disable_enter_key
+            disable_enter_key keyboard
 
 			# Run the jobs from the list one at a time (here's where everything is brought together!)
 			while IFS='|' read -r job; do
@@ -2397,7 +2429,7 @@ function redeploy_sas_jobs(){
             print_2_runsas_session_log "Total time taken (in seconds): $depjob_total_runtime"
 
             # Enable enter key
-            enable_enter_key
+            enable_enter_key keyboard
 
 			clear_session_and_exit
 		fi
@@ -2850,7 +2882,7 @@ function runSAS(){
     # Show current status of the run, poll for the PID and display the progress bar.
     while [ $? -eq 0 ]; do
         # Disable carriage return (ENTER key) during the script run
-        disable_enter_key
+        disable_enter_key keyboard
 
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:'  $local_sas_logs_root_directory/$current_log_name | wc -l`
@@ -3044,10 +3076,10 @@ function runSAS(){
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=""
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
-			job_runtime_diff_pct_string=" ${red}⯅${job_runtime_diff_pct}%%${green} "
+			job_runtime_diff_pct_string=" ${red}⯅${job_runtime_diff_pct}%%${green}"
 		elif [[ $job_runtime_diff_pct -lt -$RUNTIME_COMPARE_FACTOR ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
-			job_runtime_diff_pct_string=" ${blue}⯆${job_runtime_diff_pct}%%${green} "
+			job_runtime_diff_pct_string=" ${blue}⯆${job_runtime_diff_pct}%%${green}"
 		else
 			job_runtime_diff_pct_string=""
 		fi
