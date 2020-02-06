@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 19.9                                                                                                  #
+#     Version: 20.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=19.9
+	RUNSAS_CURRENT_VERSION=20.0
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -1663,7 +1663,7 @@ function get_job_hist_runtime_stats(){
 function show_job_hist_runtime_stats(){
 	get_job_hist_runtime_stats $1
 	if [[ "$hist_job_runtime" != "" ]]; then
-		printf "${white} (~$hist_job_runtime secs previously)${white}"
+		printf "${white} (takes ~$hist_job_runtime secs)${white}"
 	fi
 }
 #------
@@ -2819,7 +2819,7 @@ function runSAS(){
     pid_progress_counter=1
 
     # Paint the rest of the message on the console
-    printf "${white}is running with pid $job_pid${white}"
+    printf "${white}is running as PID $job_pid${white}"
 	
 	# Runtime (history)
 	show_job_hist_runtime_stats $1
@@ -3097,7 +3097,7 @@ RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
 RUNSAS_SAS_LOG_TAIL_LINECOUNT=25
 DEBUG_MODE_CONSOLE_COLOR=white
-RUNSAS_DISPLAY_FILLER_COL_END_POS=108
+RUNSAS_DISPLAY_FILLER_COL_END_POS=100
 RUNSAS_FILLER_CHARACTER=.
 CONSOLE_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
