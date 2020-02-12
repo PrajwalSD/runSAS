@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.7                                                                                                  #
+#     Version: 20.8                                                                                                  #
 #                                                                                                                    #
-#        Date: 06/02/2020                                                                                            #
+#        Date: 12/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.7
+	RUNSAS_CURRENT_VERSION=20.8
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -2562,7 +2562,13 @@ function display_progressbar_with_offset(){
 
     # Calculate the scale
     let progressbar_scale=100/$progressbar_width
-    
+
+    # No steps (empty job scenario needs handling)
+    if [[ $progressbar_total_steps -le 0 ]]; then
+		progressbar_steps_completed=1
+        progressbar_total_steps=1
+	fi
+
   	# Reset (>100% scenario!)
 	if [[ $progressbar_steps_completed -gt $progressbar_total_steps ]]; then
 		progressbar_steps_completed=$progressbar_total_steps
