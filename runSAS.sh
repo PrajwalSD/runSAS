@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.6                                                                                                  #
+#     Version: 20.7                                                                                                  #
 #                                                                                                                    #
 #        Date: 06/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.6
+	RUNSAS_CURRENT_VERSION=20.7
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -2153,9 +2153,6 @@ function redeploy_sas_jobs(){
         dos2unix $depjob_job_file
         add_a_newline_char_to_eof $depjob_job_file
 
-        # Print the jobs file
-        print_file_content_with_index $depjob_job_file jobs
-
         # Check for the jobs file (mandatory for this mode)
 		if [[ "$depjob_job_file" == "" ]]; then
             # Ensure the job list is provided
@@ -2186,6 +2183,9 @@ function redeploy_sas_jobs(){
 					depjob_to_job=${job_name_from_the_list}
 				fi
 			else
+                # Print the jobs file
+                print_file_content_with_index $depjob_job_file jobs
+
                 # Check if the user wants to redeploy only few jobs
 				printf "\n"
 				read_depjob_filters_required_parms_array_count=0
