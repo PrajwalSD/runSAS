@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.8                                                                                                  #
+#     Version: 20.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 12/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.8
+	RUNSAS_CURRENT_VERSION=20.9
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -1127,21 +1127,21 @@ function kill_a_pid(){
             if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
                 printf "${green}(DONE)${white}\n\n${white}"
             else
-                printf "${red}\n\n*** ERROR: Attempt to terminate the job (pid $1 and the descendants) failed. It is likely due to user permissions, review the process/child process details below. ***\n${white}"
+                printf "${red}\n\n*** ERROR: Attempt to terminate the job (PID $1 and the descendants) failed. It is likely due to user permissions, review the process/child process details below. ***\n${white}"
                 show_pid_details $1
                 show_child_pid_details $1
                 printf "\n"
             fi
         fi
     else
-        printf "${red}\n(pid is missing anyway, no action taken)${white}\n\n"
+        printf "${red}\n(PID is missing anyway, no action taken)${white}\n\n"
     fi
     enable_enter_key keyboard
 }
 #------
 # Name: show_pid_details()
 # Desc: Show process details
-#   In: pid
+#   In: PID
 #  Out: <NA>
 #------
 function show_pid_details(){
@@ -1154,7 +1154,7 @@ function show_pid_details(){
 #------
 # Name: show_child_pid_details()
 # Desc: Show child/descendant processes
-#   In: pid
+#   In: PID
 #  Out: <NA>
 #------
 function show_child_pid_details(){
@@ -1167,7 +1167,7 @@ function show_child_pid_details(){
 #------
 # Name: running_processes_housekeeping()
 # Desc: Housekeeping for background process, terminate it if required (based on the KILL_PROCESS_ON_USER_ABORT parameter)
-#   In: pid 
+#   In: PID 
 #  Out: <NA>
 #------
 function running_processes_housekeeping(){
@@ -1175,7 +1175,7 @@ function running_processes_housekeeping(){
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$KILL_PROCESS_ON_USER_ABORT" ==  "Y" ]]; then
                 disable_enter_key
-                printf "${white}Process (pid) details for the currently running job:\n${white}"
+                printf "${white}Process (PID) details for the currently running job:\n${white}"
                 # Show & kill!
                 show_pid_details $1
                 show_child_pid_details $1
@@ -1183,7 +1183,7 @@ function running_processes_housekeeping(){
                 enable_enter_key
             else
                 echo $1 > $RUNSAS_LAST_JOB_PID_FILE
-                printf "${red}WARNING: The last job submitted by runSAS with pid $1 is still running/active in the background, auto-kill is off, terminate it manually using ${green}pkill -TERM -P $1${white}${red} command.\n\n${white}"
+                printf "${red}WARNING: The last job submitted by runSAS with PID $1 is still running/active in the background, auto-kill is off, terminate it manually using ${green}pkill -TERM -P $1${white}${red} command.\n\n${white}"
             fi
         fi
     fi
@@ -1203,7 +1203,7 @@ function check_if_there_are_any_rogue_runsas_processes(){
 
     # Check if the PID is still active
     if ! [[ -z `ps -p ${runsas_last_job_pid:-"999"} -o comm=` ]]; then
-        printf "${yellow}WARNING: There is a job (pid $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
+        printf "${yellow}WARNING: There is a job (PID $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
         show_pid_details $runsas_last_job_pid
         printf "${red}\nDo you want to kill this process and continue? (Y/N): ${white}"
         disable_enter_key
@@ -2531,7 +2531,7 @@ function archive_all_job_logs(){
 #  Out: <NA> 
 #------
 function show_server_and_user_details(){
-    printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with pid $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
+    printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with PID $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
     printf '%s' ${white}"${SUDO_USER:-$USER}${white}"
     printf "${white} user\n${white}"
 }
