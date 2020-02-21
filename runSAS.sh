@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 20.9                                                                                                  #
+#     Version: 30.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 12/02/2020                                                                                            #
+#        Date: 21/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=20.9
+	RUNSAS_CURRENT_VERSION=30.0
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -622,15 +622,24 @@ function create_a_file_if_not_exists(){
 #------
 # Name: check_if_the_file_exists()
 # Desc: Check if the specified file exists
-#   In: file-name (multiple could be specified)
+#   In: file-name (multiple could be specified), <noexit>, additional-message
 #  Out: <NA>
 #------
 function check_if_the_file_exists(){
+	noexit=0
+	for p in "$@"
+    do
+        if [[ "$p" == "noexit" ]]; then
+            noexit=1
+        fi
+    done
     for file in "$@"
     do
-        if [ ! -f "$file" ]; then
-            printf "\n${red}*** ERROR: File ${black}${red_bg}$file${white}${red} was not found in the server *** ${white}"
-            clear_session_and_exit
+        if [ ! -f "$file" ] && [ ! "$file" == "noexit" ] ; then
+            printf "\n${red}*** ERROR: ${3:-File} ${black}${red_bg}$file${white}${red} was not found in the server *** ${white}"
+			if [[ $noexit -eq 0 ]]; then
+				clear_session_and_exit
+			fi
         fi
     done
 }
@@ -2390,7 +2399,7 @@ function redeploy_sas_jobs(){
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
                 
                 # A way to check if the job was deployed at all?
-                check_if_the_file_exists "$deployed_job_sas_file"
+                check_if_the_file_exists "$deployed_job_sas_file" noexit "Job was not deployed correctly. "
 
                 # Fix the names (add underscores etc.)
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
