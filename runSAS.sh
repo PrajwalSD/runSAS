@@ -4,11 +4,11 @@
 #                                                                                                                    #
 #     Program: runSAS.sh                                                                                             #
 #                                                                                                                    #
-#        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
+#        Desc: SAS job/flow scheduler command line tool                                                              #
 #                                                                                                                    #
-#     Version: 30.0                                                                                                  #
+#     Version: 30.1                                                                                                  #
 #                                                                                                                    #
-#        Date: 21/02/2020                                                                                            #
+#        Date: 24/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -56,9 +56,9 @@ SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode
 #            Add "--server" after the job name to override default SAS app server parameters, e.g. SASAppX (see --help menu for more details on this)
 #
 cat << EOF > .job.list
-XXXXXXXXXXXXXXX --prompt
-YYYYYYYYYYYYYYY --skip
-ZZZZZZZZZZZZZZZ
+<flow-id>,<flow-name>,<job-id>,<job-name>,<dependency>,<condition>,<return-code> 
+<flow-id>,<flow-name>,<job-id>,<job-name>,<dependency>,<condition>,<return-code>
+<flow-id>,<flow-name>,<job-id>,<job-name>,<dependency>,<condition>,<return-code>
 EOF
 #
 # 3/4: Script behaviors, defaults should work just fine but amend as per your needs. 
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.0
+	RUNSAS_CURRENT_VERSION=30.1
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -3324,9 +3324,9 @@ process_delayed_execution
 # Send a launch email
 runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
 
-# Run the jobs from the list one at a time (here's where everything is brought together!)
-while IFS=' ' read -r job opt subopt sappdir bservdir bsh blogdir bjobdir; do
-    runSAS ${job##/*/} $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
+# Trigger the job/flow
+while IFS=',' read -r flow_id flow_name job_id job_name job_dep job_cond job_rc opt subopt sappdir bservdir bsh blogdir bjobdir; do
+    runSAS ${job##/*/} $flow_id $flow_name $job_id $job_name $job_dep $job_cond $job_rc $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
 done < .job.list
 
 # Capture session runtimes
