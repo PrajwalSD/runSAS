@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: SAS job/flow scheduler command line tool                                                              #
 #                                                                                                                    #
-#     Version: 30.1                                                                                                  #
+#     Version: 31.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 24/02/2020                                                                                            #
+#        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.1
+	RUNSAS_CURRENT_VERSION=31.0
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
