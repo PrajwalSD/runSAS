@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 30.3                                                                                                  #
+#     Version: 30.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.3
+	RUNSAS_CURRENT_VERSION=30.4
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -643,10 +643,13 @@ function check_if_the_file_exists(){
     for file in "$@"
     do
         if [ ! -f "$file" ] && [ ! "$file" == "noexit" ] ; then
-            printf "\n${red}*** ERROR: ${3:-File} ${black}${red_bg}$file${white}${red} was not found in the server *** ${white}"
+            printf "\n${red}*** ERROR: File ${black}${red_bg}$file${white}${red} was not found in the server *** ${white}"
 			if [[ $noexit -eq 0 ]]; then
 				clear_session_and_exit
 			fi
+        fi
+        if [ "$file" == "noexit" ] ; then
+            break
         fi
     done
 }
