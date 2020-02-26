@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 30.1                                                                                                  #
+#     Version: 30.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.1
+	RUNSAS_CURRENT_VERSION=30.2
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -520,7 +520,7 @@ exit 0
 #------
 function check_for_in_place_upgrade_request_from_user(){
     if [[ "$1" == "--update" ]]; then
-        runsas_script_auto_update
+        runsas_script_auto_update $2
     fi
 }
 #------
@@ -3249,8 +3249,8 @@ check_for_job_list_override
 # Show the list, if the user wants to quickly preview before launching the script (--show or --jobs or --list)
 show_the_list $1
 
-# Check if the user wants to update the script (--update)
-check_for_in_place_upgrade_request_from_user $1
+# Check if the user wants to update the script (--update <optional-git-branch>)
+check_for_in_place_upgrade_request_from_user $1 $2
 
 # Help menu (if invoked via ./runSAS.sh --help)
 print_the_help_menu $1
