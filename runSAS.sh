@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 30.2                                                                                                  #
+#     Version: 30.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.2
+	RUNSAS_CURRENT_VERSION=30.3
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -407,6 +407,7 @@ delete_a_file .runSAS.sh.downloaded 0
 
 # Switch the branches if the user has asked to (default is usually "master")
 RUNSAS_GITHUB_SOURCE_CODE_BRANCH=$runsas_download_git_branch
+RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/$RUNSAS_GITHUB_SOURCE_CODE_BRANCH/runSAS.sh
 
 # Download the latest file from Github
 printf "${green}\nNOTE: Downloading the latest version from Github (branch:$RUNSAS_GITHUB_SOURCE_CODE_BRANCH) using wget utility...${white}\n\n"
