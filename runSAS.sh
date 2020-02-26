@@ -383,7 +383,7 @@ function check_dependencies(){
 #------
 function runsas_script_auto_update(){
 # Optional branch name
-runsas_download_git_branch=${RUNSAS_GITHUB_SOURCE_CODE_BRANCH:-$1}
+runsas_download_git_branch="${RUNSAS_GITHUB_SOURCE_CODE_BRANCH:-$1}"
 
 # Generate a backup name and folder
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
@@ -3303,7 +3303,7 @@ check_for_job_list_override
 show_the_list $1
 
 # Check if the user wants to update the script (--update)
-check_for_in_place_upgrade_request_from_user $1
+check_for_in_place_upgrade_request_from_user $1 $2
 
 # Help menu (if invoked via ./runSAS.sh --help)
 print_the_help_menu $1
