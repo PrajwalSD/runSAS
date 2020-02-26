@@ -378,7 +378,7 @@ function check_dependencies(){
 #------
 # Name: runsas_script_auto_update()
 # Desc: Auto updates the runSAS script from Github
-#   In: <NA>
+#   In: optional-git-branch-name
 #  Out: <NA>
 #------
 function runsas_script_auto_update(){
