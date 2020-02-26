@@ -407,6 +407,7 @@ delete_a_file .runSAS.sh.downloaded 0
 
 # Switch the branches if the user has asked to (default is usually "master")
 RUNSAS_GITHUB_SOURCE_CODE_BRANCH=$runsas_download_git_branch
+RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/$RUNSAS_GITHUB_SOURCE_CODE_BRANCH/runSAS.sh
 
 # Download the latest file from Github
 printf "${green}\nNOTE: Downloading the latest version from Github (branch: $RUNSAS_GITHUB_SOURCE_CODE_BRANCH) using wget utility...${white}\n\n"
