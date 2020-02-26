@@ -2904,7 +2904,10 @@ function runSAS(){
             current_jobrc=${!job_name_from_the_list} 
             # Calculat the sum of return codes (of all dependents) to evaluate the dependency graph
             let total_jobrc=$total_jobrc+$current_jobrc
-            # Evaluate the dependency - AND (i.e. all jobs have completed successfully or within the limits of specified return code) or OR (one of the job has completed)
+
+            # Finally, evaluate the dependency:
+            # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user)
+            # (2) OR: One of the job has completed
             if [[ $runsas_local_logicop == "AND" ]]; then
                 if [[ $total_jobrc -ge 0 ]] && [[ $total_jobrc -le $runsas_local_jobrc_allowed_for_AND_op ]]; then 
                     nice -n 20 $runsas_local_batch_server_root_directory/$runsas_local_sh   -log $runsas_local_logs_root_directory/${runsas_local_job}_#Y.#m.#d_#H.#M.#s.log \
@@ -2921,6 +2924,7 @@ function runSAS(){
                                                                                 -logparm "rollover=session" \
                                                                                 -sysin $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
                 fi
+            fi
         done
     fi  
 
@@ -2952,6 +2956,9 @@ function runSAS(){
         sleep 0.25 
         current_log_name=`ls -tr $runsas_local_logs_root_directory | tail -1`
     done
+
+    # Set the return code variable for a job to default value
+    eval "$runsas_local_job='$RC_JOB_INCOMPLETE'";
 
     # Show current status of the run, poll for the PID and display the progress bar.
     while [ $? -eq 0 ]; do
@@ -3031,11 +3038,11 @@ function runSAS(){
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_log_name > $TMP_LOG_WITH_STEPS_FILE
 
-    # Job return code check (process rc)
-    job_rc=$?
+    # Set the return code of job to a variable named after itself for easy reference and lookup
+    eval "$runsas_local_job='$?'";
 
     # Double-check to ensure the job had no errors after the job completion
-    if [ $script_rc -le 4 ] || [ $job_rc -le 4 ]; then
+    if [ $script_rc -le 4 ] || [ $runsas_local_job -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
 		$RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} -E --color "$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_log_name > $TMP_LOG_FILE
 
@@ -3051,7 +3058,7 @@ function runSAS(){
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
     # We are lookig for a two lines at the end of the file
-    if [ $script_rc -le 4 ] && [ $job_rc -le 4 ]; then
+    if [ $script_rc -le 4 ] && [ $runsas_local_job -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_log_name | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $TMP_LOG_FILE
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_log_name | grep "NOTE: The SAS System used:" >> $TMP_LOG_FILE
@@ -3063,7 +3070,7 @@ function runSAS(){
     fi
 
     # ERROR: Check return code, abort if there's an error in the job run
-    if [ $script_rc -gt 4 ] || [ $job_rc -gt 4 ]; then
+    if [ $script_rc -gt 4 ] || [ $runsas_local_job -gt 4 ]; then
         # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS!)
         sed -n '1,/^ERROR:/ p' $runsas_local_logs_root_directory/$current_log_name | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $JOB_THAT_ERRORED_FILE
 
@@ -3080,7 +3087,7 @@ function runSAS(){
         end_datetime_of_job=`date +%s`
 
         # Failure (FAILED) message
-        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=$job_rc-$script_rc, took "
+        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=$runsas_local_job-$script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs)${white}\n"
 
