@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 30.0                                                                                                  #
+#     Version: 30.1                                                                                                  #
 #                                                                                                                    #
-#        Date: 21/02/2020                                                                                            #
+#        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.0
+	RUNSAS_CURRENT_VERSION=30.1
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -382,6 +382,9 @@ function check_dependencies(){
 #  Out: <NA>
 #------
 function runsas_script_auto_update(){
+# Optional branch name
+runsas_download_git_branch="${RUNSAS_GITHUB_SOURCE_CODE_BRANCH:-$1}"
+
 # Generate a backup name and folder
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
 
@@ -402,8 +405,11 @@ check_dependencies wget dos2unix
 # Make sure the file is deleted before the download
 delete_a_file .runSAS.sh.downloaded 0
 
+# Switch the branches if the user has asked to (default is usually "master")
+RUNSAS_GITHUB_SOURCE_CODE_BRANCH=$runsas_download_git_branch
+
 # Download the latest file from Github
-printf "${green}\nNOTE: Downloading the latest version from Github using wget utility...${white}\n\n"
+printf "${green}\nNOTE: Downloading the latest version from Github (branch:$RUNSAS_GITHUB_SOURCE_CODE_BRANCH) using wget utility...${white}\n\n"
 if ! wget -O .runSAS.sh.downloaded $RUNSAS_GITHUB_SOURCE_CODE_URL; then
     printf "\n${red}*** ERROR: Could not download the new version of runSAS from Github using wget, possibly due to server restrictions or internet connection issues or the server has timed-out ***\n${white}"
     clear_session_and_exit
@@ -3143,7 +3149,8 @@ function runSAS(){
 
 # Github URL
 RUNSAS_GITHUB_PAGE=http://github.com/PrajwalSD/runSAS
-RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/master/runSAS.sh
+RUNSAS_GITHUB_SOURCE_CODE_BRANCH=master
+RUNSAS_GITHUB_SOURCE_CODE_URL=$RUNSAS_GITHUB_PAGE/raw/$RUNSAS_GITHUB_SOURCE_CODE_BRANCH/runSAS.sh
 
 # System defaults 
 RUNSAS_PARAMETERS_COUNT=$#
