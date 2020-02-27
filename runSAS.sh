@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: SAS job/flow scheduler command line tool                                                              #
 #                                                                                                                    #
-#     Version: 31.0                                                                                                  #
+#     Version: 31.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=31.0
+	RUNSAS_CURRENT_VERSION=31.1
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -2046,7 +2046,7 @@ function validate_job_list(){
 	job_counter=0
 	
 	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j(run-a-job) mode
-		while IFS=' ' read -r j o so bservdir bsh blogdir bjobdir; do
+		while IFS=',' read -r fid fname jid j jdep op jrc o so bservdir bsh blogdir bjobdir; do
 
             # Counter for the job
 			let job_counter+=1
@@ -2564,7 +2564,7 @@ function show_server_and_user_details(){
 }
 #------
 # Name: display_progressbar_with_offset()
-# Desc: Calculates the progress bar parameters (https://en.wikipedia.org/wiki/Block_Elements#Character_table & https://www.rapidtables.com/code/text/unicode-characters.html, alternative: â–ˆ)
+# Desc: Calculates the progress bar parameters (https://en.wikipedia.org/wiki/Block_Elements#Character_table & https://www.rapidtables.com/code/text/unicode-characters.html, alternative: Ã¢â€“Ë†)
 #   In: steps-completed, total-steps, offset (-1 or 0), optional-message, active-color
 #  Out: <NA>
 #------
@@ -2755,17 +2755,17 @@ function runSAS(){
     # If user has specified a different server context, switch it here
     if [[ "$runsas_local_opt" == "--server" ]]; then
         if [[ "$runsas_local_subopt" != "" ]]; then
-            if [[ "$4" == "" ]]; then
+            if [[ "$runsas_local_app_root_directory" == "" ]]; then
                 runsas_local_app_root_directory=`echo "${runsas_local_app_root_directory/$SAS_APP_SERVER_NAME/$runsas_local_subopt}"`
             fi
-            if [[ "$5" == "" ]]; then
+            if [[ "$runsas_local_batch_server_root_directory" == "" ]]; then
                 runsas_local_batch_server_root_directory=`echo "${runsas_local_batch_server_root_directory/$SAS_APP_SERVER_NAME/$runsas_local_subopt}"`
             fi
-            if [[ "$7" == "" ]]; then
+            if [[ "$runsas_local_logs_root_directory" == "" ]]; then
                 runsas_local_logs_root_directory=`echo "${runsas_local_logs_root_directory/$SAS_APP_SERVER_NAME/$runsas_local_subopt}"`
             fi
-            if [[ "$8" == "" ]]; then
-                local_sas_deployed_jobs_root_directory=`echo "${local_sas_deployed_jobs_root_directory/$SAS_APP_SERVER_NAME/$runsas_local_subopt}"`
+            if [[ "$runsas_local_deployed_jobs_root_directory" == "" ]]; then
+                runsas_local_deployed_jobs_root_directory=`echo "${runsas_local_deployed_jobs_root_directory/$SAS_APP_SERVER_NAME/$runsas_local_subopt}"`
             fi
         else
             printf "${yellow}WARNING: $runsas_local_opt was specified for $runsas_local_job job in the list without the server context name, defaulting to ${white}"
@@ -2782,7 +2782,7 @@ function runSAS(){
     print_2_runsas_session_log "Batch server: $runsas_local_batch_server_root_directory"
     print_2_runsas_session_log "SAS shell: $runsas_local_sh"
     print_2_runsas_session_log "Logs: $runsas_local_logs_root_directory"
-    print_2_runsas_session_log "Deployed Jobs: $local_sas_deployed_jobs_root_directory"
+    print_2_runsas_session_log "Deployed Jobs: $runsas_local_deployed_jobs_root_directory"
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
     # Get cursor positions
@@ -2893,18 +2893,18 @@ function runSAS(){
     fi
 
     # Check if the directory exists (specified by the user as configuration)
-    check_if_the_dir_exists $runsas_local_app_root_directory $runsas_local_batch_server_root_directory $runsas_local_logs_root_directory $local_sas_deployed_jobs_root_directory
-    check_if_the_file_exists "$runsas_local_batch_server_root_directory/$runsas_local_sh" "$local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION"
+    check_if_the_dir_exists $runsas_local_app_root_directory $runsas_local_batch_server_root_directory $runsas_local_logs_root_directory $runsas_local_deployed_jobs_root_directory
+    check_if_the_file_exists "$runsas_local_batch_server_root_directory/$runsas_local_sh" "$runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION"
 
     # Check for job dependencies (flow is irrelevant really, dependencies could span across flows)
-    if [[ "$runsas_local_jobdep" == "" ]]; 
+    if [[ "$runsas_local_jobdep" == "" ]]; then
         # No dependency!
         # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
         nice -n 20 $runsas_local_batch_server_root_directory/$runsas_local_sh   -log $runsas_local_logs_root_directory/${runsas_local_job}_#Y.#m.#d_#H.#M.#s.log \
                                                                                 -batch \
                                                                                 -noterminal \
                                                                                 -logparm "rollover=session" \
-                                                                                -sysin $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
+                                                                                -sysin $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
     else
         # Loop through each dependent's return code and construct the condition for the run
         for runsas_local_jobdep_i in $runsas_local_jobdep
@@ -2927,7 +2927,7 @@ function runSAS(){
                                                                                 -batch \
                                                                                 -noterminal \
                                                                                 -logparm "rollover=session" \
-                                                                                -sysin $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
+                                                                                -sysin $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
                 fi 
             else       
                 if [[ $total_jobrc -ge $runsas_local_jobrc_allowed_for_OR_op ]]; then 
@@ -2935,14 +2935,14 @@ function runSAS(){
                                                                                 -batch \
                                                                                 -noterminal \
                                                                                 -logparm "rollover=session" \
-                                                                                -sysin $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
+                                                                                -sysin $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
                 fi
             fi
         done
     fi  
 
     # Count the no. of steps in the job
-    total_no_of_steps_in_a_job=`grep -o 'Step:' $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION | wc -l`
+    total_no_of_steps_in_a_job=`grep -o 'Step:' $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION | wc -l`
 
     # Get the PID details
     job_pid=$!
@@ -3170,10 +3170,10 @@ function runSAS(){
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=""
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
-			job_runtime_diff_pct_string=" ${red}⯅${job_runtime_diff_pct}%%${green}"
+			job_runtime_diff_pct_string=" ${red}â¯…${job_runtime_diff_pct}%%${green}"
 		elif [[ $job_runtime_diff_pct -lt -$RUNTIME_COMPARE_FACTOR ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
-			job_runtime_diff_pct_string=" ${blue}⯆${job_runtime_diff_pct}%%${green}"
+			job_runtime_diff_pct_string=" ${blue}â¯†${job_runtime_diff_pct}%%${green}"
 		else
 			job_runtime_diff_pct_string=""
 		fi
@@ -3409,7 +3409,7 @@ runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $s
 runsas_loop=1
 while [ $runsas_loop = 1 ]; do
     while IFS=',' read -r flowid flow jobid job jobdep logicop jobrc opt subopt sappdir bservdir bsh blogdir bjobdir; do
-        runSAS ${job##/*/} $flowid $flow $jobid $job $jobdep $logicop $jobrc $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
+        runSAS $flowid $flow $jobid ${job##/*/} $jobdep $logicop $jobrc $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
     done < .job.list
 done
 
