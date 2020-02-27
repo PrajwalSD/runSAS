@@ -1853,6 +1853,17 @@ function get_current_cursor_position() {
     printf "${white}"
 }
 #------
+# Name: scroll_up()
+# Desc: Scroll up lines on console using ANSI/VT100 cursor control sequences
+#   In: no-of-lines
+#  Out: <NA>
+#------
+function scroll_up(){
+    for (( i=1; i<=$1; i++ )); do
+        echo -ne '\033M' # scrolls up one line
+    done
+}
+#------
 # Name: display_message_fillers_on_console()
 # Desc: Fetch cursor position and populate the fillers
 #   In: filler-character-upto-column, filler-character, optional-backspace-counts
@@ -2774,6 +2785,10 @@ function runSAS(){
     print_2_runsas_session_log "Deployed Jobs: $local_sas_deployed_jobs_root_directory"
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
+    # Get cursor positions
+    get_current_cursor_position
+    runsas_local_cursor_row_pos=$cursor_row_pos
+
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
     if [[ "$run_from_mode" -ne "1" ]]; then
@@ -2891,7 +2906,6 @@ function runSAS(){
                                                                                 -logparm "rollover=session" \
                                                                                 -sysin $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
     else
-        # There's dependency
         # Loop through each dependent's return code and construct the condition for the run
         for runsas_local_jobdep_i in $runsas_local_jobdep
         do
@@ -2904,19 +2918,18 @@ function runSAS(){
             current_jobrc=${!job_name_from_the_list} 
             # Calculat the sum of return codes (of all dependents) to evaluate the dependency graph
             let total_jobrc=$total_jobrc+$current_jobrc
-
             # Finally, evaluate the dependency:
-            # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user)
+            # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user) and this is the default if nothing has been specified
             # (2) OR: One of the job has completed
-            if [[ $runsas_local_logicop == "AND" ]]; then
+            if [[ $runsas_local_logicop == "OR" ]]; then
                 if [[ $total_jobrc -ge 0 ]] && [[ $total_jobrc -le $runsas_local_jobrc_allowed_for_AND_op ]]; then 
                     nice -n 20 $runsas_local_batch_server_root_directory/$runsas_local_sh   -log $runsas_local_logs_root_directory/${runsas_local_job}_#Y.#m.#d_#H.#M.#s.log \
                                                                                 -batch \
                                                                                 -noterminal \
                                                                                 -logparm "rollover=session" \
                                                                                 -sysin $local_sas_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
-                fi
-            else
+                fi 
+            else       
                 if [[ $total_jobrc -ge $runsas_local_jobrc_allowed_for_OR_op ]]; then 
                     nice -n 20 $runsas_local_batch_server_root_directory/$runsas_local_sh   -log $runsas_local_logs_root_directory/${runsas_local_job}_#Y.#m.#d_#H.#M.#s.log \
                                                                                 -batch \
