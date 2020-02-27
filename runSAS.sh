@@ -383,7 +383,7 @@ function check_dependencies(){
 #------
 function runsas_script_auto_update(){
 # Optional branch name
-runsas_download_git_branch="${RUNSAS_GITHUB_SOURCE_CODE_BRANCH:-$1}"
+runsas_download_git_branch="${1:-$RUNSAS_GITHUB_SOURCE_CODE_BRANCH}"
 
 # Generate a backup name and folder
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
