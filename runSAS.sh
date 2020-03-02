@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: The script can run and monitor SAS Data Integration Studio jobs.                                      #
 #                                                                                                                    #
-#     Version: 30.4                                                                                                  #
+#     Version: 30.5                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=30.4
+	RUNSAS_CURRENT_VERSION=30.5
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -1219,21 +1219,23 @@ function check_if_there_are_any_rogue_runsas_processes(){
 
     # Get the last known PID launched by runSAS
     runsas_last_job_pid="$(<$RUNSAS_LAST_JOB_PID_FILE)"
-
+	
     # Check if the PID is still active
-    if ! [[ -z `ps -p ${runsas_last_job_pid:-"999"} -o comm=` ]]; then
-        printf "${yellow}WARNING: There is a job (PID $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
-        show_pid_details $runsas_last_job_pid
-        printf "${red}\nDo you want to kill this process and continue? (Y/N): ${white}"
-        disable_enter_key
-        read -n1 ignore_process_warning
-        if [[ "$ignore_process_warning" == "Y" ]] || [[ "$ignore_process_warning" == "y" ]]; then
-            kill_a_pid $runsas_last_job_pid
-        else
-            printf "\n\n"
-        fi
-        enable_enter_key
-    fi
+	if [[ ! "$runsas_last_job_pid" == "" ]]; then
+		if ! [[ -z `ps -p ${runsas_last_job_pid} -o comm=` ]]; then
+			printf "${yellow}WARNING: There is a job (PID $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
+			show_pid_details $runsas_last_job_pid
+			printf "${red}\nDo you want to kill this process and continue? (Y/N): ${white}"
+			disable_enter_key
+			read -n1 ignore_process_warning
+			if [[ "$ignore_process_warning" == "Y" ]] || [[ "$ignore_process_warning" == "y" ]]; then
+				kill_a_pid $runsas_last_job_pid
+			else
+				printf "\n\n"
+			fi
+			enable_enter_key
+		fi
+	fi
 }
 #------
 # Name: show_runsas_parameters
