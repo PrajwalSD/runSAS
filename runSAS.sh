@@ -478,7 +478,7 @@ else
     fi
 fi
 
-# Just to keep the console messages tidy
+# Just to keep the terminal messages tidy
 printf "\n"
 
 # Remove everything between the markers in the downloaded file
@@ -716,12 +716,12 @@ function create_a_new_directory(){
     done
 }
 #------
-# Name: print_file_to_console()
-# Desc: This function prints the file content as is to the console
+# Name: print_file_to_terminal()
+# Desc: This function prints the file content as is to the terminal
 #   In: file-name
 #  Out: <NA>
 #------
-function print_file_to_console(){
+function print_file_to_terminal(){
     cat $1 | awk '{print $0}' 
 }
 #------
@@ -1168,9 +1168,9 @@ function kill_a_pid(){
 #------
 function show_pid_details(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
-        printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n"
+        printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS\n"
         ps $1 # Show process details
-        printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n${white}"
+        printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
     fi
 }
 #------
@@ -1183,7 +1183,7 @@ function show_child_pid_details(){
     if [[ ! -z `pgrep -P $1` ]]; then
         printf "${white}Child Process(es):\n"
         pgrep -P $1 # Show child process details
-        printf "${white}$CONSOLE_MESSAGE_LINE_WRAPPERS\n${white}"
+        printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
     fi
 }
 #------
@@ -1248,7 +1248,7 @@ function check_if_there_are_any_rogue_runsas_processes(){
 #------
 function show_runsas_parameters(){
     if [[ "$1" == "--parms" ]] || [[ "$1" == "--parameters" ]]; then
-        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (SAS) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"  
+        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS (SAS) $TERMINAL_MESSAGE_LINE_WRAPPERS ${white}"  
         printf "\n${white}SAS_INSTALLATION_ROOT_DIRECTORY: ${green}$SAS_INSTALLATION_ROOT_DIRECTORY ${white}"
         printf "\n${white}SAS_APP_SERVER_NAME: ${green}$SAS_APP_SERVER_NAME ${white}"
         printf "\n${white}SAS_LEV: ${green}$SAS_LEV ${white}"
@@ -1258,7 +1258,7 @@ function show_runsas_parameters(){
         printf "\n${white}SAS_LOGS_ROOT_DIRECTORY: ${green}$SAS_LOGS_ROOT_DIRECTORY ${white}"
         printf "\n${white}SAS_DEPLOYED_JOBS_ROOT_DIRECTORY: ${green}$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY ${white}"
 
-        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Script) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}" 
+        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS (Script) $TERMINAL_MESSAGE_LINE_WRAPPERS ${white}" 
         printf "\n${white}ENABLE_DEBUG_MODE: ${green}$ENABLE_DEBUG_MODE ${white}"                       
         printf "\n${white}ENABLE_RUNTIME_COMPARE: ${green}$ENABLE_RUNTIME_COMPARE ${white}"                                           
         printf "\n${white}RUNTIME_COMPARE_FACTOR: ${green}$RUNTIME_COMPARE_FACTOR ${white}"                                               
@@ -1276,7 +1276,7 @@ function show_runsas_parameters(){
         printf "\n${white}ENABLE_SASTRACE_IN_JOB_CHECK: ${green}$ENABLE_SASTRACE_IN_JOB_CHECK ${white}"                                         
         printf "\n${white}ENABLE_RUNSAS_DEPENDENCY_CHECK: ${green}$ENABLE_RUNSAS_DEPENDENCY_CHECK ${white}"   
 
-        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS (Email) $CONSOLE_MESSAGE_LINE_WRAPPERS ${white}"
+        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS (Email) $TERMINAL_MESSAGE_LINE_WRAPPERS ${white}"
         printf "\n${white}ENABLE_EMAIL_ALERTS: ${green}$ENABLE_EMAIL_ALERTS ${white}"                                  	                
         printf "\n${white}EMAIL_ALERT_TO_ADDRESS: ${green}$EMAIL_ALERT_TO_ADDRESS ${white}"                                              
         printf "\n${white}EMAIL_ALERT_USER_NAME: ${green}$EMAIL_ALERT_USER_NAME ${white}"  
@@ -1303,7 +1303,7 @@ function reset(){
             delete_a_file $RUNSAS_TMP_DIRECTORY/.email_body_msg.html 0 
             delete_a_file $RUNSAS_TMP_DIRECTORY/.sastrace.check 0
             delete_a_file $RUNSAS_TMP_DIRECTORY/.errored_job.log 0
-            delete_a_file $RUNSAS_TMP_DIRECTORY/.email_console_print.html 0
+            delete_a_file $RUNSAS_TMP_DIRECTORY/.email_terminal_print.html 0
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid 0
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_intro.done 0
             printf "${green}...(DONE)${white}"
@@ -1345,7 +1345,7 @@ function reset(){
 #------
 # Name: print_unix_user_session_variables()
 # Desc: Prints user session variables using compgen -v command
-#   In: file-or-console-mode, file-name
+#   In: file-or-terminal-mode, file-name
 #  Out: <NA>
 #------
 function print_unix_user_session_variables(){
@@ -1361,12 +1361,12 @@ function print_unix_user_session_variables(){
     sed -i 's/\x1b\[[0-9;]*m//g' $2
 }
 #------
-# Name: print_to_console_debug_only()
-# Desc: Prints more details to console if the debug mode is turned on (experimental)
+# Name: print_to_terminal_debug_only()
+# Desc: Prints more details to terminal if the debug mode is turned on (experimental)
 #   In: <NA>
 #  Out: <NA>
 #------
-function print_to_console_debug_only(){
+function print_to_terminal_debug_only(){
     if [[ "$ENABLE_DEBUG_MODE" == "Y" ]]; then
         printf "${white}DEBUG - $1: $2\n${white}"
         print_unix_user_session_variables 
@@ -1507,7 +1507,7 @@ email_subject_full_line="$email_subject_id $email_subject $EMAIL_USER_MESSAGE"
 curr_directory=`pwd`
 cd $email_optional_attachment_directory
 
-# Build a console message (first part of the message)
+# Build a terminal message (first part of the message)
 email_attachment_msg=
 if [[ "$email_mode" != "-s" ]]; then
     printf "${green}An email ${white}"
@@ -1634,7 +1634,7 @@ function runsas_job_completed_email(){
 function runsas_error_email(){
     if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:2:1}" == "Y" ]]; then
         printf "\n\n"
-        echo "$CONSOLE_MESSAGE_LINE_WRAPPERS" > $EMAIL_BODY_MSG_FILE
+        echo "$TERMINAL_MESSAGE_LINE_WRAPPERS" > $EMAIL_BODY_MSG_FILE
         # See if the steps are displayed
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             cat $runsas_local_error_w_steps_tmp_log_file | awk '{print $0}' >> $EMAIL_BODY_MSG_FILE
@@ -1642,7 +1642,7 @@ function runsas_error_email(){
             cat $runsas_local_error_tmp_log_file | awk '{print $0}' >> $EMAIL_BODY_MSG_FILE
         fi
         # Send email
-        echo "$CONSOLE_MESSAGE_LINE_WRAPPERS" >> $EMAIL_BODY_MSG_FILE
+        echo "$TERMINAL_MESSAGE_LINE_WRAPPERS" >> $EMAIL_BODY_MSG_FILE
         echo "Job: $(<$runsas_local_errored_job_file)" >> $EMAIL_BODY_MSG_FILE
         echo "Log: $runsas_local_logs_root_directory/$current_job_log" >> $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
@@ -1659,10 +1659,10 @@ function runsas_success_email(){
     if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:3:1}" == "Y" ]]; then
         # Send email
         printf "\n\n"
-        cat $JOB_STATS_DELTA_FILE | sed 's/ /,|,/g' | column -s ',' -t > $EMAIL_CONSOLE_PRINT_FILE
-        sed -e 's/ /\&nbsp\;/g' -i $EMAIL_CONSOLE_PRINT_FILE
+        cat $JOB_STATS_DELTA_FILE | sed 's/ /,|,/g' | column -s ',' -t > $EMAIL_TERMINAL_PRINT_FILE
+        sed -e 's/ /\&nbsp\;/g' -i $EMAIL_TERMINAL_PRINT_FILE
         echo "The batch completed successfully on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete. See the run details below.<br>" > $EMAIL_BODY_MSG_FILE
-        cat $EMAIL_CONSOLE_PRINT_FILE | awk '{print $0}' >> $EMAIL_BODY_MSG_FILE
+        cat $EMAIL_TERMINAL_PRINT_FILE | awk '{print $0}' >> $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE	
         send_an_email -v "" "Batch has completed successfully!" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
     fi
@@ -1771,7 +1771,7 @@ function show_last_run_summary(){
             printf "${red}\n*** ERROR: History file is empty (possibly due to reset?) ***${white}"
             clear_session_and_exit
         else
-            print_file_to_console $RUNSAS_SESSION_LOG_FILE
+            print_file_to_terminal $RUNSAS_SESSION_LOG_FILE
             clear_session_and_exit
         fi
     fi
@@ -1788,7 +1788,7 @@ function print_2_runsas_session_log(){
 }
 #------
 # Name: write_current_job_details_on_screen()
-# Desc: Print details about the currently running job on the console
+# Desc: Print details about the currently running job on the terminal
 #   In: job-name, row-position (optional)
 #  Out: <NA>
 #------
@@ -1807,7 +1807,7 @@ function write_skipped_job_details_on_screen(){
     printf "${grey}Job ${grey}"
     printf "%02d" $JOB_COUNTER_FOR_DISPLAY
     printf "${grey} of $TOTAL_NO_OF_JOBS_COUNTER_CMD: $1${white}"
-	display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 2 grey
+	display_message_fillers_on_terminal $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 2 grey
 	printf "${grey}(SKIPPED)\n${white}"
 }
 #------
@@ -1881,7 +1881,7 @@ function get_current_cursor_position() {
 }
 #------
 # Name: scroll_up_row()
-# Desc: Scroll up lines on console using ANSI/VT100 cursor control sequences
+# Desc: Scroll up lines on terminal using ANSI/VT100 cursor control sequences
 #   In: no-of-lines
 #  Out: <NA>
 #------
@@ -1892,7 +1892,7 @@ function scroll_up_row(){
 }
 #------
 # Name: goto_row_col()
-# Desc: Moves the cursor to a specific point on console using ANSI/VT100 cursor control sequences
+# Desc: Moves the cursor to a specific point on terminal using ANSI/VT100 cursor control sequences
 #   In: row-position, col-position
 #  Out: <NA>
 #------
@@ -1914,12 +1914,12 @@ function goto_row_col(){
 	echo -ne "\033[50D\033[${col_offset}C"
 }
 #------
-# Name: display_message_fillers_on_console()
+# Name: display_message_fillers_on_terminal()
 # Desc: Fetch cursor position and populate the fillers
 #   In: filler-character-upto-column, filler-character, optional-backspace-counts
 #  Out: <NA>
 #------
-function display_message_fillers_on_console(){
+function display_message_fillers_on_terminal(){
     # Get the current cursor position
     get_current_cursor_position
 
@@ -2450,7 +2450,7 @@ function redeploy_sas_jobs(){
 			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it may take a while, so grab a cup of coffee or tea.${white}\n\n"
 
             # Add to audit log
-            print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
+            print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
             print_2_runsas_session_log "Redeployment start timestamp: $start_datetime_of_session_timestamp"
             print_2_runsas_session_log "DepJobs SAS 9.x utility directory: $depjobs_scripts_root_directory"
 			print_2_runsas_session_log "Metadata server: $depjob_host"
@@ -2504,7 +2504,7 @@ function redeploy_sas_jobs(){
 					printf "${grey}Job ${grey}"
 					printf "%02d" $depjob_job_curr_count
                     printf "${grey} of $depjob_to_jobtal_count: $job${white}"
-                    display_message_fillers_on_console $((RUNSAS_DISPLAY_FILLER_COL_END_POS+35)) $RUNSAS_FILLER_CHARACTER 0 N 2 grey
+                    display_message_fillers_on_terminal $((RUNSAS_DISPLAY_FILLER_COL_END_POS+35)) $RUNSAS_FILLER_CHARACTER 0 N 2 grey
                     printf "${grey}(SKIPPED)\n${white}"
                     let depjob_job_curr_count+=1
 					continue
@@ -2702,7 +2702,7 @@ function display_progressbar_with_offset(){
     progressbar_grey_unicode_char=" "
     progressbar_default_active_color=$DEFAULT_PROGRESS_BAR_COLOR
 
-    # Defaults for percentages shown on the console
+    # Defaults for percentages shown on the terminal
     progress_bar_pct_symbol_length=1
     progress_bar_100_pct_length=3
 
@@ -2730,7 +2730,7 @@ function display_progressbar_with_offset(){
 	# Calculate the percentage completed
     progress_bar_pct_completed=`bc <<< "scale = 0; ($progressbar_steps_completed + $progressbar_offset) * 100 / $progressbar_total_steps / $progressbar_scale"`
 
-    # Reset the console, backspacing operation defined by the length of the progress bar and the percentage string length
+    # Reset the terminal, backspacing operation defined by the length of the progress bar and the percentage string length
     if [[ "$progress_bar_pct_completed_charlength" != "" ]] && [[ $progress_bar_pct_completed_charlength -gt 0 ]]; then
         for (( i=1; i<=$progress_bar_pct_symbol_length; i++ )); do
             printf "\b"
@@ -2751,7 +2751,7 @@ function display_progressbar_with_offset(){
     # Get the length of the current percentage
     progress_bar_pct_completed_charlength=${#progress_bar_pct_completed_x_scale}
 
-    # Show the percentage on console, right justified
+    # Show the percentage on terminal, right justified
     printf "${!progressbar_color}${black}$progress_bar_pct_completed_x_scale%%${white}"
 
     # Reset if the variable goes beyond the boundary values
@@ -2816,7 +2816,7 @@ function display_progressbar_with_offset(){
     # Erase the percent shown in the progress bar on the last call i.e. reset the percentage variables on last iteration (i.e. when the offset is 0)
     if [[ $progressbar_offset -eq 0 ]]; then
         progress_bar_pct_completed_charlength=0
-        # Remove the percentages from console
+        # Remove the percentages from terminal
         for (( i=1; i<=$progress_bar_pct_symbol_length+$progress_bar_100_pct_length; i++ )); do
             printf "\b"
         done
@@ -2865,21 +2865,24 @@ function runSAS(){
     # Set the return code to a dynamic variable (format: rc_<job-name>)
     runsas_local_current_jobrc=rc_$runsas_local_job
 
-    # Disable carriage return (ENTER key) to stop user from messing up the layout on console
+    # Remember the original t
+    runsas_local_job_terminal_orig_pos=orig_pos_$runsas_local_job
+
+    # Disable carriage return (ENTER key) to stop user from messing up the layout on terminal
     disable_enter_key keyboard
 
     # Reset the script level return codes
     script_rc=0
 
-    # Increment the job counter for console display
+    # Increment the job counter for terminal display
     let JOB_COUNTER_FOR_DISPLAY+=1
 
-    # Temporary "error" log file
+    # Temporary "error" files
     runsas_local_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.err
     runsas_local_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.stepserr
     runsas_local_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.errjob
 	
-	# Reset these variables for each iteration
+	# Reset
 	time_stats_msg=""
 	time_remaining_stats_last_shown_timestamp=""
 	time_since_run_msg_last_shown_timestamp=""
@@ -2912,7 +2915,7 @@ function runSAS(){
     fi
 
     # Log
-    print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
+    print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
     print_2_runsas_session_log "Job No.: $JOB_COUNTER_FOR_DISPLAY"
     print_2_runsas_session_log "Job: $runsas_local_job"
     print_2_runsas_session_log "Opt: $runsas_local_opt"
@@ -2972,7 +2975,7 @@ function runSAS(){
 		continue
     fi
 
-    # Display current job details on console, jobname is passed to the function
+    # Display current job details on terminal, jobname is passed to the function
     write_current_job_details_on_screen $runsas_local_job
 	
 	# Check if the prompt option is set by the user for the job (over engineered!)
@@ -2988,7 +2991,7 @@ function runSAS(){
 		# Make sure the user has pressed a valid answer (i.e. y/n) with time out (and email notification to user after the time out)
 		function read_until_user_provides_right_input(){
 			while read -t $EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS -n1 run_job_with_prompt < /dev/tty; do
-				# Reset the console
+				# Reset the terminal
 				for (( i=1; i<=${#run_or_skip_message}+$1; i++ )); do
 					printf "\b"
 				done
@@ -3006,7 +3009,7 @@ function runSAS(){
 		
         # On time outs
         while [[ "$run_job_with_prompt" == "" ]]; do
-			# Reset the console
+			# Reset the terminal
 			for (( i=1; i<=${#run_or_skip_message}; i++ )); do
 				printf "\b"
 			done
@@ -3116,7 +3119,7 @@ function runSAS(){
     job_pid=$!
     pid_progress_counter=1
 
-    # Paint the rest of the message on the console
+    # Paint the rest of the message on the terminal
     printf "${white}is running as PID $job_pid${white}"
 	
 	# Runtime (history)
@@ -3232,8 +3235,8 @@ function runSAS(){
         sed -i 's/^[1-9][0-9]* \* Job: //g' $runsas_local_errored_job_file
         sed -i 's/[A0-Z9]*\.[A0-Z9]* \*//g' $runsas_local_errored_job_file
 
-        # Display fillers (tabulated console output)
-        display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 1
+        # Display fillers (tabulated terminal output)
+        display_message_fillers_on_terminal $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 1
 		
 		# Capture job runtime
 		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -3245,7 +3248,7 @@ function runSAS(){
         printf " secs)${white}\n"
 
         # Wrappers
-        printf "${red}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}\n"
+        printf "${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
 
         # Log
         print_2_runsas_session_log "Job Status: ${red}*** ERROR ***${white}"
@@ -3262,7 +3265,7 @@ function runSAS(){
         fi
 
         # Line separator
-        printf "\n${red}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}\n"
+        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
 
         # Print last job
         printf "${red}Job: ${red}"
@@ -3278,7 +3281,7 @@ function runSAS(){
         print_2_runsas_session_log "${white}Log: ${red}$runsas_local_logs_root_directory/$current_job_log${white}"  
 
         # Line separator
-        printf "${red}$CONSOLE_MESSAGE_LINE_WRAPPERS${white}"
+        printf "${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}"
 		
 		# Send an error email
         runsas_error_email $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
@@ -3321,8 +3324,8 @@ function runSAS(){
         # Store the stats for the next time
         store_job_runtime_stats $runsas_local_job $((end_datetime_of_job-start_datetime_of_job)) $job_runtime_diff_pct $current_job_log $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
-        # Display fillers (tabulated console output)
-        display_message_fillers_on_console $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
+        # Display fillers (tabulated terminal output)
+        display_message_fillers_on_terminal $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
 
         # Success (DONE) message
         printf "\b${white}${green}(DONE on ${end_datetime_of_job_timestamp}, took "
@@ -3370,10 +3373,10 @@ RUNSAS_PARAMETERS_COUNT=$#
 RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
 RUNSAS_SAS_LOG_TAIL_LINECOUNT=25
-DEBUG_MODE_CONSOLE_COLOR=white
+DEBUG_MODE_TERMINAL_COLOR=white
 RUNSAS_DISPLAY_FILLER_COL_END_POS=100
 RUNSAS_FILLER_CHARACTER=.
-CONSOLE_MESSAGE_LINE_WRAPPERS=-----
+TERMINAL_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
 RUNSAS_TMP_DIRECTORY=.tmp
 JOB_COUNTER_FOR_DISPLAY=0
@@ -3402,7 +3405,7 @@ job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
 # Files
 JOB_STATS_FILE=$RUNSAS_TMP_DIRECTORY/.job.stats
 EMAIL_BODY_MSG_FILE=$RUNSAS_TMP_DIRECTORY/.email_body_msg.html
-EMAIL_CONSOLE_PRINT_FILE=$RUNSAS_TMP_DIRECTORY/.email_console_print.html
+EMAIL_TERMINAL_PRINT_FILE=$RUNSAS_TMP_DIRECTORY/.email_terminal_print.html
 JOB_STATS_DELTA_FILE=$RUNSAS_TMP_DIRECTORY/.job_delta.stats.$job_stats_timestamp
 RUNSAS_LAST_JOB_PID_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
 RUNSAS_FIRST_USER_INTRO_DONE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_intro.done
@@ -3411,7 +3414,7 @@ RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
 RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
 
-# Bash color codes for the console
+# Bash color codes for the terminal
 set_colors_codes
 
 # Initialization
@@ -3441,7 +3444,7 @@ print_2_runsas_session_log "================ *** runSAS launched on $start_datet
 print_unix_user_session_variables file $RUNSAS_SESSION_LOG_FILE
 
 # Log
-print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
+print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
 print_2_runsas_session_log "Host: $HOSTNAME"
 print_2_runsas_session_log "PID: $$"
 print_2_runsas_session_log "User: ${SUDO_USER:-$USER}"
@@ -3492,7 +3495,7 @@ display_post_banner_messages
 create_a_file_if_not_exists $JOB_STATS_FILE
 archive_all_job_logs .job.list archives
 
-# Print session details on console
+# Print session details on terminal
 show_server_and_user_details $1
 
 # Check for CTRL+C and clear the session
@@ -3516,7 +3519,7 @@ run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $scr
 # Redeploy jobs routine (--redeploy option)
 redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
 
-# Print job(s) list on console
+# Print job(s) list on terminal
 print_file_content_with_index .job.list jobs --prompt --skip --server
 
 # Check if the user has specified a job number (/index) instead of a job name (pick the relevant job from the list) in different mode
@@ -3526,7 +3529,7 @@ convert_job_index_to_job_names
 validate_job_list .job.list
 
 # Debug mode
-print_to_console_debug_only "runSAS session variables"
+print_to_terminal_debug_only "runSAS session variables"
 
 # Get the consent from the user to trigger the batch 
 press_enter_key_to_continue 0 1
@@ -3557,11 +3560,11 @@ done
 end_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
 end_datetime_of_session=`date +%s`
 
-# Print a final message on console
+# Print a final message on terminal
 printf "\n${green}The batch run completed on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
 
 # Log
-print_2_runsas_session_log $CONSOLE_MESSAGE_LINE_WRAPPERS
+print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
 print_2_runsas_session_log "Batch end: $end_datetime_of_session_timestamp"
 print_2_runsas_session_log "Total batch runtime: $((end_datetime_of_session-start_datetime_of_session)) seconds"
 
@@ -3578,5 +3581,5 @@ delete_a_file $RUNSAS_TMP_DIRECTORY/*.err 0
 delete_a_file $RUNSAS_TMP_DIRECTORY/*.stepserr 0
 delete_a_file $RUNSAS_TMP_DIRECTORY/*.errjob 0
 
-# END: Clear the session, reset the console
+# END: Clear the session, reset the terminal
 clear_session_and_exit
