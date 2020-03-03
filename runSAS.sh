@@ -1880,15 +1880,38 @@ function get_current_cursor_position() {
     printf "${white}"
 }
 #------
-# Name: scroll_up()
+# Name: scroll_up_row()
 # Desc: Scroll up lines on console using ANSI/VT100 cursor control sequences
 #   In: no-of-lines
 #  Out: <NA>
 #------
-function scroll_up(){
+function scroll_up_row(){
     for (( i=1; i<=$1; i++ )); do
         echo -ne '\033M' # scrolls up one line
     done
+}
+#------
+# Name: goto_row_col()
+# Desc: Moves the cursor to a specific point on console using ANSI/VT100 cursor control sequences
+#   In: row-position, col-position
+#  Out: <NA>
+#------
+function goto_row_col(){
+	target_row_pos=$1
+	target_col_pos=$2
+	
+	get_current_cursor_position
+	
+	let row_offset=$cursor_row_pos-$target_row_pos
+	let col_offset=$target_col_pos-1
+
+	# Go to row
+	for (( i=1; i<=$row_offset; i++ )); do
+        echo -ne '\033M' # scrolls up one line
+    done
+	
+	# Go to column
+	echo -ne "\033[50D\033[${col_offset}C"
 }
 #------
 # Name: display_message_fillers_on_console()
