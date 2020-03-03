@@ -1866,12 +1866,12 @@ function clear_session_and_exit(){
     exit 1
 }
 #------
-# Name: get_current_cursor_position()
+# Name: get_current_terminal_cursor_position()
 # Desc: Get the current cursor position, reference: https://stackoverflow.com/questions/2575037/how-to-get-the-cursor-position-in-bash
 #   In: <NA>
 #  Out: cursor_row_pos, cursor_col_pos
 #------
-function get_current_cursor_position() {
+function get_current_terminal_cursor_position() {
     local pos
     printf "${red}"
     IFS='[;' read -p < /dev/tty $'\e[6n' -d R -a pos -rs || echo "*** ERROR: The cursor position routine failed with error: $? ; ${pos[*]} ***"
@@ -1891,27 +1891,32 @@ function scroll_up_row(){
     done
 }
 #------
-# Name: goto_row_col()
+# Name: move_terminal_cursor()
 # Desc: Moves the cursor to a specific point on terminal using ANSI/VT100 cursor control sequences
 #   In: row-position, col-position
 #  Out: <NA>
 #------
-function goto_row_col(){
+function move_terminal_cursor(){
+    # Input parameters
 	target_row_pos=$1
 	target_col_pos=$2
 	
-	get_current_cursor_position
+    # Get current terminal cursor positions 
+	get_current_terminal_cursor_position
+    move_terminal_cursor_current_row=$cursor_row_pos
+    move_terminal_cursor_current_col=$cursor_col_pos
 	
-	let row_offset=$cursor_row_pos-$target_row_pos
-	let col_offset=$target_col_pos-1
+    # Calculate the offset from current to the target (row and colum)
+	let row_offset=$move_terminal_cursor_current_row-$target_row_pos
+	let col_offset=$move_terminal_cursor_current_col-1
 
-	# Go to row
+	# Go to the specified row
 	for (( i=1; i<=$row_offset; i++ )); do
-        echo -ne '\033M' # scrolls up one line
+        echo -ne '\033M'
     done
 	
-	# Go to column
-	echo -ne "\033[50D\033[${col_offset}C"
+	# Go to the specified column
+	echo -ne "\033[50D\033[${col_offset}C" 
 }
 #------
 # Name: display_message_fillers_on_terminal()
@@ -1921,7 +1926,7 @@ function goto_row_col(){
 #------
 function display_message_fillers_on_terminal(){
     # Get the current cursor position
-    get_current_cursor_position
+    get_current_terminal_cursor_position
 
     # Set the parameters
     filler_char_upto_col=$1
@@ -2861,12 +2866,16 @@ function runSAS(){
     # Job dependencies are specifed using space as delimeter, convert it to an array
     runsas_local_jobdep_array=( $runsas_local_jobdep )
     runsas_local_jobdep_array_elem_count=${#runsas_local_jobdep_array[@]}
-    
-    # Set the return code to a dynamic variable (format: rc_<job-name>)
-    runsas_local_current_jobrc=rc_$runsas_local_job
 
-    # Remember the original t
-    runsas_local_job_terminal_orig_pos=orig_pos_$runsas_local_job
+    # Unique flow-job key 
+    runsas_local_flow_job_key=${runsas_local_flowid}_${runsas_local_jobid}
+    
+    # Set the return code to a dynamic variable (format: rc_<flow-id>_<job-id>)
+    runsas_local_current_jobrc=rc_$runsas_local_flow_job_key
+
+    # Remember the original terminal cursor position (this is used for repainting the progress bars etc)
+    runsas_local_job_terminal_orig_row_pos=o_row_pos_$runsas_local_flow_job_key
+    runsas_local_job_terminal_orig_col_pos=o_col_pos_$runsas_local_flow_job_key
 
     # Disable carriage return (ENTER key) to stop user from messing up the layout on terminal
     disable_enter_key keyboard
@@ -2927,9 +2936,21 @@ function runSAS(){
     print_2_runsas_session_log "Deployed Jobs: $runsas_local_deployed_jobs_root_directory"
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
-    # Get cursor positions
-    get_current_cursor_position
-    runsas_local_cursor_row_pos=$cursor_row_pos
+    # Retrieve cursor positions for the current job
+    retrieve_a_keyval runsas_local_job_term_orig_row_pos
+    retrieve_a_keyval runsas_local_job_term_orig_row_pos
+    if [[ -z "$runsas_local_job_term_orig_row_pos" ]]; then
+        # Set the start (i.e. pending) return code
+        get_current_terminal_cursor_position
+        eval "$runsas_local_job_term_orig_row_pos=$cursor_row_pos"
+        eval "$runsas_local_job_term_orig_col_pos=$cursor_col_pos"
+        # Store for future use
+        store_a_keyval $runsas_local_job_term_orig_row_pos ${!$runsas_local_job_term_orig_row_pos}
+        store_a_keyval $runsas_local_job_term_orig_row_pos ${!$runsas_local_job_term_orig_row_pos}
+    fi
+
+    # Reset the cursor to the right positions (in every loop based on which job it is)
+    move_terminal_cursor $runsas_local_job_term_orig_row_pos $runsas_local_job_term_orig_col_pos
 
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
