@@ -1787,7 +1787,7 @@ function print_2_runsas_session_log(){
 #------
 # Name: write_current_job_details_on_screen()
 # Desc: Print details about the currently running job on the console
-#   In: job-name
+#   In: job-name, row-position (optional)
 #  Out: <NA>
 #------
 function write_current_job_details_on_screen(){
@@ -1798,7 +1798,7 @@ function write_current_job_details_on_screen(){
 #------
 # Name: write_skipped_job_details_on_screen()
 # Desc: Show the skipped job details
-#   In: job-name
+#   In: job-name, row-position (optional)
 #  Out: <NA>
 #------
 function write_skipped_job_details_on_screen(){
@@ -2806,7 +2806,7 @@ function display_progressbar_with_offset(){
 #       (04) SAS deployed job name          (e.g.: 99_Run_Marketing_Jobs)
 #       (05) Dependency                     (e.g.: 1,2)
 #       (06) Logical operation              (e.g.: AND or OR)
-#       (07) Return code                    (e.g.: 4)
+#       (07) Return code (max allowed)      (e.g.: 4)
 #       (08) runSAS job option              (e.g.: --server)
 #       (09) runSAS job sub-option          (e.g.: SASAppX)
 #       (10) SASApp root directory 		    (e.g.: /SASInside/SAS/Lev1/SASApp)
@@ -2824,7 +2824,7 @@ function runSAS(){
     runsas_local_job="$4"
     runsas_local_jobdep="$5"
     runsas_local_logicop="$6"
-    runsas_local_jobrc="$7"
+    runsas_local_max_jobrc="$7"
     runsas_local_opt="$8"
     runsas_local_subopt="${9}"
     runsas_local_app_root_directory="${10:-$SAS_APP_ROOT_DIRECTORY}"
@@ -2833,15 +2833,26 @@ function runSAS(){
     runsas_local_logs_root_directory="${13:-$SAS_LOGS_ROOT_DIRECTORY}"
     runsas_local_deployed_jobs_root_directory="${14:-$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY}"
 
+    # Job dependencies are specifed using space as delimeter, convert it to an array
+    runsas_local_jobdep_array=( $runsas_local_jobdep )
+    runsas_local_jobdep_array_elem_count=${#runsas_local_jobdep_array[@]}
+    
+    # Set the return code to a dynamic variable (format: rc_<job-name>)
+    runsas_local_current_jobrc=rc_$runsas_local_job
+
     # Disable carriage return (ENTER key) to stop user from messing up the layout on console
     disable_enter_key keyboard
 
-    # Reset the return codes
-    job_rc=0
+    # Reset the script level return codes
     script_rc=0
 
     # Increment the job counter for console display
     let JOB_COUNTER_FOR_DISPLAY+=1
+
+    # Temporary "error" log file
+    runsas_local_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.err
+    runsas_local_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.stepserr
+    runsas_local_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.errjob
 	
 	# Reset these variables for each iteration
 	time_stats_msg=""
@@ -2852,14 +2863,8 @@ function runSAS(){
 	start_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
     start_datetime_of_job=`date +%s`
 
-    # Job dependencies are specifed using space as delimeter, convert it to an array
-    runsas_local_jobdep_array=( $runsas_local_jobdep )
-    runsas_local_jobdep_array_elem_count=${#runsas_local_jobdep_array[@]}
-
-    # Temporary "error" log file
-    runsas_local_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.err
-    runsas_local_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.stepserr
-    runsas_local_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.errjob
+    # Set the start (i.e. pending) return code
+    eval "$runsas_local_current_jobrc=$RC_JOB_PENDING"
 
     # If user has specified a different server context, switch it here
     if [[ "$runsas_local_opt" == "--server" ]]; then
@@ -3022,27 +3027,41 @@ function runSAS(){
     else
         # Dependency has been specified, loop through each dependent to see if the current job is ready to run 
         total_jobrc=0
-        current_jobrc=$RC_JOB_INCOMPLETE
         
         # Dependency check loop
         for runsas_local_jobdep_i in $runsas_local_jobdep
         do
             # Calculate the return code allowed for all dependents (i.e. dependent job count x job rc specificed by the user)
             # NOTE: Return code for an incomplete job is -1
-            runsas_local_jobrc_allowed_for_AND_op=`bc <<< "scale = 0; $runsas_local_jobdep_array_elem_count * $runsas_local_jobrc"`
+            runsas_local_jobrc_allowed_for_AND_op=`bc <<< "scale = 0; $runsas_local_jobdep_array_elem_count * $runsas_local_max_jobrc"`
             
             # Get the job names (indices are specified in the job dependency list) for return code retrieval (every job sets the return code after the run in to a variable named after the job itself)
             get_name_from_list $runsas_local_jobdep_i .job.list 4 $RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER "Y"  
             
             # Sum up the return codes (of all dependents) to evaluate the dependency graph
-            let total_jobrc=$total_jobrc+$current_jobrc
+            let total_jobrc=$total_jobrc+${!runsas_local_current_jobrc}
             
-            # Check for "gate" success criteria (for OR & AND operators)
-            if [[ $current_jobrc -ge 0 ]]; then
+            # Keep a track of jobs that has been triggered and has completed it's run (any state DONE/FAIL)
+            if [[ ${!runsas_local_current_jobrc} -ge 0 ]]; then
                 # Add to the runSAS array that keeps a track of how many jobs have completed the run
-                runsas_jobs_run_array+=( "$runsas_local_jobid" )
-                # OR criteria
-                if [[ $current_jobrc -le $runsas_local_jobrc ]]; then
+                for (( r=0; p<${#runsas_jobs_run_array[@]}; p++ )); do
+                    if [[ "${runsas_jobs_run_array[r]}" == "${runsas_local_flow}${runsas_local_job}" ]]; then
+                        runsas_current_job_has_run_already=1
+                    else
+                        runsas_jobs_run_array+=( "${runsas_local_flow}${runsas_local_job}" )
+                    fi
+                done
+            fi
+
+            # If runSAS has executed all jobs already, set the flag
+            if [[ ${#runsas_jobs_run_array[@]} -eq $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
+                RUNSAS_BATCH_COMPLETE_FLAG=1
+            else 
+                RUNSAS_BATCH_COMPLETE_FLAG=0
+            fi
+
+            # Set the variables for "gate" success criteria (for OR & AND operators)
+            if [[ ${!runsas_local_current_jobrc} -ge 0 ]] && [[ ${!runsas_local_current_jobrc} -le $runsas_local_max_jobrc ]]; then
                     OR_check_passed=1
                 fi
             fi
@@ -3094,11 +3113,8 @@ function runSAS(){
         current_job_log=`ls -tr $runsas_local_logs_root_directory/${runsas_local_job}*.log | tail -1`
     done
 
-    # Set the return code to a dynamic variable (format: rc_<job-name>)
-    runsas_local_job_rc=rc_$runsas_local_job
-
     # Set the triggered return code
-    eval "$runsas_local_job_rc=$RC_JOB_TRIGGERED"
+    eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED"
 
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
     no_of_steps_completed_in_log=`grep -o 'Step:'  $runsas_local_logs_root_directory/$current_job_log | wc -l`
@@ -3151,10 +3167,10 @@ function runSAS(){
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_job_log > $runsas_local_error_w_steps_tmp_log_file
 
     # Set the return code of job to a variable named after itself for easy reference and lookup
-    eval "$runsas_local_job_rc='$?'";
+    eval "$runsas_local_current_jobrc='$?'";
 
     # Double-check to ensure the job had no errors after the job completion
-    if [ $script_rc -le 4 ] || [ ${!runsas_local_job_rc} -le 4 ]; then
+    if [ $script_rc -le 4 ] || [ ${!runsas_local_current_jobrc} -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
 		$RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} -E --color "$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_job_log > $runsas_local_error_tmp_log_file
 
@@ -3170,7 +3186,7 @@ function runSAS(){
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
     # We are lookig for a two lines at the end of the file
-    if [ $script_rc -le 4 ] && [ ${!runsas_local_job_rc} -le 4 ]; then
+    if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_local_error_tmp_log_file
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_local_error_tmp_log_file
@@ -3182,7 +3198,7 @@ function runSAS(){
     fi
 
     # ERROR: Check return code, abort if there's an error in the job run
-    if [ $script_rc -gt 4 ] || [ ${!runsas_local_job_rc} -gt 4 ]; then
+    if [ $script_rc -gt 4 ] || [ ${!runsas_local_current_jobrc} -gt 4 ]; then
         # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS!)
         sed -n '1,/^ERROR:/ p' $runsas_local_logs_root_directory/$current_job_log | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -1 > $runsas_local_errored_job_file
 
@@ -3199,7 +3215,7 @@ function runSAS(){
         end_datetime_of_job=`date +%s`
 
         # Failure (FAILED) message
-        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=${!runsas_local_job_rc}-$script_rc, took "
+        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=${!runsas_local_current_jobrc}-$script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs)${white}\n"
 
@@ -3313,11 +3329,7 @@ function runSAS(){
     fi
 
     # Interactive mode: Allow the script to pause and wait for the user to press a key to continue (useful during training)
-    run_in_interactive_mode_check
-
-    # Check if everything is done and close the runSAS loop
-    echo "${ids[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '
-    
+    run_in_interactive_mode_check   
 }
 #--------------------------------------------------END OF FUNCTIONS--------------------------------------------------#
 
@@ -3351,10 +3363,11 @@ RUNSAS_LOG_SEARCH_FUNCTION=egrep
 EMAIL_USER_MESSAGE=""
 EMAIL_FLAGS_DEFAULT_SETTING=YNYY
 EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=120
-RC_JOB_INCOMPLETE=-2
+RC_JOB_PENDING=-2
 RC_JOB_TRIGGERED=-1
 RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
 RUNSAS_BATCH_STATE_PRESERVATION_FILE_ROOT_DIRECTORY=.batch
+RUNSAS_BATCH_COMPLETE_FLAG=0
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
@@ -3509,8 +3522,7 @@ process_delayed_execution
 runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
 
 # Trigger the job/flow
-runsas_loop=1
-while [ $runsas_loop = 1 ]; do
+while [ $RUNSAS_BATCH_COMPLETE_FLAG = 0 ]; do
     while IFS='|' read -r flowid flow jobid job jobdep logicop jobrc opt subopt sappdir bservdir bsh blogdir bjobdir; do
         runSAS $flowid $flow $jobid ${job##/*/} $jobdep $logicop $jobrc $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
     done < .job.list
