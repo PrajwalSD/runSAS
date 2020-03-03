@@ -383,7 +383,7 @@ function check_dependencies(){
 #------
 function runsas_script_auto_update(){
 # Optional branch name
-runsas_download_git_branch="${RUNSAS_GITHUB_SOURCE_CODE_BRANCH:-$1}"
+runsas_download_git_branch="${1:-$RUNSAS_GITHUB_SOURCE_CODE_BRANCH}"
 
 # Generate a backup name and folder
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
@@ -1222,21 +1222,23 @@ function check_if_there_are_any_rogue_runsas_processes(){
 
     # Get the last known PID launched by runSAS
     runsas_last_job_pid="$(<$RUNSAS_LAST_JOB_PID_FILE)"
-
+	
     # Check if the PID is still active
-    if ! [[ -z `ps -p ${runsas_last_job_pid:-"999"} -o comm=` ]]; then
-        printf "${yellow}WARNING: There is a job (PID $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
-        show_pid_details $runsas_last_job_pid
-        printf "${red}\nDo you want to kill this process and continue? (Y/N): ${white}"
-        disable_enter_key
-        read -n1 ignore_process_warning
-        if [[ "$ignore_process_warning" == "Y" ]] || [[ "$ignore_process_warning" == "y" ]]; then
-            kill_a_pid $runsas_last_job_pid
-        else
-            printf "\n\n"
-        fi
-        enable_enter_key
-    fi
+	if [[ ! "$runsas_last_job_pid" == "" ]]; then
+		if ! [[ -z `ps -p ${runsas_last_job_pid} -o comm=` ]]; then
+			printf "${yellow}WARNING: There is a job (PID $runsas_last_job_pid) that is still active/running from the last runSAS session, see the details below.\n\n${white}"
+			show_pid_details $runsas_last_job_pid
+			printf "${red}\nDo you want to kill this process and continue? (Y/N): ${white}"
+			disable_enter_key
+			read -n1 ignore_process_warning
+			if [[ "$ignore_process_warning" == "Y" ]] || [[ "$ignore_process_warning" == "y" ]]; then
+				kill_a_pid $runsas_last_job_pid
+			else
+				printf "\n\n"
+			fi
+			enable_enter_key
+		fi
+	fi
 }
 #------
 # Name: show_runsas_parameters
@@ -1878,15 +1880,38 @@ function get_current_cursor_position() {
     printf "${white}"
 }
 #------
-# Name: scroll_up()
+# Name: scroll_up_row()
 # Desc: Scroll up lines on console using ANSI/VT100 cursor control sequences
 #   In: no-of-lines
 #  Out: <NA>
 #------
-function scroll_up(){
+function scroll_up_row(){
     for (( i=1; i<=$1; i++ )); do
         echo -ne '\033M' # scrolls up one line
     done
+}
+#------
+# Name: goto_row_col()
+# Desc: Moves the cursor to a specific point on console using ANSI/VT100 cursor control sequences
+#   In: row-position, col-position
+#  Out: <NA>
+#------
+function goto_row_col(){
+	target_row_pos=$1
+	target_col_pos=$2
+	
+	get_current_cursor_position
+	
+	let row_offset=$cursor_row_pos-$target_row_pos
+	let col_offset=$target_col_pos-1
+
+	# Go to row
+	for (( i=1; i<=$row_offset; i++ )); do
+        echo -ne '\033M' # scrolls up one line
+    done
+	
+	# Go to column
+	echo -ne "\033[50D\033[${col_offset}C"
 }
 #------
 # Name: display_message_fillers_on_console()
