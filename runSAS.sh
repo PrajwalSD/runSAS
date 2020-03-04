@@ -3132,6 +3132,7 @@ function runSAS(){
     # Get the PID details
     #job_pid=$!
     eval "$runsas_local_current_job_pid=$!"
+
     pid_progress_counter=1
 
     # Paint the rest of the message on the terminal
@@ -3141,7 +3142,7 @@ function runSAS(){
 	show_job_hist_runtime_stats $runsas_local_job
 	
 	# Get PID
-    ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
+    #ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
     printf "${white} ${green}"
 
     # Sleep before the log is generated
@@ -3205,14 +3206,14 @@ function runSAS(){
     fi
     
     # Get the PID again for the next iteration
-    ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
+    #ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
 
     # Check if there are any errors in the logs
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_job_log > $runsas_local_error_w_steps_tmp_log_file
 
     # Check the job status and it's return code (check if it is still running too)
-    if ! [[ -z `ps -p ${job_pid} -o comm=` ]]; then
+    if ! [[ -z `ps -p ${!runsas_local_current_job_pid} -o comm=` ]]; then
         job_rc=$RC_JOB_TRIGGERED
     else
         job_rc=$?
