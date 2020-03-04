@@ -1899,22 +1899,25 @@ function scroll_up_row(){
 #------
 # Name: move_terminal_cursor()
 # Desc: Moves the cursor to a specific point on terminal using ANSI/VT100 cursor control sequences
-#   In: row-position, col-position
+#   In: row-position, col-position, row-offset, col-offset
 #  Out: <NA>
 #------
 function move_terminal_cursor(){
     # Input parameters
 	target_row_pos=$1
 	target_col_pos=$2
+    target_row_offset=${3:-0}
+    target_col_offset=${4:-0}
 	
     # Get current terminal cursor positions 
 	get_current_terminal_cursor_position
+
     move_terminal_cursor_current_row=$cursor_row_pos
     move_terminal_cursor_current_col=$cursor_col_pos
 	
     # Calculate the offset from current to the target (row and colum)
-	let row_offset=$move_terminal_cursor_current_row-$target_row_pos
-	let col_offset=$move_terminal_cursor_current_col-2
+	let row_offset=$move_terminal_cursor_current_row-$target_row_pos-$target_row_offset
+	let col_offset=$move_terminal_cursor_current_col-$target_col_offset
 
 	# Go to the specified row
 	for (( i=1; i<=$row_offset; i++ )); do
@@ -2737,16 +2740,6 @@ function display_progressbar_with_offset(){
 	# Calculate the percentage completed
     progress_bar_pct_completed=`bc <<< "scale = 0; ($progressbar_steps_completed + $progressbar_offset) * 100 / $progressbar_total_steps / $progressbar_scale"`
 
-    # Reset the terminal, backspacing operation defined by the length of the progress bar and the percentage string length
-    if [[ "$progress_bar_pct_completed_charlength" != "" ]] && [[ $progress_bar_pct_completed_charlength -gt 0 ]]; then
-        for (( i=1; i<=$progress_bar_pct_symbol_length; i++ )); do
-            printf "\b"
-        done
-        for (( i=1; i<=$progress_bar_pct_completed_charlength; i++ )); do
-            printf "\b"
-        done
-    fi
-
     # Calculate percentage variables
     progress_bar_pct_completed_x_scale=`bc <<< "scale = 0; ($progress_bar_pct_completed * $progressbar_scale)"`
 
@@ -2757,6 +2750,13 @@ function display_progressbar_with_offset(){
 
     # Get the length of the current percentage
     progress_bar_pct_completed_charlength=${#progress_bar_pct_completed_x_scale}
+
+    # Reset the terminal, backspacing operation defined by the length of the progress bar and the percentage string length
+    if [[ $progressbar_offset -eq 0 ]] && [[ "$progress_bar_pct_completed_charlength" != "" ]] && [[ $progress_bar_pct_completed_charlength -gt 0 ]]; then
+        for (( i=1; i<=$progress_bar_pct_completed_charlength; i++ )); do
+            printf "\b"
+        done
+    fi
 
     # Show the percentage on terminal, right justified
     printf "${!progressbar_color}${black}$progress_bar_pct_completed_x_scale%%${white}"
@@ -2801,7 +2801,7 @@ function display_progressbar_with_offset(){
         printf "${white}$progressbar_post_message${end}"
     fi
 
-    # Delay
+    # Delays
     printf "${white}"
     sleep $progressbar_sleep_interval_in_secs
 
@@ -2886,7 +2886,7 @@ function runSAS(){
     script_rc=0
 
     # Increment the job counter for terminal display
-    let JOB_COUNTER_FOR_DISPLAY+=1
+    JOB_COUNTER_FOR_DISPLAY=$runsas_local_jobid
 
     # Temporary "error" files
     runsas_local_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_local_flowid}_${runsas_local_flowid}_${runsas_local_jobid}.err
@@ -2903,7 +2903,9 @@ function runSAS(){
     start_datetime_of_job=`date +%s`
 
     # Set the start (i.e. pending) return code
-    eval "$runsas_local_current_jobrc=$RC_JOB_PENDING"
+    if [[ -z "$runsas_local_current_jobrc" ]] || [[ "${!runsas_local_current_jobrc}" == "" ]]; then
+        eval "$runsas_local_current_jobrc=$RC_JOB_PENDING"
+    fi
 
     # If user has specified a different server context, switch it here
     if [[ "$runsas_local_opt" == "--server" ]]; then
@@ -2938,11 +2940,6 @@ function runSAS(){
     print_2_runsas_session_log "Deployed Jobs: $runsas_local_deployed_jobs_root_directory"
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
-    # Reset cursor positions from previous batch runs 
-    if [[ $JOB_COUNTER_FOR_DISPLAY -eq 1 ]]; then
-        delete_a_file $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE 0
-    fi
-
     # Retrieve cursor positions for the current job
     retrieve_a_keyval $runsas_local_job_terminal_orig_row_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
     retrieve_a_keyval $runsas_local_job_terminal_orig_col_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
@@ -2957,7 +2954,7 @@ function runSAS(){
     fi
 
     # Reset the cursor to the right positions (in every loop based on which job it is)
-    move_terminal_cursor $runsas_local_job_terminal_orig_row_pos $runsas_local_job_terminal_orig_col_pos
+    move_terminal_cursor $runsas_local_job_terminal_orig_row_pos $runsas_local_job_terminal_orig_col_pos 0 2
 
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
@@ -3074,12 +3071,14 @@ function runSAS(){
                                                                                 -logparm "rollover=session" \
                                                                                 -sysin $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
     }
-     
+
     # No dependency has been specified or specified as dependent on self
     if [[ "$runsas_local_jobdep" == "" ]] || [[ "$runsas_local_jobdep" == "$runsas_local_jobid" ]]; then
-        # No dependency!
-        # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
-        trigger_the_job
+        if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then
+            # No dependency!
+            # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
+            trigger_the_job
+        fi
     else
         # Dependency has been specified, loop through each dependent to see if the current job is ready to run 
         total_jobrc=0
@@ -3109,12 +3108,16 @@ function runSAS(){
             # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user) and this is the default if nothing has been specified
             # (2) OR: One of the job has completed
             if [[ $runsas_local_logicop == "OR" ]]; then
-                if [[ $OR_check_passed -eq 1 ]]; then 
-                    trigger_the_job    
+                if [[ $OR_check_passed -eq 1 ]]; then
+                    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then 
+                        trigger_the_job   
+                    fi 
                 fi
             else   
                  if [[ $AND_check_passed -eq 1 ]] || [[ $total_jobrc -eq -1 ]]; then 
-                    trigger_the_job
+                    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then 
+                        trigger_the_job
+                    fi
                 fi             
             fi
         done 
@@ -3148,13 +3151,17 @@ function runSAS(){
     done
 
     # Set the triggered return code
-    eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED"
+    if [[ "${!runsas_local_current_jobrc}" == "$RC_JOB_PENDING" ]]; then
+        eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED"
+    fi
 
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
     no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_local_logs_root_directory/$current_job_log | wc -l`
 
     # Show time remaining statistics
     show_time_remaining_stats $runsas_local_job
+
+    get_current_terminal_cursor_position
 
     # Show progress bar
     display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
@@ -3327,6 +3334,7 @@ function runSAS(){
         clear_session_and_exit
 
     elif [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ] && [ ${!runsas_local_current_jobrc} -ge 0 ]; then
+
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_local_logs_root_directory/$current_job_log | wc -l`
@@ -3375,6 +3383,8 @@ function runSAS(){
 
         # Send an email (silently)
         runsas_job_completed_email $runsas_local_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
+    else
+        printf "\n"
     fi
 
     # Force to run in interactive mode if in run-from-to-job-interactive (-fui) mode
@@ -3584,6 +3594,9 @@ process_delayed_execution
 
 # Send a launch email
 runsas_triggered_email $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
+
+# Reset cursor files
+delete_a_file $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE 0
 
 # Trigger the job/flow
 while [ $RUNSAS_BATCH_COMPLETE_FLAG = 0 ]; do
