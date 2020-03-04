@@ -1708,7 +1708,13 @@ function show_job_hist_runtime_stats(){
 #  Out: <NA>
 #------
 function show_time_remaining_stats(){
-	get_job_hist_runtime_stats $1
+    # Input parameters
+    st_job=$1
+
+    # "Empty" variable (used to clear the screen during refresh of terminal messages)
+    st_empty_var="                                     "
+
+	get_job_hist_runtime_stats $st_job
 	if [[ "$hist_job_runtime" != "" ]]; then
 		# Record timestamp
 		time_remaining_stats_curr_timestamp=`date +%s`
@@ -1727,9 +1733,9 @@ function show_time_remaining_stats(){
 		
 		# Show the stats
         if [[ $time_remaining_in_secs -ge 0 ]]; then
-            time_stats_msg=" ~$time_remaining_in_secs secs remaining..." 
+            time_stats_msg=" ~$time_remaining_in_secs secs remaining...$st_empty_var" 
         else
-		    time_stats_msg=" additional $((time_remaining_in_secs*-1)) secs elapsed......" 
+		    time_stats_msg=" additional $((time_remaining_in_secs*-1)) secs elapsed......$st_empty_var" 
 		fi
 		
 		# Record the message last shown timestamp
@@ -1752,7 +1758,7 @@ function show_time_remaining_stats(){
 		
 		# Show the stats
         if [[ $time_since_run_in_secs -ge 0 ]]; then
-            time_stats_msg=" ~$time_since_run_in_secs secs elapsed..." 
+            time_stats_msg=" ~$time_since_run_in_secs secs elapsed...$st_empty_var" 
 		fi
 		
 		# Record the message last shown timestamp
@@ -1908,7 +1914,7 @@ function move_terminal_cursor(){
 	
     # Calculate the offset from current to the target (row and colum)
 	let row_offset=$move_terminal_cursor_current_row-$target_row_pos
-	let col_offset=$move_terminal_cursor_current_col-1
+	let col_offset=$move_terminal_cursor_current_col-2
 
 	# Go to the specified row
 	for (( i=1; i<=$row_offset; i++ )); do
@@ -2937,20 +2943,20 @@ function runSAS(){
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
     # Retrieve cursor positions for the current job
-    retrieve_a_keyval runsas_local_job_term_orig_row_pos
-    retrieve_a_keyval runsas_local_job_term_orig_row_pos
-    if [[ -z "$runsas_local_job_term_orig_row_pos" ]]; then
+    retrieve_a_keyval $runsas_local_job_terminal_orig_row_pos
+    retrieve_a_keyval $runsas_local_job_terminal_orig_col_pos
+    if [[ -z "${!runsas_local_job_terminal_orig_row_pos}" ]] || [[ -z "${!runsas_local_job_terminal_orig_col_pos}" ]]; then
         # Set the start (i.e. pending) return code
         get_current_terminal_cursor_position
-        eval "$runsas_local_job_term_orig_row_pos=$cursor_row_pos"
-        eval "$runsas_local_job_term_orig_col_pos=$cursor_col_pos"
+        eval "$runsas_local_job_terminal_orig_row_pos=$cursor_row_pos"
+        eval "$runsas_local_job_terminal_orig_col_pos=$cursor_col_pos"
         # Store for future use
-        store_a_keyval $runsas_local_job_term_orig_row_pos ${!$runsas_local_job_term_orig_row_pos}
-        store_a_keyval $runsas_local_job_term_orig_row_pos ${!$runsas_local_job_term_orig_row_pos}
+        store_a_keyval $runsas_local_job_terminal_orig_row_pos ${!runsas_local_job_terminal_orig_row_pos}
+        store_a_keyval $runsas_local_job_terminal_orig_col_pos ${!runsas_local_job_terminal_orig_col_pos}
     fi
 
     # Reset the cursor to the right positions (in every loop based on which job it is)
-    move_terminal_cursor $runsas_local_job_term_orig_row_pos $runsas_local_job_term_orig_col_pos
+    move_terminal_cursor $runsas_local_job_terminal_orig_row_pos $runsas_local_job_terminal_orig_col_pos
 
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
@@ -3089,30 +3095,10 @@ function runSAS(){
             
             # Sum up the return codes (of all dependents) to evaluate the dependency graph
             let total_jobrc=$total_jobrc+${!runsas_local_current_jobrc}
-            
-            # Keep a track of jobs that has been triggered and has completed it's run (any state DONE/FAIL)
-            if [[ ${!runsas_local_current_jobrc} -ge 0 ]]; then
-                # Add to the runSAS array that keeps a track of how many jobs have completed the run
-                for (( r=0; p<${#runsas_jobs_run_array[@]}; p++ )); do
-                    if [[ "${runsas_jobs_run_array[r]}" == "${runsas_local_flow}${runsas_local_job}" ]]; then
-                        runsas_current_job_has_run_already=1
-                    else
-                        runsas_jobs_run_array+=( "${runsas_local_flow}${runsas_local_job}" )
-                    fi
-                done
-            fi
-
-            # If runSAS has executed all jobs already, set the flag
-            if [[ ${#runsas_jobs_run_array[@]} -eq $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                RUNSAS_BATCH_COMPLETE_FLAG=1
-            else 
-                RUNSAS_BATCH_COMPLETE_FLAG=0
-            fi
-
+        
             # Set the variables for "gate" success criteria (for OR & AND operators)
             if [[ ${!runsas_local_current_jobrc} -ge 0 ]] && [[ ${!runsas_local_current_jobrc} -le $runsas_local_max_jobrc ]]; then
-                    OR_check_passed=1
-                fi
+                OR_check_passed=1
             fi
             if [[ $total_jobrc -ge 0 ]] && [[ $total_jobrc -le $runsas_local_jobrc_allowed_for_AND_op ]]; then 
                 AND_check_passed=1
@@ -3153,20 +3139,18 @@ function runSAS(){
     # Sleep before the log is generated
     sleep 0.5
 
-    # Get the current job log filename (absolute path)
-    current_job_log=`ls -tr $runsas_local_logs_root_directory/${runsas_local_job}*.log | tail -1`
-	
-    # Wait until the log is generated...
+    # Get the current job log filename (absolute path), wait until the log is generated...
     while [[ ! "$current_job_log" =~ "log" ]]; do 
         sleep 0.25 
         current_job_log=`ls -tr $runsas_local_logs_root_directory/${runsas_local_job}*.log | tail -1`
+        current_job_log=${current_job_log##/*/}
     done
 
     # Set the triggered return code
     eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED"
 
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
-    no_of_steps_completed_in_log=`grep -o 'Step:'  $runsas_local_logs_root_directory/$current_job_log | wc -l`
+    no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_local_logs_root_directory/$current_job_log | wc -l`
 
     # Show time remaining statistics
     show_time_remaining_stats $runsas_local_job
@@ -3215,8 +3199,33 @@ function runSAS(){
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_job_log > $runsas_local_error_w_steps_tmp_log_file
 
+    # Check the job status and it's return code
+    job_rc=$?
+
     # Set the return code of job to a variable named after itself for easy reference and lookup
-    eval "$runsas_local_current_jobrc='$?'";
+    eval "$runsas_local_current_jobrc=$job_rc";
+
+    # Keep a track of jobs that has been triggered and has completed it's run (any state DONE/FAIL)
+    if [[ ${!runsas_local_current_jobrc} -ge 0 ]]; then
+        # Add to the runSAS array that keeps a track of how many jobs have completed the run
+        if [[ ${#runsas_jobs_run_array[@]} -eq 0 ]]; then # Empty array!
+           runsas_jobs_run_array+=( "$runsas_local_flow_job_key" ) 
+        else 
+            # Add new jobs only!
+            for (( r=0; r<${#runsas_jobs_run_array[@]}; r++ )); do
+                if [[ "${runsas_jobs_run_array[r]}" == "$runsas_local_flow_job_key" ]]; then
+                    runsas_current_job_has_run_already=1
+                else
+                    runsas_jobs_run_array+=( "$runsas_local_flow_job_key" )
+                fi
+            done
+        fi
+    fi
+
+    # If runSAS has executed all jobs already, set the flag
+    if [[ ${#runsas_jobs_run_array[@]} -ge $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
+        RUNSAS_BATCH_COMPLETE_FLAG=1
+    fi
 
     # Double-check to ensure the job had no errors after the job completion
     if [ $script_rc -le 4 ] || [ ${!runsas_local_current_jobrc} -le 4 ]; then
@@ -3598,9 +3607,9 @@ if [[ "$ENABLE_RUNSAS_RUN_HISTORY" != "Y" ]]; then
 fi
 
 # Tidy up
-delete_a_file $RUNSAS_TMP_DIRECTORY/*.err 0
-delete_a_file $RUNSAS_TMP_DIRECTORY/*.stepserr 0
-delete_a_file $RUNSAS_TMP_DIRECTORY/*.errjob 0
+delete_a_file "$RUNSAS_TMP_DIRECTORY/*.err" 0
+delete_a_file "$RUNSAS_TMP_DIRECTORY/*.stepserr" 0
+delete_a_file "$RUNSAS_TMP_DIRECTORY/*.errjob" 0
 
 # END: Clear the session, reset the terminal
 clear_session_and_exit
