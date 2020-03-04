@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: SAS job/flow scheduler command line tool                                                              #
 #                                                                                                                    #
-#     Version: 31.1                                                                                                  #
+#     Version: 31.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/02/2020                                                                                            #
 #                                                                                                                    #
@@ -2228,15 +2228,14 @@ function inject_batch_state(){
 #  Out: <NA>
 #------
 function store_a_keyval(){
-    # Parameters
+    # Input parameters
     str_key=$1
     str_val=$2
-    str_file=$3
-    # Set a temp file by the name of key if the file is not specified
-    if [[ "$str_file" == "" ]]; then
-        str_file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
-		create_a_file_if_not_exists $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
-    fi
+    str_file="${3:-$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE}"
+
+    # Create a file if it doesn't exist
+    create_a_file_if_not_exists $str_file
+
 	# If the file exists remove the previous entry
 	if [ -f "$str_file" ]; then
         sed -i "/$str_key/d" $str_file
@@ -2253,14 +2252,11 @@ function store_a_keyval(){
 function retrieve_a_keyval(){
     # Parameters
     ret_key=$1
-    ret_file=$2
+    ret_file="${2:-$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE}"
 
-    # Set a temp file by the name of key if the file is not specified
-    if [[ "$ret_file" == "" ]]; then
-        ret_file=$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
-		create_a_file_if_not_exists $RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE
-    fi
-	
+    # Create a file if it doesn't exist
+    create_a_file_if_not_exists $ret_file
+
     # Set the value found in the file to the key
     if [ -f "$ret_file" ]; then
         eval $ret_key=`awk -v pat="$ret_key" -F": " '$0~pat { print $2 }' $ret_file`
@@ -2942,17 +2938,22 @@ function runSAS(){
     print_2_runsas_session_log "Deployed Jobs: $runsas_local_deployed_jobs_root_directory"
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
+    # Reset cursor positions from previous batch runs 
+    if [[ $JOB_COUNTER_FOR_DISPLAY -eq 1 ]]; then
+        delete_a_file $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE 0
+    fi
+
     # Retrieve cursor positions for the current job
-    retrieve_a_keyval $runsas_local_job_terminal_orig_row_pos
-    retrieve_a_keyval $runsas_local_job_terminal_orig_col_pos
+    retrieve_a_keyval $runsas_local_job_terminal_orig_row_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+    retrieve_a_keyval $runsas_local_job_terminal_orig_col_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
     if [[ -z "${!runsas_local_job_terminal_orig_row_pos}" ]] || [[ -z "${!runsas_local_job_terminal_orig_col_pos}" ]]; then
         # Set the start (i.e. pending) return code
         get_current_terminal_cursor_position
         eval "$runsas_local_job_terminal_orig_row_pos=$cursor_row_pos"
         eval "$runsas_local_job_terminal_orig_col_pos=$cursor_col_pos"
         # Store for future use
-        store_a_keyval $runsas_local_job_terminal_orig_row_pos ${!runsas_local_job_terminal_orig_row_pos}
-        store_a_keyval $runsas_local_job_terminal_orig_col_pos ${!runsas_local_job_terminal_orig_col_pos}
+        store_a_keyval $runsas_local_job_terminal_orig_row_pos ${!runsas_local_job_terminal_orig_row_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+        store_a_keyval $runsas_local_job_terminal_orig_col_pos ${!runsas_local_job_terminal_orig_col_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
     fi
 
     # Reset the cursor to the right positions (in every loop based on which job it is)
@@ -3247,17 +3248,16 @@ function runSAS(){
     fi
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
-    # We are lookig for a two lines at the end of the file
-    # if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ]; then
-    #     # Check if there are any errors in the logs (as it updates, in real-time)
-    #     tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_local_error_tmp_log_file
-    #     tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_local_error_tmp_log_file
-    #     # Set RC
-    #     if [ ! -s $runsas_local_error_tmp_log_file ]; then
-    #         script_rc=95
-    #         echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_local_error_tmp_log_file 
-    #     fi
-    # fi
+    if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ] && [ ${!runsas_local_current_jobrc} -ge 0 ] && [ ! -z `ps -p ${job_pid} -o comm=` ]; then
+        # Check if there are any errors in the logs (as it updates, in real-time)
+        tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_local_error_tmp_log_file
+        tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_local_error_tmp_log_file
+        # Set RC
+        if [ ! -s $runsas_local_error_tmp_log_file ]; then
+            script_rc=95
+            echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_local_error_tmp_log_file 
+        fi
+    fi
 
     # ERROR: Check return code, abort if there's an error in the job run
     if [ $script_rc -gt 4 ] || [ ${!runsas_local_current_jobrc} -gt 4 ]; then
@@ -3324,7 +3324,8 @@ function runSAS(){
         print_2_runsas_session_log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Clear the session
-        clear_session_and_exi
+        clear_session_and_exit
+
     elif [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ] && [ ${!runsas_local_current_jobrc} -ge 0 ]; then
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
@@ -3347,10 +3348,10 @@ function runSAS(){
 		if [[ $job_runtime_diff_pct -eq 0 ]]; then
 			job_runtime_diff_pct_string=""
 		elif [[ $job_runtime_diff_pct -gt $RUNTIME_COMPARE_FACTOR ]]; then
-			job_runtime_diff_pct_string=" ${red}â¯…${job_runtime_diff_pct}%%${green}"
+			job_runtime_diff_pct_string=" ${red}⯅${job_runtime_diff_pct}%%${green}"
 		elif [[ $job_runtime_diff_pct -lt -$RUNTIME_COMPARE_FACTOR ]]; then
 			job_runtime_diff_pct=`bc <<< "scale = 0; -1 * $job_runtime_diff_pct"`
-			job_runtime_diff_pct_string=" ${blue}â¯†${job_runtime_diff_pct}%%${green}"
+			job_runtime_diff_pct_string=" ${blue}⯆${job_runtime_diff_pct}%%${green}"
 		else
 			job_runtime_diff_pct_string=""
 		fi
@@ -3447,6 +3448,7 @@ SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
 RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
 RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
+RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_batch_cursor.parms
 
 # Bash color codes for the terminal
 set_colors_codes
