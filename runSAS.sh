@@ -3199,8 +3199,12 @@ function runSAS(){
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_job_log > $runsas_local_error_w_steps_tmp_log_file
 
-    # Check the job status and it's return code
-    job_rc=$?
+    # Check the job status and it's return code (check if it is still running too)
+    if ! [[ -z `ps -p ${job_pid} -o comm=` ]]; then
+        job_rc=$RC_JOB_TRIGGERED
+    else
+        job_rc=$?
+    fi
 
     # Set the return code of job to a variable named after itself for easy reference and lookup
     eval "$runsas_local_current_jobrc=$job_rc";
@@ -3244,16 +3248,16 @@ function runSAS(){
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
     # We are lookig for a two lines at the end of the file
-    if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ]; then
-        # Check if there are any errors in the logs (as it updates, in real-time)
-        tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_local_error_tmp_log_file
-        tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_local_error_tmp_log_file
-        # Set RC
-        if [ ! -s $runsas_local_error_tmp_log_file ]; then
-            script_rc=95
-            echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_local_error_tmp_log_file 
-        fi
-    fi
+    # if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ]; then
+    #     # Check if there are any errors in the logs (as it updates, in real-time)
+    #     tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_local_error_tmp_log_file
+    #     tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_local_error_tmp_log_file
+    #     # Set RC
+    #     if [ ! -s $runsas_local_error_tmp_log_file ]; then
+    #         script_rc=95
+    #         echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_local_error_tmp_log_file 
+    #     fi
+    # fi
 
     # ERROR: Check return code, abort if there's an error in the job run
     if [ $script_rc -gt 4 ] || [ ${!runsas_local_current_jobrc} -gt 4 ]; then
@@ -3320,8 +3324,8 @@ function runSAS(){
         print_2_runsas_session_log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Clear the session
-        clear_session_and_exit
-    else
+        clear_session_and_exi
+    elif [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ] && [ ${!runsas_local_current_jobrc} -ge 0 ]; then
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_local_logs_root_directory/$current_job_log | wc -l`
