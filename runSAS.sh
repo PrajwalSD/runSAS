@@ -1867,7 +1867,7 @@ function clear_session_and_exit(){
     if [[ $interactive_mode == 1 ]]; then
         reset
     fi
-    running_processes_housekeeping $job_pid
+    running_processes_housekeeping ${!runsas_local_current_job_pid}
     printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
@@ -2879,6 +2879,9 @@ function runSAS(){
     runsas_local_job_terminal_orig_row_pos=o_row_pos_$runsas_local_flow_job_key
     runsas_local_job_terminal_orig_col_pos=o_col_pos_$runsas_local_flow_job_key
 
+    # PID variables
+    runsas_local_current_job_pid=pid_$runsas_local_flow_job_key
+
     # Disable carriage return (ENTER key) to stop user from messing up the layout on terminal
     disable_enter_key keyboard
 
@@ -3127,17 +3130,18 @@ function runSAS(){
     total_no_of_steps_in_a_job=`grep -o 'Step:' $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION | wc -l`
 
     # Get the PID details
-    job_pid=$!
+    #job_pid=$!
+    eval "$runsas_local_current_job_pid=$!"
     pid_progress_counter=1
 
     # Paint the rest of the message on the terminal
-    printf "${white}is running as PID $job_pid${white}"
+    printf "${white}is running as PID ${!runsas_local_current_job_pid}${white}"
 	
 	# Runtime (history)
 	show_job_hist_runtime_stats $runsas_local_job
 	
 	# Get PID
-    ps cax | grep -w $job_pid > /dev/null
+    ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
     printf "${white} ${green}"
 
     # Sleep before the log is generated
@@ -3189,9 +3193,9 @@ function runSAS(){
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "" $progressbar_color
         # Optionally, abort the job run on seeing an error
         if [[ "$ABORT_ON_ERROR" == "Y" ]]; then
-            if [[ ! -z `ps -p $job_pid -o comm=` ]]; then
-                kill_a_pid $job_pid
-                wait $job_pid 2>/dev/null
+            if [[ ! -z `ps -p ${!runsas_local_current_job_pid} -o comm=` ]]; then
+                kill_a_pid ${!runsas_local_current_job_pid}
+                wait ${!runsas_local_current_job_pid} 2>/dev/null
                 break
             fi
         fi
@@ -3201,7 +3205,7 @@ function runSAS(){
     fi
     
     # Get the PID again for the next iteration
-    ps cax | grep -w $job_pid > /dev/null
+    ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
 
     # Check if there are any errors in the logs
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
