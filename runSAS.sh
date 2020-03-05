@@ -1836,7 +1836,7 @@ function debug(){
 
     # Debug file if specified routes the debug info to a file instead of terminal 
     #if [[ "$ENABLE_DEBUG_MODE" == "Y" ]]; then
-        if [[ $debug_file == ]]; then
+        if [[ "$debug_file" == "" ]]; then
             printf "${red_bg}DEBUG: $debug_var: $debug_var_value ${white}"
         else
             echo "DEBUG: $debug_var: $debug_var_value" >> $debug_file
@@ -2924,6 +2924,11 @@ function runSAS(){
         eval "$runsas_local_current_jobrc=$RC_JOB_PENDING"
     fi
 
+    # Skip the loop if the job has been processed already!
+    if [[ ${!runsas_local_current_jobrc} -gt $RC_JOB_TRIGGERED ]]; then
+        continue
+    fi
+
     # If user has specified a different server context, switch it here
     if [[ "$runsas_local_opt" == "--server" ]]; then
         if [[ "$runsas_local_subopt" != "" ]]; then
@@ -3155,16 +3160,17 @@ function runSAS(){
         eval "$runsas_local_current_job_pid=$!"
     fi
 
-    pid_progress_counter=1
-
     # Paint the rest of the message on the terminal
-    printf "${white}is running as PID ${!runsas_local_current_job_pid}${white}"
-	
+    if [[ "${!runsas_local_current_job_pid}" == "" ]]; then
+        printf "${grey}is waiting for dependencies to complete${white}"
+    else
+        printf "${white}is running as PID ${!runsas_local_current_job_pid}${white}"
+	fi
+
 	# Runtime (history)
 	show_job_hist_runtime_stats $runsas_local_job
 	
-	# Get PID
-    #ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
+    # "Space" between messages
     printf "${white} ${green}"
 
     # Sleep before the log is generated
@@ -3187,10 +3193,13 @@ function runSAS(){
     # Show time remaining statistics
     show_time_remaining_stats $runsas_local_job
 
+    # Get the terminal cursor position
     get_current_terminal_cursor_position
-
+    
     # Show progress bar
-    display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
+    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_TRIGGERED ]]; then
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
+    fi
     
     # Get runtime stats of the job
     get_job_hist_runtime_stats $runsas_local_job
@@ -3486,6 +3495,7 @@ RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
 RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
 RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_batch_cursor.parms
+RUNSAS_DEBUG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas.debug
 
 # Bash color codes for the terminal
 set_colors_codes
