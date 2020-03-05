@@ -1867,7 +1867,7 @@ function clear_session_and_exit(){
     if [[ $interactive_mode == 1 ]]; then
         reset
     fi
-    running_processes_housekeeping ${!runsas_local_current_job_pid}
+    #running_processes_housekeeping ${!runsas_local_current_job_pid}
     printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
@@ -3073,6 +3073,10 @@ function runSAS(){
                                                                                 -noterminal \
                                                                                 -logparm "rollover=session" \
                                                                                 -sysin $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
+        # Set the triggered return code
+        if [[ "${!runsas_local_current_jobrc}" == "$RC_JOB_PENDING" ]]; then
+            eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED"
+        fi
     }
 
     # No dependency has been specified or specified as dependent on self
@@ -3081,6 +3085,8 @@ function runSAS(){
             # No dependency!
             # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
             trigger_the_job
+
+            echo "Triggered no dep job $runsas_local_job" >> .tmp/runsas.debug
         fi
     else
         # Dependency has been specified, loop through each dependent to see if the current job is ready to run 
@@ -3095,12 +3101,19 @@ function runSAS(){
             
             # Get the job names (indices are specified in the job dependency list) for return code retrieval (every job sets the return code after the run in to a variable named after the job itself)
             get_name_from_list $runsas_local_jobdep_i .job.list 4 $RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER "Y"  
+
+            # Get dependent job's return code
+            runsas_local_jobdep_i_jobrc=rc_${runsas_local_flowid}_${runsas_local_jobdep_i}
+
+            echo "debug: $runsas_local_jobdep_i_jobrc=${!runsas_local_jobdep_i_jobrc}" >> .tmp/runsas.debug
             
             # Sum up the return codes (of all dependents) to evaluate the dependency graph
-            let total_jobrc=$total_jobrc+${!runsas_local_current_jobrc}
+            let total_jobrc=$total_jobrc+${!runsas_local_jobdep_i_jobrc}
+
+            echo "total_jobrc=$total_jobrc" >> .tmp/runsas.debug
         
             # Set the variables for "gate" success criteria (for OR & AND operators)
-            if [[ ${!runsas_local_current_jobrc} -ge 0 ]] && [[ ${!runsas_local_current_jobrc} -le $runsas_local_max_jobrc ]]; then
+            if [[ ${!runsas_local_jobdep_i_jobrc} -ge 0 ]] && [[ ${!runsas_local_jobdep_i_jobrc} -le $runsas_local_max_jobrc ]]; then
                 OR_check_passed=1
             fi
             if [[ $total_jobrc -ge 0 ]] && [[ $total_jobrc -le $runsas_local_jobrc_allowed_for_AND_op ]]; then 
@@ -3114,12 +3127,14 @@ function runSAS(){
                 if [[ $OR_check_passed -eq 1 ]]; then
                     if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then 
                         trigger_the_job   
+                        echo "Triggered $runsas_local_job" >> .tmp/runsas.debug
                     fi 
                 fi
             else   
-                 if [[ $AND_check_passed -eq 1 ]] || [[ $total_jobrc -eq -1 ]]; then 
+                 if [[ $AND_check_passed -eq 1 ]]; then 
                     if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then 
                         trigger_the_job
+                        echo "Triggered $runsas_local_job" >> .tmp/runsas.debug
                     fi
                 fi             
             fi
@@ -3131,7 +3146,11 @@ function runSAS(){
 
     # Get the PID details
     #job_pid=$!
-    eval "$runsas_local_current_job_pid=$!"
+    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_TRIGGERED ]]; then
+        eval "$runsas_local_current_job_pid=$!"
+    fi
+
+    echo "$runsas_local_current_job_pid=${!runsas_local_current_job_pid}" >> .tmp/runsas.debug
 
     pid_progress_counter=1
 
@@ -3155,10 +3174,10 @@ function runSAS(){
         current_job_log=${current_job_log##/*/}
     done
 
-    # Set the triggered return code
-    if [[ "${!runsas_local_current_jobrc}" == "$RC_JOB_PENDING" ]]; then
-        eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED"
-    fi
+    echo "runsas_local_jobrc_allowed_for_AND_op=$runsas_local_jobrc_allowed_for_AND_op" >> .tmp/runsas.debug
+    echo "OR_check_passed=$OR_check_passed AND_check_passed=$AND_check_passed" >> .tmp/runsas.debug
+    echo "$runsas_local_current_jobrc=${!runsas_local_current_jobrc}" >> .tmp/runsas.debug
+
 
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
     no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_local_logs_root_directory/$current_job_log | wc -l`
@@ -3213,14 +3232,15 @@ function runSAS(){
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_local_logs_root_directory/$current_job_log > $runsas_local_error_w_steps_tmp_log_file
 
     # Check the job status and it's return code (check if it is still running too)
-    if ! [[ -z `ps -p ${!runsas_local_current_job_pid} -o comm=` ]]; then
-        job_rc=$RC_JOB_TRIGGERED
+    if [[ -z ${!runsas_local_current_job_pid} ]] || [[ "${!runsas_local_current_job_pid}" == "" ]]; then
+        eval "$runsas_local_current_jobrc=$RC_JOB_PENDING";
     else
-        job_rc=$?
+        if ! [[ -z `ps -p ${!runsas_local_current_job_pid} -o comm=` ]]; then
+            eval "$runsas_local_current_jobrc=$RC_JOB_TRIGGERED";
+        else
+            eval "$runsas_local_current_jobrc=$?";
+        fi    
     fi
-
-    # Set the return code of job to a variable named after itself for easy reference and lookup
-    eval "$runsas_local_current_jobrc=$job_rc";
 
     # Keep a track of jobs that has been triggered and has completed it's run (any state DONE/FAIL)
     if [[ ${!runsas_local_current_jobrc} -ge 0 ]]; then
@@ -3260,7 +3280,7 @@ function runSAS(){
     fi
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
-    if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ] && [ ${!runsas_local_current_jobrc} -ge 0 ] && [ ! -z `ps -p ${job_pid} -o comm=` ]; then
+    if [ $script_rc -le 4 ] && [ ${!runsas_local_current_jobrc} -le 4 ] && [ ${!runsas_local_current_jobrc} -ge 0 ] && [ ! -z `ps -p ${!runsas_local_current_job_pid} -o comm=` ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_local_error_tmp_log_file
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_local_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_local_error_tmp_log_file
