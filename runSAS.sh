@@ -1742,7 +1742,7 @@ function show_time_remaining_stats(){
 		
 		# Calculate the time remaining in secs.
 		if [ ! -z "$time_remaining_stats_last_shown_timestamp" ]; then
-            let diff_in_seconds=${time_remaining_stats_curr_timestamp-$time_remaining_stats_last_shown_timestamp
+            let diff_in_seconds=$time_remaining_stats_curr_timestamp-$time_remaining_stats_last_shown_timestamp
             if [[ $diff_in_seconds -lt 0 ]]; then
                 diff_in_seconds=0
             fi
