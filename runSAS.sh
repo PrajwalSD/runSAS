@@ -1738,7 +1738,7 @@ function show_time_remaining_stats(){
     # Calc remaining time stats
 	if [[ "$hist_job_runtime" != "" ]]; then
 		# Record timestamp
-		time_remaining_stats_curr_timestamp=`date +%s`"
+		time_remaining_stats_curr_timestamp=`date +%s`
 		
 		# Calculate the time remaining in secs.
 		if [ ! -z "$time_remaining_stats_last_shown_timestamp" ]; then
