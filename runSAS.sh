@@ -1668,6 +1668,23 @@ function runsas_success_email(){
     fi
 }
 #------
+# Name: evalf()
+# Desc: Creates a dynamic variable 
+#   In: parameter, key, prefix, value
+#  Out: Variable format is "$prefix_$parameter_$key = $value"
+#------
+function evalf(){
+    # Input parameters
+    ev_paramater=$1
+    ev_key=$2
+    ev_parameter_prefix=$3
+    ev_parameter_value=$4
+
+    # Create a dynamic variable and assign the value
+    eval "$ev_paramater=${ev_parameter_prefix}_${ev_key}"
+    eval "${!ev_paramater}=$ev_parameter_value"
+}
+#------
 # Name: store_job_runtime_stats()
 # Desc: Capture job runtime stats, single version of history is kept per job
 #   In: job-name, total-time-taken-by-job, change-in-runtime, logname, start-timestamp, end-timestamp
@@ -1704,24 +1721,28 @@ function show_job_hist_runtime_stats(){
 #------
 # Name: show_time_remaining_stats()
 # Desc: Print details about time remaining (if history runtime stats is available)
-#   In: job-name
+#   In: job-name, flow-job-key
 #  Out: <NA>
 #------
 function show_time_remaining_stats(){
     # Input parameters
     st_job=$1
+    st_key=$2
 
     # "Empty" variable (used to clear the screen during refresh of terminal messages)
     st_empty_var="                                     "
 
+    # Get runtime stats from previous runs
 	get_job_hist_runtime_stats $st_job
+
+    # Calc remaining time stats
 	if [[ "$hist_job_runtime" != "" ]]; then
 		# Record timestamp
-		time_remaining_stats_curr_timestamp=`date +%s`
+		time_remaining_stats_curr_timestamp=`date +%s`"
 		
 		# Calculate the time remaining in secs.
 		if [ ! -z "$time_remaining_stats_last_shown_timestamp" ]; then
-            let diff_in_seconds=$time_remaining_stats_curr_timestamp-$time_remaining_stats_last_shown_timestamp
+            let diff_in_seconds=${time_remaining_stats_curr_timestamp-$time_remaining_stats_last_shown_timestamp
             if [[ $diff_in_seconds -lt 0 ]]; then
                 diff_in_seconds=0
             fi
@@ -1819,15 +1840,29 @@ function write_skipped_job_details_on_screen(){
 #------
 # Name: debug()
 # Desc: Debug code
-#   In: <NA>
+#   In: variable, variable-value (optional), debug-file
 #  Out: <NA>
 #------
 function debug(){
     # Input parameters
-    debug_var="${1:-Test}"
-    debug_var_value=${!1}
-    # Print
-    printf "${red_bg}DEBUG: $debug_var $debug_var_value ${white}"
+    debug_var="${1:-DEBUG}"
+    debug_file="${3}" 
+    
+    # Explicit values if specified must be handled
+    if [[ -z "$2" ]]; then
+        debug_var_value=${!1}
+    else
+        debug_var_value=${2}
+    fi
+
+    # Debug file if specified routes the debug info to a file instead of terminal 
+    #if [[ "$ENABLE_DEBUG_MODE" == "Y" ]]; then
+        if [[ "$debug_file" == "" ]]; then
+            printf "${red_bg}DEBUG: $debug_var: $debug_var_value ${white}"
+        else
+            echo "DEBUG: $debug_var: $debug_var_value" >> $debug_file
+        fi
+    #fi
 }
 #------
 # Name: get_name_from_list()
@@ -2910,6 +2945,11 @@ function runSAS(){
         eval "$runsas_local_current_jobrc=$RC_JOB_PENDING"
     fi
 
+    # Skip the loop if the job has been processed already!
+    if [[ ${!runsas_local_current_jobrc} -gt $RC_JOB_TRIGGERED ]]; then
+        continue
+    fi
+
     # If user has specified a different server context, switch it here
     if [[ "$runsas_local_opt" == "--server" ]]; then
         if [[ "$runsas_local_subopt" != "" ]]; then
@@ -3085,8 +3125,6 @@ function runSAS(){
             # No dependency!
             # Each job is launched as a separate process (i.e each has a PID), the script monitors the log and waits for the process to complete.
             trigger_the_job
-
-            echo "Triggered no dep job $runsas_local_job" >> .tmp/runsas.debug
         fi
     else
         # Dependency has been specified, loop through each dependent to see if the current job is ready to run 
@@ -3104,13 +3142,9 @@ function runSAS(){
 
             # Get dependent job's return code
             runsas_local_jobdep_i_jobrc=rc_${runsas_local_flowid}_${runsas_local_jobdep_i}
-
-            echo "debug: $runsas_local_jobdep_i_jobrc=${!runsas_local_jobdep_i_jobrc}" >> .tmp/runsas.debug
             
             # Sum up the return codes (of all dependents) to evaluate the dependency graph
             let total_jobrc=$total_jobrc+${!runsas_local_jobdep_i_jobrc}
-
-            echo "total_jobrc=$total_jobrc" >> .tmp/runsas.debug
         
             # Set the variables for "gate" success criteria (for OR & AND operators)
             if [[ ${!runsas_local_jobdep_i_jobrc} -ge 0 ]] && [[ ${!runsas_local_jobdep_i_jobrc} -le $runsas_local_max_jobrc ]]; then
@@ -3127,14 +3161,12 @@ function runSAS(){
                 if [[ $OR_check_passed -eq 1 ]]; then
                     if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then 
                         trigger_the_job   
-                        echo "Triggered $runsas_local_job" >> .tmp/runsas.debug
                     fi 
                 fi
             else   
                  if [[ $AND_check_passed -eq 1 ]]; then 
                     if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_PENDING ]]; then 
                         trigger_the_job
-                        echo "Triggered $runsas_local_job" >> .tmp/runsas.debug
                     fi
                 fi             
             fi
@@ -3145,23 +3177,21 @@ function runSAS(){
     total_no_of_steps_in_a_job=`grep -o 'Step:' $runsas_local_deployed_jobs_root_directory/$runsas_local_job.$PROGRAM_TYPE_EXTENSION | wc -l`
 
     # Get the PID details
-    #job_pid=$!
-    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_TRIGGERED ]]; then
+    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_TRIGGERED ]] && [[ "${!runsas_local_current_job_pid}" == "" ]]; then
         eval "$runsas_local_current_job_pid=$!"
     fi
 
-    echo "$runsas_local_current_job_pid=${!runsas_local_current_job_pid}" >> .tmp/runsas.debug
-
-    pid_progress_counter=1
-
     # Paint the rest of the message on the terminal
-    printf "${white}is running as PID ${!runsas_local_current_job_pid}${white}"
+    if [[ "${!runsas_local_current_job_pid}" == "" ]]; then
+        printf "${grey}is waiting for dependencies to complete${white}"
+    else
+        printf "${white}is running as PID ${!runsas_local_current_job_pid}${white}"
+        
+        # Runtime (history)
+	    show_job_hist_runtime_stats $runsas_local_job
+	fi
 	
-	# Runtime (history)
-	show_job_hist_runtime_stats $runsas_local_job
-	
-	# Get PID
-    #ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
+    # "Space" between messages
     printf "${white} ${green}"
 
     # Sleep before the log is generated
@@ -3178,17 +3208,19 @@ function runSAS(){
     echo "OR_check_passed=$OR_check_passed AND_check_passed=$AND_check_passed" >> .tmp/runsas.debug
     echo "$runsas_local_current_jobrc=${!runsas_local_current_jobrc}" >> .tmp/runsas.debug
 
-
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
     no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_local_logs_root_directory/$current_job_log | wc -l`
 
     # Show time remaining statistics
     show_time_remaining_stats $runsas_local_job
 
+    # Get the terminal cursor position
     get_current_terminal_cursor_position
 
     # Show progress bar
-    display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
+    if [[ ${!runsas_local_current_jobrc} -eq $RC_JOB_TRIGGERED ]]; then
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
+    fi
     
     # Get runtime stats of the job
     get_job_hist_runtime_stats $runsas_local_job
@@ -3223,9 +3255,6 @@ function runSAS(){
         # Reset it to the default
         progressbar_color=$DEFAULT_PROGRESS_BAR_COLOR
     fi
-    
-    # Get the PID again for the next iteration
-    #ps cax | grep -w ${!runsas_local_current_job_pid} > /dev/null
 
     # Check if there are any errors in the logs
     let job_error_display_count_for_egrep=JOB_ERROR_DISPLAY_COUNT+1
@@ -3484,6 +3513,7 @@ RUNSAS_SESSION_LOG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_session.log
 RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_user.parms
 RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
 RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_batch_cursor.parms
+RUNSAS_DEBUG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas.debug
 
 # Bash color codes for the terminal
 set_colors_codes
