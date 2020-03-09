@@ -117,7 +117,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=31.1
+	RUNSAS_CURRENT_VERSION=31.3
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=12.2
     # Show version numbers
@@ -389,14 +389,14 @@ runsas_download_git_branch="${1:-$RUNSAS_GITHUB_SOURCE_CODE_BRANCH}"
 runsas_backup_script_name=runSAS.sh.$(date +"%Y%m%d_%H%M%S")
 
 # Create backup folder
-create_a_new_directory -p backups
+create_a_new_directory -p $RUNSAS_BACKUPS_DIRECTORY
 
 # Create a backup of the existing script
-if ! cp runSAS.sh backups/$runsas_backup_script_name; then
+if ! cp runSAS.sh $RUNSAS_BACKUPS_DIRECTORY/$runsas_backup_script_name; then
      printf "${red}*** ERROR: Backup has failed! ***\n${white}"
      clear_session_and_exit
 else
-    printf "${green}\nNOTE: The existing runSAS script has been backed up to `pwd`/backups/$runsas_backup_script_name ${white}\n"
+    printf "${green}\nNOTE: The existing runSAS script has been backed up to `pwd`/$RUNSAS_BACKUPS_DIRECTORY/$runsas_backup_script_name ${white}\n"
 fi
 
 # Check if wget exists
@@ -690,26 +690,41 @@ function delete_a_file(){
 #------
 # Name: create_a_new_directory()
 # Desc: Create a specified directory if it doesn't exist
-#   In: directory-name (multiple could be specified)
+#   In: directory-name (multiple could be specified), --silent (optional)
 #  Out: <NA>
 #------
 function create_a_new_directory(){
+    # Check if the user has specified "--silent" option
+    for dir in "$@"
+    do
+        if [[ "$dir" == "--silent" ]]; then
+            silent_mode=1
+        fi
+    done
+
+    # Create directories (no messages are shown if "--silent" is specified)
     mkdir_mode=""
     for dir in "$@"
     do
         if [[ "$dir" == "-p" ]]; then
             mkdir_mode="-p"
         else 
-            if [[ ! -d "$dir" ]]; then
-                printf "${green}\nNOTE: Creating a directory named $dir...${white}"
-                mkdir $mkdir_mode $dir
-                # See if the directory creation was successful
-                if [[ -d "$dir" ]]; then
-                    printf "${green}DONE\n${white}"
-                else
-                    printf "${red}\n*** ERROR: Directory ${black}${red_bg}$dir${white}${red} cannot be created under the path specified ***${white}"
-                    printf "${red}\n*** ERROR: It is likely that one of the parent folder in the directory tree does't exist or the folder permission is restricting the creation of new object under it ***${white}"
-                    clear_session_and_exit
+            if [[ ! "$dir" == "--silent" ]]; then
+                if [[ ! -d "$dir" ]]; then
+                    if [[ $silent_mode -ne 1 ]]; then
+                        printf "${green}\nNOTE: Creating a directory named $dir...${white}"
+                    fi
+                    mkdir $mkdir_mode $dir
+                    # See if the directory creation was successful
+                    if [[ -d "$dir" ]]; then
+                        if [[ $silent_mode -ne 1 ]]; then
+                            printf "${green}DONE\n${white}"
+                        fi
+                    else
+                        printf "${red}\n*** ERROR: Directory ${black}${red_bg}$dir${white}${red} cannot be created under the path specified ***${white}"
+                        printf "${red}\n*** ERROR: It is likely that one of the parent folder in the directory tree does't exist or the folder permission is restricting the creation of new object under it ***${white}"
+                        clear_session_and_exit
+                    fi
                 fi
             fi
         fi
@@ -1735,7 +1750,7 @@ function show_time_remaining_stats(){
     # Get runtime stats from previous runs
 	get_job_hist_runtime_stats $st_job
 
-    # Calc remaining time stats
+    # Calculate remaining time stats
 	if [[ "$hist_job_runtime" != "" ]]; then
 		# Record timestamp
 		time_remaining_stats_curr_timestamp=`date +%s`
@@ -2170,88 +2185,116 @@ function validate_job_list(){
     enable_enter_key keyboard
 }
 #------
-# Name: preserve_batch_state()
+# Name: create_batch_id()
 # Desc: Preserve the state of the current batch run in a file for rerun/resume of batches on failure/abort
-#   In: key, value
+#   In: script-mode, batchstate-root-directory (optional)
 #  Out: <NA>
 #------
-function preserve_batch_state(){
+function create_batch_id(){
     # Input parameters
-    batchstate_key=$1
-    batchstate_value=$2
+    bid_batch_root_directory="${1:-RUNSAS_BATCH_STATE_ROOT_DIRECTORY}"
 
-    # Other parameters
-    batchstate_root_directory=$RUNSAS_BATCH_STATE_PRESERVATION_FILE_ROOT_DIRECTORY
-
-    # Create directory for runSAS batch state preservation (this is not inside runSAS temp directory for obvious reasons)
-    create_a_new_directory "$batchstate_root_directory"
-
-    # Determine the last batch run identifier for filename
-    get_keyvalue batchid 
+    # Determine the last batch run identifier (from global parms)
+    get_keyval global_batchid 
 
     # Create a batch state file (if it's the first time)
-    if [ ! -z "$batchid" ]; then
-        batchstate_batchid=1 # first run, it seems
+    if [ -z "$global_batchid" ] || [ "$global_batchid" == "" ]; then
+        bid_new_batchid=1 # first run, it seems
     else
-        # Create the files etc., if it's a first call to this function (subsequent calls must just add/update the values)
-        if [ ! -z "$batchstate_batchid" ]; then
-            # Increment
-            let batchstate_batchid=$batchid+1
-            # Ensure the new batchid doesn't collide with batch state file (i.e. key-value store says one and the files tell a different story!)
-            while [ ! -e $batchstate_root_directory/$batchstate_batchid.batch]; do
-                batchstate_batchid=$batchid+1
-                batchstate_file=$batchstate_root_directory/$batchstate_batchid.batch
-            done
-            # Finally, create file (if there's an error the script will abort anyway)
-            create_a_file_if_not_exists "$batchstate_file"
-        else
-            # Looks like the function is called again in the session, just assign the filename
-            batchstate_file=$batchstate_root_directory/$batchstate_batchid.batch
-            # If the expected file doesn't exist, abort the whole process and notify the user
-            if [ -e $batchstate_file ]; then
-                printf "${red}*** ERROR: Batch state preservation file $batchstate_file does not exist or got deleted (errored on subsequent calls), share the error and trace info with developer to get more help ***${white}\n"
-                printf "${red}*** TRACE: BATCHID=$BATCHID BATCHSTATE_BATCHID=$BATCHSTATE_BATCHID BATCHSTATE_KEY=$BATCHSTATE_KEY BATCHSTATE_VALUE=$BATCHSTATE_VALUE ***\n${white}"
-                clear_session_and_exit
-            fi
-        fi
+        let bid_new_batchid=$global_batchid+1
+        # # Ensure the new global_batchid doesn't collide with batch state file (i.e. key-value store says one and the files tell a different story!)
+        # while [ ! -e $bid_batch_root_directory/$bid_new_batchid/$bid_new_batchid.batch ]; do
+        #     bid_new_batchid=$global_batchid+1
+        #     batchstate_file=$batchstate_root_directory/$bid_new_batchid/$bid_new_batchid.batch
+        # done
     fi
 
-    # Update the global key-value store on successful creation of file
-    put_keyvalue batchid $batchstate_batchid
+    # Update the global key-value store 
+    put_keyval global_batchid $bid_new_batchid
 
-	# Refresh the key-value pair (delete + create)
-    sed -i "/$batchstate_key/d" $batchstate_file
-    echo "$batchstate_key=$batchstate_val" >> $batchstate_file 
+    # Get the newly created batch id
+    get_keyval global_batchid 
+}
+#------
+# Name: update_batch_state()
+# Desc: Preserve the state of the current batch run in a file for rerun/resume of batches on failure/abort
+#   In: key, value, jobid, batchid, batchstate-root-directory (optional)
+#  Out: <NA>
+#------
+function update_batch_state(){
+    # Input parameters
+    bs_key=$1
+    bs_value=$2
+    bs_jobid=$3
+    bs_batchid=${4:-$global_batchid}
+    bs_batch_root_directory="${5:-$RUNSAS_BATCH_STATE_ROOT_DIRECTORY}"
+
+    # Directories
+    bs_current_batchid_directory=$bs_batch_root_directory/$bs_batchid
+    bs_current_batchid_job_directory=$bs_batch_root_directory/$bs_batchid/.job
+
+    # Files
+    bs_current_batchid_file=$bs_current_batchid_directory/$bs_batchid.batch
+    bs_current_batchid_jobid_file=$bs_current_batchid_job_directory/$bs_jobid.job
+
+    # Create required directories to preserve the state of the batch (direcoty)
+    # Directory tree:
+    #   batch
+    #       <batchid>
+    #                `---<batchid>.batch (batch specific parameters, accessible by any jobs in the context of the flow)
+    #                `---job
+    #                       `--<jobid>.job (job specifid key-values)
+    #                       `--<jobid>.job (job specifid key-values)
+    #                       `--<jobid>.job (job specifid key-values)
+    #                        ...
+    #       ... 
+    create_a_new_directory --silent $bs_current_batchid_directory 
+    create_a_new_directory --silent $bs_current_batchid_job_directory
+
+    # Check if the batch file exists ("batchid" file serves as a marker for the batch)
+    create_a_file_if_not_exists "$bs_current_batchid_file" 
+    create_a_file_if_not_exists "$bs_current_batchid_jobid_file" 
+
+    # Add/update the entry
+    put_keyval $bs_key $bs_value $bs_current_batchid_jobid_file
+	
 }
 #------
 # Name: inject_batch_state()
 # Desc: Set the batch state from a previous run i.e. add the batch state preservation file to the current run
-#   In: batchid
+#   In: batchid, jobid, opt, batchstate-root-directory (optional)
 #  Out: <NA>
 #------
 function inject_batch_state(){
     # Input parameters
-    inj_batchstate_batchid=$1
+    inj_batchid=${1:-$global_batchid}
+    inj_jobid=$2
+    inj_opt=$3
+    inj_batch_root_directory="${4:-$RUNSAS_BATCH_STATE_ROOT_DIRECTORY}"
 
-    # Other parameters
-    inj_batchstate_root_directory=$RUNSAS_BATCH_STATE_PRESERVATION_FILE_ROOT_DIRECTORY
+    # Directories
+    inj_current_batchid_directory=$inj_batch_root_directory/$inj_batchid
+    inj_current_batchid_job_directory=$inj_batch_root_directory/$inj_batchid/.job
 
-    # Looks like the function is called again in the session, just assign the filename
-    inj_batchstate_file=$inj_batchstate_root_directory/$inj_batchstate_batchid.batch
+    # Files
+    inj_current_batchid_file=$inj_current_batchid_directory/$inj_batchid.batch
+    inj_current_batchid_jobid_file=$inj_current_batchid_job_directory/$inj_jobid.job
 
-    # Inject the batch state
-    if [ ! -e $inj_batchstate_file ]; then
-        . $inj_batchstate_file
-        printf "${green}NOTE: Previous batch run session state has been restored successfully (Batch ID: $inj_batchstate_batchid) ${white}\n"
+    # Inject the job state (always in the context of the flow)
+    if [ ! -f $inj_current_batchid_jobid_file ]; then
+        . $inj_current_batchid_jobid_file
+        if [[ "$opt" == "message" ]]; then
+            printf "${green}NOTE: Job state has been restored successfully! (Batch ID: $inj_batchid Job ID: $inj_jobid) ${white}"
+        fi
     fi
 }
 #------
-# Name: put_keyvalue()
+# Name: put_keyval()
 # Desc: Stores a key-value pair in a file
 #   In: key, value, file
 #  Out: <NA>
 #------
-function put_keyvalue(){
+function put_keyval(){
     # Input parameters
     str_key=$1
     str_val=$2
@@ -2268,12 +2311,12 @@ function put_keyvalue(){
     echo "$str_key: $str_val" >> $str_file # Add a new entry 
 }
 #------
-# Name: get_keyvalue()
+# Name: get_keyval()
 # Desc: Check job runtime for the last batch run
 #   In: key, file
 #  Out: <NA>
 #------
-function get_keyvalue(){
+function get_keyval(){
     # Parameters
     ret_key=$1
     ret_file="${2:-$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE}"
@@ -2301,13 +2344,13 @@ function get_updated_value_for_a_key_from_user(){
     keyval_file=$4
 	
     # First retrieve the value for the key from the global parameters file, if it is available.
-    get_keyvalue $keyval_key
+    get_keyval $keyval_key
 	
     # Prompt 
     read -p "${!keyval_message_color}${keyval_message}${!keyval_val_color}" -i "${!keyval_key}" -e $keyval_key	
 	
     # Store the value (updated value)
-    put_keyvalue $keyval_key ${!keyval_key}
+    put_keyval $keyval_key ${!keyval_key}
 }
 #------
 # Name: redeploy_sas_jobs()
@@ -2475,7 +2518,7 @@ function redeploy_sas_jobs(){
             depjob_job_deployed_count=0
             
             # Newlines
-            get_keyvalue depjob_total_runtime
+            get_keyval depjob_total_runtime
 
             # Message to user
 			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it may take a while, so grab a cup of coffee or tea.${white}\n\n"
@@ -2599,7 +2642,7 @@ function redeploy_sas_jobs(){
             printf "${green}\nThe redeployment of $depjob_job_deployed_count jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
 
             # Store runtime for future use
-            put_keyvalue depjob_total_runtime $depjob_total_runtime
+            put_keyval depjob_total_runtime $depjob_total_runtime
 
             # Send an email
 			if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
@@ -2718,6 +2761,70 @@ function show_server_and_user_details(){
     printf "\n${white}The script was launched (in "${1:-'a default'}" mode) with PID $$ on $HOSTNAME at `date '+%Y-%m-%d %H:%M:%S'` by ${white}"
     printf '%s' ${white}"${SUDO_USER:-$USER}${white}"
     printf "${white} user\n${white}"
+}
+#------
+# Name: letf()
+# Desc: Extended bash "let" implementation
+#   In: variable-name, value, options (DEBUG or SUB or NUM or STRING)
+#  Out: <NA> 
+#------
+function letf(){
+    # Input parameters
+    letf_varname=$1
+    letf_value=$2
+    letf_opt=$3
+
+    # String 
+    function assign_as_string(){
+        letf_vartype="Character"
+        eval $letf_varname="$letf_value"
+    }
+
+    # Number 
+    function assign_as_number(){
+        letf_vartype="Number"
+        eval "let $letf_varname=$letf_value"
+    }
+
+    # Substitution 
+    function assign_after_substitution(){
+        letf_vartype="Substitution"
+        if [[ $letf_value =~ $RUNSAS_REGEX_NUMBER ]]; then
+            letf_vartype="Substitution (routed to Number)"
+            assign_as_number
+        elif [[ "$letf_value" == "" ]]; then
+            letf_vartype="Substitution (routed to String)"
+            assign_as_string
+        else
+            letf_vartype="Substitution"
+            eval "$letf_varname=${!letf_value}"
+        fi
+    }
+
+    # Check if it's number or string assignment
+    if [[ "$letf_opt" == *"STRING"* ]]; then
+        # String
+        assign_as_string
+    elif [[ "$letf_opt" == *"SUB"* ]]; then
+        # Number (substitution)
+        assign_after_substitution
+    elif [[ "$letf_opt" == *"NUM"* ]]; then
+        # Number
+        assign_as_number
+    elif [[ $letf_value =~ $RUNSAS_REGEX_STRING ]]; then
+        # String
+        assign_as_string
+    elif [[ "$letf_value" = "" ]]; then
+        # String
+        assign_as_string
+    else 
+        # Default: Number
+        assign_as_number
+    fi
+
+    if [[ "$letf_opt" == *"DEBUG"* ]]; then
+        printf "DEBUG: letf_varname=$letf_varname letf_value=$left_value --> $letf_vartype $letf_varname=${!letf_varname}\n"
+    fi
 }
 #------
 # Name: display_progressbar_with_offset()
@@ -2912,6 +3019,9 @@ function runSAS(){
     runsas_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.err
     runsas_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.stepserr
     runsas_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.errjob
+
+    # Create batch state preservation files
+    update_batch_state runsas_job $runsas_job $runsas_jobid
 	
 	# Reset datetime variables
 	time_stats_msg=""
@@ -2966,8 +3076,8 @@ function runSAS(){
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
     # Remember the job's row and column position when it's printed on the terminal for the first time (we use this to refresh the line every time as part of the loop)
-    get_keyvalue $runsas_job_cursor_row_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
-    get_keyvalue $runsas_job_cursor_col_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+    get_keyval $runsas_job_cursor_row_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+    get_keyval $runsas_job_cursor_col_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
     if [[ -z "${!runsas_job_cursor_row_pos}" ]] || [[ -z "${!runsas_job_cursor_col_pos}" ]]; then
         # It seems like there's no info for the job, so get the current cursor positions and store in key-value store
         get_current_terminal_cursor_position
@@ -2975,8 +3085,8 @@ function runSAS(){
         eval "$runsas_job_cursor_row_pos=$current_cursor_row_pos"
         eval "$runsas_job_cursor_col_pos=$current_cursor_col_pos"
         # Store it in the key-value store
-        put_keyvalue $runsas_job_cursor_row_pos ${!runsas_job_cursor_row_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
-        put_keyvalue $runsas_job_cursor_col_pos ${!runsas_job_cursor_col_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+        put_keyval $runsas_job_cursor_row_pos ${!runsas_job_cursor_row_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+        put_keyval $runsas_job_cursor_col_pos ${!runsas_job_cursor_col_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
     fi
 
     # Reset the cursor to the right positions (in every loop based on which job it is)
@@ -3089,6 +3199,8 @@ function runSAS(){
     check_if_the_dir_exists $runsas_app_root_directory $runsas_batch_server_root_directory $runsas_logs_root_directory $runsas_deployed_jobs_root_directory
     check_if_the_file_exists "$runsas_batch_server_root_directory/$runsas_sh" "$runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION"
 
+    #
+
     # Job launch function (standard template for all calls), each PID is monitored by runSAS
     function runsas_launch_the_job(){
         if [[ ${!runsas_current_jobrc} -eq $RC_JOB_PENDING ]]; then
@@ -3108,7 +3220,6 @@ function runSAS(){
     if [[ "$runsas_jobdep_list" == "" ]] || [[ "$runsas_jobdep_list" == "$runsas_jobid" ]]; then
             # No dependency, trigger!
             runsas_launch_the_job
-        fi
     else
         # Dependency has been specified, loop through each dependent to see if the current job is OK to run
         all_jobdep_rc=0
@@ -3165,7 +3276,7 @@ function runSAS(){
     if [[ "${!runsas_current_job_pid}" == "" ]]; then
         printf "${grey}is waiting for dependencies to complete${white}"
     else
-        printf "${white}is running as PID ${!runsas_current_job_pid}${white}"
+        printf "${white}is running with PID ${!runsas_current_job_pid}${white}"
         
         # Runtime (history)
 	    show_job_hist_runtime_stats $runsas_job
@@ -3457,7 +3568,6 @@ RUNSAS_DISPLAY_FILLER_COL_END_POS=100
 RUNSAS_FILLER_CHARACTER=.
 TERMINAL_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
-RUNSAS_TMP_DIRECTORY=.tmp
 JOB_COUNTER_FOR_DISPLAY=0
 LONG_RUNNING_JOB_MSG_SHOWN=0
 TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat .job.list | wc -l`
@@ -3473,20 +3583,30 @@ EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=120
 RC_JOB_PENDING=-2
 RC_JOB_TRIGGERED=-1
 RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
-RUNSAS_BATCH_STATE_PRESERVATION_FILE_ROOT_DIRECTORY=.batch
 RUNSAS_BATCH_COMPLETE_FLAG=0
+
+# Regular expressions
+RUNSAS_REGEX_NUMBER='^[0-9]+$'
+RUNSAS_REGEX_STRING='[a-zA-Z]'
 
 # Timestamps
 start_datetime_of_session_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
 start_datetime_of_session=`date +%s`
 job_stats_timestamp=`date '+%Y%m%d_%H%M%S'`
 
+# Directories
+RUNSAS_BACKUPS_DIRECTORY=backups
+RUNSAS_TMP_DIRECTORY=.tmp
+RUNSAS_RUN_STATS_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.stats
+RUNSAS_EMAIL_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.email
+RUNSAS_BATCH_STATE_ROOT_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.batch
+
 # Files
 JOB_LIST_FILE=.job.list
-JOB_STATS_FILE=$RUNSAS_TMP_DIRECTORY/.job.stats
-EMAIL_BODY_MSG_FILE=$RUNSAS_TMP_DIRECTORY/.email_body_msg.html
-EMAIL_TERMINAL_PRINT_FILE=$RUNSAS_TMP_DIRECTORY/.email_terminal_print.html
-JOB_STATS_DELTA_FILE=$RUNSAS_TMP_DIRECTORY/.job_delta.stats.$job_stats_timestamp
+EMAIL_BODY_MSG_FILE=$RUNSAS_EMAIL_DIRECTORY/.email_body_msg.html
+EMAIL_TERMINAL_PRINT_FILE=$RUNSAS_EMAIL_DIRECTORY/.email_terminal_print.html
+JOB_STATS_FILE=$RUNSAS_RUN_STATS_DIRECTORY/.job.stats
+JOB_STATS_DELTA_FILE=$RUNSAS_RUN_STATS_DIRECTORY/.job_delta.stats.$job_stats_timestamp
 RUNSAS_LAST_JOB_PID_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_last_job.pid
 RUNSAS_FIRST_USER_INTRO_DONE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_intro.done
 SASTRACE_CHECK_FILE=$RUNSAS_TMP_DIRECTORY/.sastrace.check
@@ -3499,8 +3619,8 @@ RUNSAS_DEBUG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas.debug
 # Bash color codes for the terminal
 set_colors_codes
 
-# Initialization
-create_a_new_directory -p $RUNSAS_TMP_DIRECTORY
+# Create required directories
+create_a_new_directory -p --silent $RUNSAS_TMP_DIRECTORY $RUNSAS_RUN_STATS_DIRECTORY $RUNSAS_BATCH_STATE_ROOT_DIRECTORY
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
@@ -3511,6 +3631,9 @@ script_mode_value_4="$5"
 script_mode_value_5="$6"
 script_mode_value_6="$7"
 script_mode_value_7="$8"
+
+# Create batch id
+create_batch_id $script_mode
 
 # Show run summary for the last run on user request
 show_last_run_summary $script_mode
@@ -3612,6 +3735,9 @@ validate_job_list $JOB_LIST_FILE
 
 # Debug mode
 print_to_terminal_debug_only "runSAS session variables"
+
+# Batch ID
+printf "${green}NOTE: Batch ID: $global_batchid ${white}\n\n"
 
 # Get the consent from the user to trigger the batch 
 press_enter_key_to_continue 0 1
