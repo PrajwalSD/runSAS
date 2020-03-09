@@ -3344,11 +3344,11 @@ function runSAS(){
 
         # Print last job
         printf "${red}Job: ${red}"
-        printf "%s" )"
+        printf "%s" "$(<$runsas_errored_job_file)"
 
         # Add failed job/step details to the log
         printf "${white}Job: ${red}" >> $RUNSAS_SESSION_LOG_FILE
-        printf "%s" )" >> $RUNSAS_SESSION_LOG_FILE  
+        printf "%s" "$(<$runsas_errored_job_file)" >> $RUNSAS_SESSION_LOG_FILE  
         
         # Print the log filename
         printf "\n${white}${white}"
@@ -3460,7 +3460,7 @@ JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
 RUNSAS_TMP_DIRECTORY=.tmp
 JOB_COUNTER_FOR_DISPLAY=0
 LONG_RUNNING_JOB_MSG_SHOWN=0
-TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat $JOB_LIST_FILE | wc -l`
+TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat .job.list | wc -l`
 INDEX_MODE_FIRST_JOB_NUMBER=-1
 INDEX_MODE_SECOND_JOB_NUMBER=-1
 EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
