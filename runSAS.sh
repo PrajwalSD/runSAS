@@ -1819,12 +1819,12 @@ function show_last_run_summary(){
     fi
 }
 #------
-# Name: print_2_runsas_session_log()
+# Name: print2log()
 # Desc: Keeps a track of what's done in the session for debugging etc.
 #   In: msg
 #  Out: <NA>
 #------
-function print_2_runsas_session_log(){
+function print2log(){
     create_a_file_if_not_exists $RUNSAS_SESSION_LOG_FILE
     printf "\n$1" >> $RUNSAS_SESSION_LOG_FILE
 }
@@ -1866,7 +1866,7 @@ function print2debug(){
     debug_file="${4:-$RUNSAS_DEBUG_FILE}"
 
     # Print to the file
-    printf "\n$debug_prefix ${debug_var}=${!debug_var} $debug_postfix" >> $debug_file
+    printf "\n$debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
 }
 #------
 # Name: get_name_from_list()
@@ -2424,12 +2424,12 @@ function get_keyval(){
     fi   
 }
 #------
-# Name: get_updated_value_for_a_key_from_user()
+# Name: get_keyval_from_user()
 # Desc: Ask user for a new value for a key (if user has specified an answer show it as prepopulated and finally store the updated value for future use)
 #   In: key, message, message-color, value-color, file (optional)
 #  Out: <NA>
 #------
-function get_updated_value_for_a_key_from_user(){
+function get_keyval_from_user(){
     # Parameters
     keyval_key=$1
     keyval_message=$2
@@ -2562,16 +2562,16 @@ function redeploy_sas_jobs(){
 						
 			# Retrieve SAS Metadata details from last user inputs, if you don't find it ask the user
 			if [[ "$depjob_in_filter_mode" -eq "0" ]]; then	
-				get_updated_value_for_a_key_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
+				get_keyval_from_user read_depjob_clear_files "Do you want clear all existing deployed SAS files from the server (Y/N): " red
 			else 
 				read_depjob_clear_files=N
 			fi
-            get_updated_value_for_a_key_from_user read_depjob_user "SAS Metadata username (e.g.: sas or sasadm@saspw): " 
-			get_updated_value_for_a_key_from_user read_depjob_password "SAS Metadata password: " 
-            get_updated_value_for_a_key_from_user read_depjob_appservername "SAS Application server name (e.g.: $SAS_APP_SERVER_NAME): " 
-            get_updated_value_for_a_key_from_user read_depjob_serverusername "SAS Application/Compute server username (e.g.: ${SUDO_USER:-$USER}): " 
-            get_updated_value_for_a_key_from_user read_depjob_serverpassword "SAS Application/Compute server password: " 
-            get_updated_value_for_a_key_from_user read_depjob_level "SAS Level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 and so on...): " 
+            get_keyval_from_user read_depjob_user "SAS Metadata username (e.g.: sas or sasadm@saspw): " 
+			get_keyval_from_user read_depjob_password "SAS Metadata password: " 
+            get_keyval_from_user read_depjob_appservername "SAS Application server name (e.g.: $SAS_APP_SERVER_NAME): " 
+            get_keyval_from_user read_depjob_serverusername "SAS Application/Compute server username (e.g.: ${SUDO_USER:-$USER}): " 
+            get_keyval_from_user read_depjob_serverpassword "SAS Application/Compute server password: " 
+            get_keyval_from_user read_depjob_level "SAS Level (e.g.: Specify 1 for Lev1, 2 for Lev2 and 3 for Lev3 and so on...): " 
 
             # Clear deployment directory for a fresh start (based on user input)
             if [[ "$read_depjob_clear_files" == "Y" ]]; then
@@ -2618,25 +2618,25 @@ function redeploy_sas_jobs(){
 			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it may take a while, so grab a cup of coffee or tea.${white}\n\n"
 
             # Add to audit log
-            print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
-            print_2_runsas_session_log "Redeployment start timestamp: $start_datetime_of_session_timestamp"
-            print_2_runsas_session_log "DepJobs SAS 9.x utility directory: $depjobs_scripts_root_directory"
-			print_2_runsas_session_log "Metadata server: $depjob_host"
-			print_2_runsas_session_log "Port: $depjob_port"
-			print_2_runsas_session_log "Metadata user: $read_depjob_user"
-			print_2_runsas_session_log "Metadata password (obfuscated): *******"
-			print_2_runsas_session_log "Deployment type: $depjob_deploytype"
-			print_2_runsas_session_log "Deployment directory: $depjob_sourcedir"
-			print_2_runsas_session_log "Job directory (Metadata): $depjob_metarepository"
-			print_2_runsas_session_log "Application server context: $depjob_appservername"
-			print_2_runsas_session_log "Application server: $depjob_servermachine"
-			print_2_runsas_session_log "Application server port: $depjob_serverport"
-			print_2_runsas_session_log "Application server user: $depjob_serverusername"
-			print_2_runsas_session_log "Application server password (obfuscated): *******"
-			print_2_runsas_session_log "Batch server: $depjob_batchserver" 
-			print_2_runsas_session_log "DepJobs SAS 9.x utility log: $depjob_log"
-            print_2_runsas_session_log "Total number of jobs: $depjob_to_jobtal_count"
-            print_2_runsas_session_log "Deleted existing SAS job files?: $read_depjob_clear_files"
+            print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+            print2log "Redeployment start timestamp: $start_datetime_of_session_timestamp"
+            print2log "DepJobs SAS 9.x utility directory: $depjobs_scripts_root_directory"
+			print2log "Metadata server: $depjob_host"
+			print2log "Port: $depjob_port"
+			print2log "Metadata user: $read_depjob_user"
+			print2log "Metadata password (obfuscated): *******"
+			print2log "Deployment type: $depjob_deploytype"
+			print2log "Deployment directory: $depjob_sourcedir"
+			print2log "Job directory (Metadata): $depjob_metarepository"
+			print2log "Application server context: $depjob_appservername"
+			print2log "Application server: $depjob_servermachine"
+			print2log "Application server port: $depjob_serverport"
+			print2log "Application server user: $depjob_serverusername"
+			print2log "Application server password (obfuscated): *******"
+			print2log "Batch server: $depjob_batchserver" 
+			print2log "DepJobs SAS 9.x utility log: $depjob_log"
+            print2log "Total number of jobs: $depjob_to_jobtal_count"
+            print2log "Deleted existing SAS job files?: $read_depjob_clear_files"
 
             # Disable enter key
             disable_enter_key keyboard
@@ -2717,7 +2717,7 @@ function redeploy_sas_jobs(){
 				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
 
                 # Add it to audit log
-                print_2_runsas_session_log "Reploying job $depjob_job_curr_count of $depjob_to_jobtal_count: $job"
+                print2log "Reploying job $depjob_job_curr_count of $depjob_to_jobtal_count: $job"
 
                 # Increment the job counter
                 let depjob_job_curr_count+=1
@@ -2746,8 +2746,8 @@ function redeploy_sas_jobs(){
             fi
 
             # End
-            print_2_runsas_session_log "Redeployment end timestamp: $end_datetime_of_session_timestamp"
-            print_2_runsas_session_log "Total time taken (in seconds): $depjob_total_runtime"
+            print2log "Redeployment end timestamp: $end_datetime_of_session_timestamp"
+            print2log "Total time taken (in seconds): $depjob_total_runtime"
 
             # Enable enter key
             enable_enter_key keyboard
@@ -3034,7 +3034,7 @@ function runSAS(){
     runsas_flow_job_key=${runsas_flowid}_${runsas_jobid}
 
     # Print to debug file
-    print2debug runsas_job "\n=======[ Looping " "with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]===== "
+    print2debug runsas_job "\n=======[ Looping " " with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]===== "
 
     # Reset these variables for each job runs
     runsas_script_rc=0
@@ -3080,7 +3080,7 @@ function runSAS(){
 
     # Skip the loop, if the job has been processed already (even if it is failed)
     if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]]; then
-        print2debug runsas_jobrc "Skipping the loop..."
+        print2debug runsas_jobrc "Skipping the loop as the job is still running...) "
         continue
     fi
 
@@ -3104,18 +3104,20 @@ function runSAS(){
         fi
     fi
 
-    # Log
-    print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
-    print_2_runsas_session_log "Job No.: $JOB_COUNTER_FOR_DISPLAY"
-    print_2_runsas_session_log "Job: $runsas_job"
-    print_2_runsas_session_log "Opt: $runsas_opt"
-    print_2_runsas_session_log "Sub-Opt: $runsas_subopt"
-    print_2_runsas_session_log "App server: $runsas_app_root_directory"
-    print_2_runsas_session_log "Batch server: $runsas_batch_server_root_directory"
-    print_2_runsas_session_log "SAS shell: $runsas_sh"
-    print_2_runsas_session_log "Logs: $runsas_logs_root_directory"
-    print_2_runsas_session_log "Deployed Jobs: $runsas_deployed_jobs_root_directory"
-    print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
+    # Log (show once per job)
+    if [[ $runsas_jobrc -eq RC_JOB_PENDING ]]; then
+        print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+        print2log "Job No.: $JOB_COUNTER_FOR_DISPLAY"
+        print2log "Job: $runsas_job"
+        print2log "Opt: $runsas_opt"
+        print2log "Sub-Opt: $runsas_subopt"
+        print2log "App server: $runsas_app_root_directory"
+        print2log "Batch server: $runsas_batch_server_root_directory"
+        print2log "SAS shell: $runsas_sh"
+        print2log "Logs: $runsas_logs_root_directory"
+        print2log "Deployed Jobs: $runsas_deployed_jobs_root_directory"
+        print2log "Start: $start_datetime_of_job_timestamp"
+    fi
 
     # Remember the job's row and column position when it's printed on the terminal for the first time (we use this to refresh the line every time as part of the loop)
     get_keyval_from_batch_state runsas_job_cursor_row_pos 
@@ -3250,8 +3252,9 @@ function runSAS(){
             assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
 
             # Print to debug file
-            print2debug runsas_jobrc "Launched the job"  
+            print2debug runsas_job "Job launched >>> "  
             print2debug runsas_job_pid
+            print2debug runsas_jobrc
         fi
     }
 
@@ -3260,7 +3263,7 @@ function runSAS(){
             # No dependency, trigger!
             runsas_launch_the_job
             # Print to debug file
-            print2debug runsas_jobdep_list "No dependency"
+            print2debug runsas_jobdep_list "No dependency "
     else
         # Dependency has been specified, loop through each dependent to see if the current job is OK to run
         all_jobdep_rc=0
@@ -3271,7 +3274,7 @@ function runSAS(){
         # Dependency check loop begins here
         for runsas_jobdep_i in $runsas_jobdep_list
         do                 
-            print2debug runsas_jobdep_list runsas_jobdep_i "--- Inside the dependency loop now " "---"
+            print2debug runsas_jobdep_list runsas_jobdep_i "--- Inside the dependency loop now " " ---"
 
             # Get the dependent job name (only indices are specified in the job dependency list)
             get_name_from_list $runsas_jobdep_i $JOB_LIST_FILE 4 $RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER "Y"  
@@ -3290,14 +3293,16 @@ function runSAS(){
                 AND_check_passed=1
             fi
 
-            print2debug runsas_script_rc "--- After dependency checks " "---" 
+            # Print to debug file
+            print2debug runsas_script_rc "--- Post-dependency checks " " ---" 
             print2debug runsas_job_pid 
             print2debug runsas_jobrc 
             print2debug all_jobdep_rc 
             print2debug runsas_jobdep_i_jobrc 
+            print2debug runsas_logic_op 
+            print2debug runsas_jobrc_max
             print2debug OR_check_passed 
             print2debug AND_check_passed 
-            print2debug runsas_logic_op 
 
             # Finally, evaluate the dependency:
             # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user) and this is the default if nothing has been specified
@@ -3324,7 +3329,8 @@ function runSAS(){
         assign_and_preserve runsas_job_pid $!
     fi
 
-    print2debug runsas_job_pid "Outside the dependency loop now"
+    # Print to debug file
+    print2debug runsas_job_pid "Outside the dependency loop now "
 
     # Paint the rest of the message on the terminal
     if [[ "$runsas_job_pid" == "" ]] || [[ -z "$runsas_job_pid" ]]; then
@@ -3459,14 +3465,14 @@ function runSAS(){
             runsas_script_rc=95
             echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_error_tmp_log_file 
         fi
-
-        # Print to debug file
-        print2debug runsas_script_rc "--- Abnormal termination " "---" 
-        print2debug runsas_job_pid
-        print2debug runsas_jobrc
-        print2debug all_jobdep_rc
-        print2debug runsas_script_rc
     fi
+
+    # Print to debug file
+    print2debug runsas_script_rc "--- Just before final job status checks " " ---" 
+    print2debug runsas_job_pid
+    print2debug runsas_jobrc
+    print2debug all_jobdep_rc
+    print2debug runsas_script_rc
 
     # ERROR: Check return code, abort if there's an error in the job run
     if [ $runsas_script_rc -gt 4 ] || [ $runsas_jobrc -gt 4 ]; then
@@ -3494,16 +3500,16 @@ function runSAS(){
         printf "${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
 
         # Log
-        print_2_runsas_session_log "Job Status: ${red}*** ERROR ***${white}"
+        print2log "Job Status: ${red}*** ERROR ***${white}"
 
         # Depending on user setting show the log details
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             printf "%s" "$(<$runsas_error_w_steps_tmp_log_file)"
-            print_2_runsas_session_log "Reason: ${red}\n"
+            print2log "Reason: ${red}\n"
             printf "%s" "$(<$runsas_error_w_steps_tmp_log_file)" >> $RUNSAS_SESSION_LOG_FILE
         else        
             printf "%s" "$(<$runsas_error_tmp_log_file)"
-            print_2_runsas_session_log "Reason: ${red}"
+            print2log "Reason: ${red}"
             printf "%s" "$(<$runsas_error_tmp_log_file)" >> $RUNSAS_SESSION_LOG_FILE
         fi
 
@@ -3521,7 +3527,7 @@ function runSAS(){
         # Print the log filename
         printf "\n${white}${white}"
         printf "${red}Log: ${red}$runsas_logs_root_directory/$current_job_log${white}\n" 
-        print_2_runsas_session_log "${white}Log: ${red}$runsas_logs_root_directory/$current_job_log${white}"  
+        print2log "${white}Log: ${red}$runsas_logs_root_directory/$current_job_log${white}"  
 
         # Line separator
         printf "${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}"
@@ -3530,10 +3536,10 @@ function runSAS(){
         runsas_error_email $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
 
         # Log
-        print_2_runsas_session_log "${white}End: $end_datetime_of_job_timestamp${white}"
+        print2log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Print to debug file
-        print2debug runsas_script_rc "--- Failed " "---" 
+        print2debug runsas_script_rc "--- Inside FAIL " " ---" 
         print2debug runsas_job_pid
         print2debug runsas_jobrc
         print2debug all_jobdep_rc
@@ -3585,13 +3591,13 @@ function runSAS(){
         printf " secs)${job_runtime_diff_pct_string}${white}\n"
 
         # Log
-        print_2_runsas_session_log "Job Status: ${green}DONE${white}"
-        print_2_runsas_session_log "Log: $runsas_logs_root_directory/$current_job_log"
-        print_2_runsas_session_log "End: $end_datetime_of_job_timestamp"
-        print_2_runsas_session_log "Diff: $job_runtime_diff_pct"
+        print2log "Job Status: ${green}DONE${white}"
+        print2log "Log: $runsas_logs_root_directory/$current_job_log"
+        print2log "End: $end_datetime_of_job_timestamp"
+        print2log "Diff: $job_runtime_diff_pct"
 
         # Print to debug file
-        print2debug runsas_script_rc "--- Success " "---" 
+        print2debug runsas_script_rc "--- Inside DONE (SUCCESS) " " ---" 
         print2debug runsas_job_pid
         print2debug runsas_jobrc
         print2debug all_jobdep_rc
@@ -3601,6 +3607,13 @@ function runSAS(){
         runsas_job_completed_email $runsas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
     else
         printf "\n"
+        
+        # Print to debug file
+        print2debug runsas_script_rc "--- Inside ELSE section (something is not right) " " ---" 
+        print2debug runsas_job_pid
+        print2debug runsas_jobrc
+        print2debug all_jobdep_rc
+        print2debug runsas_script_rc
     fi
 
     # Force to run in interactive mode if in run-from-to-job-interactive (-fui) mode
@@ -3719,23 +3732,35 @@ reset $script_mode
 show_runsas_parameters $script_mode X
 
 # Log (session variables)
-print_2_runsas_session_log "================ *** runSAS launched on $start_datetime_of_session_timestamp by ${SUDO_USER:-$USER} *** ================\n"
+print2log "================ *** runSAS launched on $start_datetime_of_session_timestamp by ${SUDO_USER:-$USER} *** ================\n"
 print_unix_user_session_variables file $RUNSAS_SESSION_LOG_FILE
 
 # Log
-print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
-print_2_runsas_session_log "Host: $HOSTNAME"
-print_2_runsas_session_log "PID: $$"
-print_2_runsas_session_log "User: ${SUDO_USER:-$USER}"
-print_2_runsas_session_log "Batch start: $start_datetime_of_session_timestamp"
-print_2_runsas_session_log "Script Mode: $script_mode"
-print_2_runsas_session_log "Script Mode Value 1: $script_mode_value_1"
-print_2_runsas_session_log "Script Mode Value 2: $script_mode_value_2"
-print_2_runsas_session_log "Script Mode Value 3: $script_mode_value_3"
-print_2_runsas_session_log "Script Mode Value 4: $script_mode_value_4"
-print_2_runsas_session_log "Script Mode Value 5: $script_mode_value_5"
-print_2_runsas_session_log "Script Mode Value 6: $script_mode_value_6"
-print_2_runsas_session_log "Script Mode Value 7: $script_mode_value_7"
+print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+print2log "Host: $HOSTNAME"
+print2log "PID: $$"
+print2log "User: ${SUDO_USER:-$USER}"
+print2log "Batch start: $start_datetime_of_session_timestamp"
+print2log "Script Mode: $script_mode"
+print2log "Script Mode Value 1: $script_mode_value_1"
+print2log "Script Mode Value 2: $script_mode_value_2"
+print2log "Script Mode Value 3: $script_mode_value_3"
+print2log "Script Mode Value 4: $script_mode_value_4"
+print2log "Script Mode Value 5: $script_mode_value_5"
+print2log "Script Mode Value 6: $script_mode_value_6"
+print2log "Script Mode Value 7: $script_mode_value_7"
+
+# Print to debug file
+print2debug start_datetime_of_session_timestamp "****** runSAS has been triggered " " ******" 
+print2debug HOSTNAME
+print2debug script_mode
+print2debug script_mode_value_1
+print2debug script_mode_value_2
+print2debug script_mode_value_3
+print2debug script_mode_value_4
+print2debug script_mode_value_5
+print2debug script_mode_value_6
+print2debug script_mode_value_7
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
@@ -3849,9 +3874,12 @@ end_datetime_of_session=`date +%s`
 printf "\n${green}The batch run completed on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
 
 # Log
-print_2_runsas_session_log $TERMINAL_MESSAGE_LINE_WRAPPERS
-print_2_runsas_session_log "Batch end: $end_datetime_of_session_timestamp"
-print_2_runsas_session_log "Total batch runtime: $((end_datetime_of_session-start_datetime_of_session)) seconds"
+print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+print2log "Batch end: $end_datetime_of_session_timestamp"
+print2log "Total batch runtime: $((end_datetime_of_session-start_datetime_of_session)) seconds"
+
+# Print to debug file
+print2debug end_datetime_of_session_timestamp "**************** " " took $((end_datetime_of_session-start_datetime_of_session)) seconds ****************" 
 
 # Send a success email
 runsas_success_email
