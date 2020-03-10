@@ -2121,6 +2121,15 @@ function scan_sas_programs_for_debug_options(){
 #  Out: <NA>
 #------
 function validate_job_list(){
+    # Input parameters
+    vld_job_list_file=$1
+
+    # Other parameters
+    vld_temp_keyval_file=$RUNSAS_TMP_VALIDATION_FILE
+
+    # Create file
+    create_a_file_if_not_exists $vld_temp_keyval_file
+    
     # For those enter key hitters :)
     disable_enter_key keyboard
 	
@@ -2140,12 +2149,25 @@ function validate_job_list(){
 			let job_counter+=1
 
             # Check if there's any discrepancy between flowid and flowname
-            get_keyval $f
+            get_keyval $f $vld_temp_keyval_file
             if [[ -z "${!f}" ]] || [[ "${!f}" = "" ]]; then
-                put_keyval $f $fid # Add an entry
+                put_keyval $f $fid $vld_temp_keyval_file # Add an entry
             else 
-                # Check if the stored fid is same as the current flowid
+                # Check if the stored flow id is same as the current flow id
                 if [[ ! "${!f}" == "$fid" ]]; then   
+                    printf "\n\n${red}*** ERROR: Flow ${black}${red_bg}$f${white}${red} at line #$job_counter in the list seems to have incorrect flowid (NOTE: flowid and flowname must be consistent across the list) *** ${white}"
+                    clear_session_and_exit
+                fi  
+            fi
+
+            # Check if there's any discrepancy between flowid and flowname (other way around too!)
+            flow_fid=flow_$fid 
+            get_keyval $flow_fid $vld_temp_keyval_file
+            if [[ -z "${!flow_fid}" ]] || [[ "${!flow_fid}" = "" ]]; then
+                put_keyval $flow_fid $f $vld_temp_keyval_file # Add an entry
+            else 
+                # Check if the stored flow id is same as the current flow id
+                if [[ ! "${!flow_fid}" == "$f" ]]; then   
                     printf "\n\n${red}*** ERROR: Flow ${black}${red_bg}$f${white}${red} at line #$job_counter in the list seems to have incorrect flowid (NOTE: flowid and flowname must be consistent across the list) *** ${white}"
                     clear_session_and_exit
                 fi  
@@ -2179,7 +2201,7 @@ function validate_job_list(){
 
 			# Check if there are any sastrace options enabled in the program file
 			scan_sas_programs_for_debug_options $vjmode_sas_deployed_jobs_root_directory/$j.$PROGRAM_TYPE_EXTENSION
-		done < $1
+		done < $vld_job_list_file
 	fi
 	
 	# Remove the message, reset the cursor
@@ -3728,6 +3750,7 @@ RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_
 RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
 RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_batch_cursor.parms
 RUNSAS_DEBUG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas.debug
+RUNSAS_TMP_VALIDATION_FILE=$RUNSAS_TMP_DIRECTORY/.tmp.vld
 
 # Bash color codes for the terminal
 set_colors_codes
