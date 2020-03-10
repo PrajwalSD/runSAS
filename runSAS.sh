@@ -1707,7 +1707,7 @@ function evalf(){
 #------
 function store_job_runtime_stats(){
     # Remove the previous entry
-    sed -i "/$1/d" $JOB_STATS_FILE
+    sed -i "/\b$1\b/d" $JOB_STATS_FILE
     # Add new entry 
     echo "$1 $2 ${3}% $4 $5 $6" >> $JOB_STATS_FILE # Add a new entry 
 	echo "$1 $2 ${3}% $4 $5 $6" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
@@ -1719,7 +1719,7 @@ function store_job_runtime_stats(){
 #  Out: <NA>
 #------
 function get_job_hist_runtime_stats(){
-    hist_job_runtime=`awk -v pat="$1" -F" " '$0~pat { print $2 }' $JOB_STATS_FILE | head -1`
+    hist_job_runtime=`awk -v pat="$1 " -F" " '$0~pat { print $2 }' $JOB_STATS_FILE | head -1`
 }
 #------
 # Name: show_job_hist_runtime_stats()
@@ -1736,13 +1736,12 @@ function show_job_hist_runtime_stats(){
 #------
 # Name: show_time_remaining_stats()
 # Desc: Print details about time remaining (if history runtime stats is available)
-#   In: job-name, flow-job-key
+#   In: job-name
 #  Out: <NA>
 #------
 function show_time_remaining_stats(){
     # Input parameters
     st_job=$1
-    st_key=$2
 
     # "Empty" variable (used to clear the screen during refresh of terminal messages)
     st_empty_var="                                     "
@@ -1753,52 +1752,52 @@ function show_time_remaining_stats(){
     # Calculate remaining time stats
 	if [[ "$hist_job_runtime" != "" ]]; then
 		# Record timestamp
-		time_remaining_stats_curr_timestamp=`date +%s`
+		st_curr_timestamp=`date +%s`
 		
 		# Calculate the time remaining in secs.
-		if [ ! -z "$time_remaining_stats_last_shown_timestamp" ]; then
-            let diff_in_seconds=$time_remaining_stats_curr_timestamp-$time_remaining_stats_last_shown_timestamp
-            if [[ $diff_in_seconds -lt 0 ]]; then
-                diff_in_seconds=0
+		if [ ! -z "$st_last_shown_timestamp" ]; then
+            let st_diff_in_seconds=$st_curr_timestamp-$st_last_shown_timestamp
+            if [[ $st_diff_in_seconds -lt 0 ]]; then
+                st_diff_in_seconds=0
             fi
-			let time_remaining_in_secs=$time_remaining_in_secs-$diff_in_seconds
+            assign_and_preserve st_time_remaining_in_secs $st_time_remaining_in_secs-$st_diff_in_seconds
 		else
-			let time_remaining_in_secs=$hist_job_runtime
-            let diff_in_seconds=0
+            assign_and_preserve st_time_remaining_in_secs $hist_job_runtime
+            let st_diff_in_seconds=0
 		fi
-		
+
 		# Show the stats
-        if [[ $time_remaining_in_secs -ge 0 ]]; then
-            time_stats_msg=" ~$time_remaining_in_secs secs remaining...$st_empty_var" 
+        if [[ $st_time_remaining_in_secs -ge 0 ]]; then
+            st_msg=" ~$st_time_remaining_in_secs secs remaining...$st_empty_var" 
         else
-		    time_stats_msg=" additional $((time_remaining_in_secs*-1)) secs elapsed......$st_empty_var" 
+		    st_msg=" additional $((st_time_remaining_in_secs*-1)) secs elapsed......$st_empty_var" 
 		fi
 		
 		# Record the message last shown timestamp
-		time_remaining_stats_last_shown_timestamp=$time_remaining_stats_curr_timestamp
+        assign_and_preserve st_last_shown_timestamp $st_curr_timestamp
 	else
 		# Record timestamp
-		time_since_run_msg_curr_timestamp=`date +%s`
+		st_time_since_run_msg_curr_timestamp=`date +%s`
 		
-		# Calculate the time remaining in secs.
-		if [ ! -z "$time_since_run_msg_last_shown_timestamp" ]; then
-            let diff_in_seconds=$time_since_run_msg_curr_timestamp-$time_since_run_msg_last_shown_timestamp
-            if [[ $diff_in_seconds -lt 0 ]]; then
-                diff_in_seconds=0
+		# Calculate the time elapsed in secs.
+		if [ ! -z "$st_time_since_run_msg_last_shown_timestamp" ]; then
+            let st_diff_in_seconds=$st_time_since_run_msg_curr_timestamp-$st_time_since_run_msg_last_shown_timestamp
+            if [[ $st_diff_in_seconds -lt 0 ]]; then
+                st_diff_in_seconds=0
             fi
-			let time_since_run_in_secs=$time_since_run_in_secs+$diff_in_seconds
+            assign_and_preserve st_time_since_run_in_secs $st_time_since_run_in_secs+$st_diff_in_seconds
 		else
-			let time_since_run_in_secs=0
-            let diff_in_seconds=0
+            assign_and_preserve st_time_since_run_in_secs 0
+            let st_diff_in_seconds=0
 		fi
-		
+
 		# Show the stats
-        if [[ $time_since_run_in_secs -ge 0 ]]; then
-            time_stats_msg=" ~$time_since_run_in_secs secs elapsed...$st_empty_var" 
+        if [[ $st_time_since_run_in_secs -ge 0 ]]; then
+            st_msg=" ~$st_time_since_run_in_secs secs elapsed...$st_empty_var" 
 		fi
 		
 		# Record the message last shown timestamp
-		time_since_run_msg_last_shown_timestamp=$time_since_run_msg_curr_timestamp
+        assign_and_preserve st_time_since_run_msg_last_shown_timestamp $st_time_since_run_msg_curr_timestamp 
 	fi
 }
 #------
@@ -2235,11 +2234,11 @@ function assign_and_preserve(){
 
     # Debug
     if [[ "$anp_opt" == *"DEBUG"* ]]; then
-        printf "DEBUG: anp_varname=$anp_varname anp_value=$left_value --> $anp_vartype $anp_varname=${!anp_varname}\n"
+        printf "DEBUG: anp_varname=$anp_varname anp_value=$anp_value --> $anp_vartype $anp_varname=${!anp_varname}\n" >> $RUNSAS_DEBUG_FILE
     fi
 
     # Finally update the state
-    update_batch_state $anp_varname $anp_value $runsas_jobid
+    update_batch_state $anp_varname ${!anp_varname} $runsas_jobid
 }
 #------
 # Name: create_batch_id()
@@ -3038,10 +3037,14 @@ function runSAS(){
 
     # Reset these variables for each job runs
     runsas_script_rc=0
-    runsas_job_cursor_row_pos=
-    runsas_job_cursor_col_pos=
-    runsas_job_pid=
-    runsas_jobrc=
+    runsas_job_cursor_row_pos=""
+    runsas_job_cursor_col_pos=""
+    runsas_job_pid=""
+    runsas_jobrc=""
+    st_msg=""
+    st_time_since_run_msg_last_shown_timestamp=""
+    st_last_shown_timestamp=""
+    st_time_since_run_in_secs=""
 
     # Print to debug file
     print2debug runsas_script_rc 
@@ -3061,20 +3064,13 @@ function runSAS(){
     # Temporary "error" files
     runsas_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.err
     runsas_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.stepserr
-    runsas_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.errjob
-	
-	# Reset datetime variables
-	time_stats_msg=""
-	time_remaining_stats_last_shown_timestamp=""
-	time_since_run_msg_last_shown_timestamp=""
-
-    # Capture job runtime
-	start_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
-    start_datetime_of_job=`date +%s`
+    runsas_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.errjob	
 
     # Set the start (i.e. pending) return code for the job 
     if [[ -z "$runsas_jobrc" ]] || [[ "$runsas_jobrc" == "" ]]; then
+        # Pending state (initial state of a job)
         assign_and_preserve runsas_jobrc $RC_JOB_PENDING
+        # Print to debug file
         print2debug runsas_jobrc 
     fi
 
@@ -3251,6 +3247,10 @@ function runSAS(){
             # Set the triggered return code
             assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
 
+            # Save the timestamps
+            assign_and_preserve start_datetime_of_job_timestamp "`date '+%Y-%m-%d-%H:%M:%S'`" "STRING"
+            assign_and_preserve start_datetime_of_job "`date +%s`" "STRING"
+
             # Print to debug file
             print2debug runsas_job "Job launched >>> "  
             print2debug runsas_job_pid
@@ -3358,14 +3358,16 @@ function runSAS(){
     no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_logs_root_directory/$current_job_log | wc -l`
 
     # Show time remaining statistics
-    show_time_remaining_stats $runsas_job
+    if [[ $runsas_jobrc -gt $RC_JOB_PENDING ]]; then
+        show_time_remaining_stats $runsas_job
+    fi
 
     # Get the terminal cursor position
     get_current_terminal_cursor_position
 
     # Show progress bar
     if [[ $runsas_jobrc -eq $RC_JOB_TRIGGERED ]]; then
-        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
+        display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$st_msg" $progressbar_color
     fi
     
     # Get runtime stats of the job
@@ -3488,8 +3490,10 @@ function runSAS(){
         display_message_fillers_on_terminal $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 0 N 1
 		
 		# Capture job runtime
-		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
-        end_datetime_of_job=`date +%s`
+		# end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
+        # end_datetime_of_job=`date +%s`
+        assign_and_preserve end_datetime_of_job_timestamp "`date '+%Y-%m-%d-%H:%M:%S'`" "STRING"
+        assign_and_preserve end_datetime_of_job "`date +%s`" "STRING"
 
         # Failure (FAILED) message
         printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=$runsas_jobrc-$runsas_script_rc, took "
@@ -3556,9 +3560,11 @@ function runSAS(){
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job 0 ""
 
         # Capture job runtime
-		end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
-        end_datetime_of_job=`date +%s`
-		
+		# end_datetime_of_job_timestamp=`date '+%Y-%m-%d-%H:%M:%S'`
+        # end_datetime_of_job=`date +%s`
+        assign_and_preserve end_datetime_of_job_timestamp "`date '+%Y-%m-%d-%H:%M:%S'`" "STRING"
+		assign_and_preserve end_datetime_of_job "`date +%s`" "STRING"
+
 		# Get last runtime stats to calculate the difference.
 		get_job_hist_runtime_stats $runsas_job
 		if [[ "$hist_job_runtime" != "" ]]; then
@@ -3636,6 +3642,7 @@ function runSAS(){
 #--------------------------------------------------END OF FUNCTIONS--------------------------------------------------#
 
 # BEGIN: The script execution begins from here.
+clear
 
 # Github URL
 RUNSAS_GITHUB_PAGE=http://github.com/PrajwalSD/runSAS
@@ -3720,7 +3727,7 @@ script_mode_value_7="$8"
 create_batch_id $script_mode
 
 # Clear debug file
-delete_a_file $RUNSAS_DEBUG_FILE
+delete_a_file $RUNSAS_DEBUG_FILE 0
 
 # Show run summary for the last run on user request
 show_last_run_summary $script_mode
