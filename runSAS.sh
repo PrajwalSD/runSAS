@@ -1853,31 +1853,20 @@ function write_skipped_job_details_on_screen(){
 	printf "${grey}(SKIPPED)\n${white}"
 }
 #------
-# Name: debug()
+# Name: print2debug()
 # Desc: Debug code
-#   In: variable, variable-value (optional), debug-file
+#   In: variable, description, prefix, postfix, debug-file (optional)
 #  Out: <NA>
 #------
-function debug(){
+function print2debug(){
     # Input parameters
     debug_var="${1:-DEBUG}"
-    debug_file="${3}" 
-    
-    # Explicit values if specified must be handled
-    if [[ -z "$2" ]]; then
-        debug_var_value=${!1}
-    else
-        debug_var_value=${2}
-    fi
+    debug_prefix="$2"
+    debug_postfix="$3"
+    debug_file="${4:-$RUNSAS_DEBUG_FILE}"
 
-    # Debug file if specified routes the debug info to a file instead of terminal 
-    #if [[ "$ENABLE_DEBUG_MODE" == "Y" ]]; then
-        if [[ "$debug_file" == "" ]]; then
-            printf "${red_bg}DEBUG: $debug_var: $debug_var_value ${white}"
-        else
-            echo "DEBUG: $debug_var: $debug_var_value" >> $debug_file
-        fi
-    #fi
+    # Print to the file
+    printf "\n$debug_prefix ${debug_var}=${!debug_var} $debug_postfix" >> $debug_file
 }
 #------
 # Name: get_name_from_list()
@@ -1917,7 +1906,7 @@ function clear_session_and_exit(){
     if [[ $interactive_mode == 1 ]]; then
         reset
     fi
-    #running_processes_housekeeping ${!runsas_current_job_pid}
+    #running_processes_housekeeping $runsas_job_pid
     printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
@@ -2185,6 +2174,74 @@ function validate_job_list(){
     enable_enter_key keyboard
 }
 #------
+# Name: assign_and_preserve()
+# Desc: Extended bash "let" implementation
+#   In: variable-name, value, options (DEBUG or SUB or NUM or STRING)
+#  Out: <NA> 
+#------
+function assign_and_preserve(){
+    # Input parameters
+    anp_varname=$1
+    anp_value=$2
+    anp_opt=$3
+
+    # String assignment
+    function assign_as_string(){
+        anp_vartype="Character"
+        eval $anp_varname="$anp_value"
+    }
+
+    # Number assignment
+    function assign_as_number(){
+        anp_vartype="Number"
+        eval "let $anp_varname=$anp_value"
+    }
+
+    # Substitution assignment
+    function assign_after_substitution(){
+        anp_vartype="Substitution"
+        if [[ $anp_value =~ $RUNSAS_REGEX_NUMBER ]]; then
+            anp_vartype="Substitution (routed to Number)"
+            assign_as_number
+        elif [[ "$anp_value" == "" ]]; then
+            anp_vartype="Substitution (routed to String)"
+            assign_as_string
+        else
+            anp_vartype="Substitution"
+            eval "$anp_varname=${!anp_value}"
+        fi
+    }
+
+    # Check if it's number or string assignment
+    if [[ "$anp_opt" == *"STRING"* ]]; then
+        # String
+        assign_as_string
+    elif [[ "$anp_opt" == *"SUB"* ]]; then
+        # Number (substitution)
+        assign_after_substitution
+    elif [[ "$anp_opt" == *"NUM"* ]]; then
+        # Number
+        assign_as_number
+    elif [[ $anp_value =~ $RUNSAS_REGEX_STRING ]]; then
+        # String
+        assign_as_string
+    elif [[ "$anp_value" = "" ]]; then
+        # String
+        assign_as_string
+    else 
+        # Default: Number
+        assign_as_number
+    fi
+
+    # Debug
+    if [[ "$anp_opt" == *"DEBUG"* ]]; then
+        printf "DEBUG: anp_varname=$anp_varname anp_value=$left_value --> $anp_vartype $anp_varname=${!anp_varname}\n"
+    fi
+
+    # Finally update the state
+    update_batch_state $anp_varname $anp_value $runsas_jobid
+}
+#------
 # Name: create_batch_id()
 # Desc: Preserve the state of the current batch run in a file for rerun/resume of batches on failure/abort
 #   In: script-mode, batchstate-root-directory (optional)
@@ -2243,9 +2300,9 @@ function update_batch_state(){
     #       <batchid>
     #                `---<batchid>.batch (batch specific parameters, accessible by any jobs in the context of the flow)
     #                `---job
-    #                       `--<jobid>.job (job specifid key-values)
-    #                       `--<jobid>.job (job specifid key-values)
-    #                       `--<jobid>.job (job specifid key-values)
+    #                       `---<jobid>.job (job specifid key-values)
+    #                       `---<jobid>.job (job specifid key-values)
+    #                       `---<jobid>.job (job specifid key-values)
     #                        ...
     #       ... 
     create_a_new_directory --silent $bs_current_batchid_directory 
@@ -2256,7 +2313,7 @@ function update_batch_state(){
     create_a_file_if_not_exists "$bs_current_batchid_jobid_file" 
 
     # Add/update the entry
-    put_keyval $bs_key $bs_value $bs_current_batchid_jobid_file
+    put_keyval $bs_key $bs_value $bs_current_batchid_jobid_file "="
 	
 }
 #------
@@ -2281,17 +2338,51 @@ function inject_batch_state(){
     inj_current_batchid_jobid_file=$inj_current_batchid_job_directory/$inj_jobid.job
 
     # Inject the job state (always in the context of the flow)
-    if [ ! -f $inj_current_batchid_jobid_file ]; then
+    if [ -f $inj_current_batchid_jobid_file ]; then
         . $inj_current_batchid_jobid_file
+        print2debug inj_current_batchid_jobid_file "Injecting"
         if [[ "$opt" == "message" ]]; then
             printf "${green}NOTE: Job state has been restored successfully! (Batch ID: $inj_batchid Job ID: $inj_jobid) ${white}"
         fi
     fi
 }
 #------
+# Name: get_keyval_from_batch_state()
+# Desc: Get a value for a specific key from batch state (for a job within a flow)
+#   In: key, variable (optional, default is the key), batchid, jobid, file-type (JOB or BATCH parameter file), batchstate-root-directory (optional)
+#  Out: <NA>
+#------
+function get_keyval_from_batch_state(){
+    # Input parameters
+    gbs_key=$1
+    gbs_var=${2:-$1}
+    gbs_jobid=${3:-$runsas_jobid}   
+    gbs_batchid=${4:-$global_batchid}
+    gbs_file_type="${5:-JOB}"
+    gbs_batch_root_directory="${6:-$RUNSAS_BATCH_STATE_ROOT_DIRECTORY}"
+
+    # Directories
+    gbs_current_batchid_directory=$gbs_batch_root_directory/$gbs_batchid
+    gbs_current_batchid_job_directory=$gbs_batch_root_directory/$gbs_batchid/.job
+
+    # Files
+    gbs_current_batchid_file=$gbs_current_batchid_directory/$gbs_batchid.batch
+    gbs_current_batchid_jobid_file=$gbs_current_batchid_job_directory/$gbs_jobid.job
+
+    # Choose the file based on the file-type specified by the user
+    if [[ "$gbs_file_type" == "BATCH" ]]; then
+        gbs_keyval_file_selected=$gbs_current_batchid_file
+    else
+        gbs_keyval_file_selected=$gbs_current_batchid_jobid_file
+    fi
+
+    # Get the value for the key 
+    get_keyval $gbs_key $gbs_keyval_file_selected "\=" $gbs_var
+}
+#------
 # Name: put_keyval()
 # Desc: Stores a key-value pair in a file
-#   In: key, value, file
+#   In: key, value, file, delimeter
 #  Out: <NA>
 #------
 function put_keyval(){
@@ -2299,6 +2390,7 @@ function put_keyval(){
     str_key=$1
     str_val=$2
     str_file="${3:-$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE}"
+    str_delim="${4:-\: }"
 
     # Create a file if it doesn't exist
     create_a_file_if_not_exists $str_file
@@ -2308,25 +2400,27 @@ function put_keyval(){
         sed -i "/$str_key/d" $str_file
     fi 
 	# Add the new entry (or update the entry)
-    echo "$str_key: $str_val" >> $str_file # Add a new entry 
+    echo "$str_key$str_delim$str_val" >> $str_file # Add a new entry 
 }
 #------
 # Name: get_keyval()
 # Desc: Check job runtime for the last batch run
-#   In: key, file
+#   In: key, file, delimeter (optional, default is ": "), variable-name (optional, default is key)
 #  Out: <NA>
 #------
 function get_keyval(){
     # Parameters
     ret_key=$1
     ret_file="${2:-$RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE}"
+    ret_delim="${3:-\: }"
+    ret_var=${4:-$1}
 
     # Create a file if it doesn't exist
     create_a_file_if_not_exists $ret_file
 
     # Set the value found in the file to the key
     if [ -f "$ret_file" ]; then
-        eval $ret_key=`awk -v pat="$ret_key" -F": " '$0~pat { print $2 }' $ret_file`
+        eval $ret_var=`awk -v pat="$ret_key" -F"$ret_delim" '$0~pat { print $2 }' $ret_file 2>/dev/null`
     fi   
 }
 #------
@@ -2763,70 +2857,6 @@ function show_server_and_user_details(){
     printf "${white} user\n${white}"
 }
 #------
-# Name: letf()
-# Desc: Extended bash "let" implementation
-#   In: variable-name, value, options (DEBUG or SUB or NUM or STRING)
-#  Out: <NA> 
-#------
-function letf(){
-    # Input parameters
-    letf_varname=$1
-    letf_value=$2
-    letf_opt=$3
-
-    # String 
-    function assign_as_string(){
-        letf_vartype="Character"
-        eval $letf_varname="$letf_value"
-    }
-
-    # Number 
-    function assign_as_number(){
-        letf_vartype="Number"
-        eval "let $letf_varname=$letf_value"
-    }
-
-    # Substitution 
-    function assign_after_substitution(){
-        letf_vartype="Substitution"
-        if [[ $letf_value =~ $RUNSAS_REGEX_NUMBER ]]; then
-            letf_vartype="Substitution (routed to Number)"
-            assign_as_number
-        elif [[ "$letf_value" == "" ]]; then
-            letf_vartype="Substitution (routed to String)"
-            assign_as_string
-        else
-            letf_vartype="Substitution"
-            eval "$letf_varname=${!letf_value}"
-        fi
-    }
-
-    # Check if it's number or string assignment
-    if [[ "$letf_opt" == *"STRING"* ]]; then
-        # String
-        assign_as_string
-    elif [[ "$letf_opt" == *"SUB"* ]]; then
-        # Number (substitution)
-        assign_after_substitution
-    elif [[ "$letf_opt" == *"NUM"* ]]; then
-        # Number
-        assign_as_number
-    elif [[ $letf_value =~ $RUNSAS_REGEX_STRING ]]; then
-        # String
-        assign_as_string
-    elif [[ "$letf_value" = "" ]]; then
-        # String
-        assign_as_string
-    else 
-        # Default: Number
-        assign_as_number
-    fi
-
-    if [[ "$letf_opt" == *"DEBUG"* ]]; then
-        printf "DEBUG: letf_varname=$letf_varname letf_value=$left_value --> $letf_vartype $letf_varname=${!letf_varname}\n"
-    fi
-}
-#------
 # Name: display_progressbar_with_offset()
 # Desc: Calculates the progress bar parameters (https://en.wikipedia.org/wiki/Block_Elements#Character_table & https://www.rapidtables.com/code/text/unicode-characters.html, alternative: Ã¢â€“Ë†)
 #   In: steps-completed, total-steps, offset (-1 or 0), optional-message, active-color
@@ -3002,15 +3032,28 @@ function runSAS(){
 
     # Unique flow-job key for dynamic variable names (same job can be specified in other flows or within the same flow)
     runsas_flow_job_key=${runsas_flowid}_${runsas_jobid}
-    
-    # Dynamic variables
-    runsas_current_jobrc=rc_$runsas_flow_job_key
-    runsas_job_cursor_row_pos=o_row_pos_$runsas_flow_job_key
-    runsas_job_cursor_col_pos=o_col_pos_$runsas_flow_job_key
-    runsas_current_job_pid=pid_$runsas_flow_job_key
+
+    # Print to debug file
+    print2debug runsas_job "\n=======[ Looping " "with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]===== "
 
     # Reset these variables for each job runs
     runsas_script_rc=0
+    runsas_job_cursor_row_pos=
+    runsas_job_cursor_col_pos=
+    runsas_job_pid=
+    runsas_jobrc=
+
+    # Print to debug file
+    print2debug runsas_script_rc 
+    print2debug runsas_job_pid
+    print2debug runsas_jobrc 
+
+    # Inject job state (all job specific variables from previous loop will be restored here)
+    inject_batch_state $global_batchid $runsas_jobid 
+
+    print2debug runsas_script_rc "--- Post Injection " " ---"
+    print2debug runsas_job_pid
+    print2debug runsas_jobrc 
 
     # Increment the job counter for terminal display
     JOB_COUNTER_FOR_DISPLAY=$runsas_jobid
@@ -3019,9 +3062,6 @@ function runSAS(){
     runsas_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.err
     runsas_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.stepserr
     runsas_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.errjob
-
-    # Create batch state preservation files
-    update_batch_state runsas_job $runsas_job $runsas_jobid
 	
 	# Reset datetime variables
 	time_stats_msg=""
@@ -3033,12 +3073,14 @@ function runSAS(){
     start_datetime_of_job=`date +%s`
 
     # Set the start (i.e. pending) return code for the job 
-    if [[ -z "$runsas_current_jobrc" ]] || [[ "${!runsas_current_jobrc}" == "" ]]; then
-        eval "$runsas_current_jobrc=$RC_JOB_PENDING"
+    if [[ -z "$runsas_jobrc" ]] || [[ "$runsas_jobrc" == "" ]]; then
+        assign_and_preserve runsas_jobrc $RC_JOB_PENDING
+        print2debug runsas_jobrc 
     fi
 
     # Skip the loop, if the job has been processed already (even if it is failed)
-    if [[ ${!runsas_current_jobrc} -gt $RC_JOB_TRIGGERED ]]; then
+    if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]]; then
+        print2debug runsas_jobrc "Skipping the loop..."
         continue
     fi
 
@@ -3076,17 +3118,14 @@ function runSAS(){
     print_2_runsas_session_log "Start: $start_datetime_of_job_timestamp"
 
     # Remember the job's row and column position when it's printed on the terminal for the first time (we use this to refresh the line every time as part of the loop)
-    get_keyval $runsas_job_cursor_row_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
-    get_keyval $runsas_job_cursor_col_pos $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
-    if [[ -z "${!runsas_job_cursor_row_pos}" ]] || [[ -z "${!runsas_job_cursor_col_pos}" ]]; then
+    get_keyval_from_batch_state runsas_job_cursor_row_pos 
+    get_keyval_from_batch_state runsas_job_cursor_col_pos 
+    if [[ -z "$runsas_job_cursor_row_pos" ]] || [[ -z "$runsas_job_cursor_col_pos" ]]; then
         # It seems like there's no info for the job, so get the current cursor positions and store in key-value store
         get_current_terminal_cursor_position
         # Set the variables
-        eval "$runsas_job_cursor_row_pos=$current_cursor_row_pos"
-        eval "$runsas_job_cursor_col_pos=$current_cursor_col_pos"
-        # Store it in the key-value store
-        put_keyval $runsas_job_cursor_row_pos ${!runsas_job_cursor_row_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
-        put_keyval $runsas_job_cursor_col_pos ${!runsas_job_cursor_col_pos} $RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE
+        assign_and_preserve runsas_job_cursor_row_pos $current_cursor_row_pos
+        assign_and_preserve runsas_job_cursor_col_pos $current_cursor_col_pos
     fi
 
     # Reset the cursor to the right positions (in every loop based on which job it is)
@@ -3199,20 +3238,20 @@ function runSAS(){
     check_if_the_dir_exists $runsas_app_root_directory $runsas_batch_server_root_directory $runsas_logs_root_directory $runsas_deployed_jobs_root_directory
     check_if_the_file_exists "$runsas_batch_server_root_directory/$runsas_sh" "$runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION"
 
-    #
-
     # Job launch function (standard template for all calls), each PID is monitored by runSAS
     function runsas_launch_the_job(){
-        if [[ ${!runsas_current_jobrc} -eq $RC_JOB_PENDING ]]; then
+        if [[ $runsas_jobrc -eq $RC_JOB_PENDING ]]; then
             nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
-                                                                                    -batch \
-                                                                                    -noterminal \
-                                                                                    -logparm "rollover=session" \
-                                                                                    -sysin $runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
+                                                                        -batch \
+                                                                        -noterminal \
+                                                                        -logparm "rollover=session" \
+                                                                        -sysin $runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
             # Set the triggered return code
-            if [[ "${!runsas_current_jobrc}" == "$RC_JOB_PENDING" ]]; then
-                eval "$runsas_current_jobrc=$RC_JOB_TRIGGERED"
-            fi
+            assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
+
+            # Print to debug file
+            print2debug runsas_jobrc "Launched the job"  
+            print2debug runsas_job_pid
         fi
     }
 
@@ -3220,6 +3259,8 @@ function runSAS(){
     if [[ "$runsas_jobdep_list" == "" ]] || [[ "$runsas_jobdep_list" == "$runsas_jobid" ]]; then
             # No dependency, trigger!
             runsas_launch_the_job
+            # Print to debug file
+            print2debug runsas_jobdep_list "No dependency"
     else
         # Dependency has been specified, loop through each dependent to see if the current job is OK to run
         all_jobdep_rc=0
@@ -3229,24 +3270,35 @@ function runSAS(){
         
         # Dependency check loop begins here
         for runsas_jobdep_i in $runsas_jobdep_list
-        do  
+        do                 
+            print2debug runsas_jobdep_list runsas_jobdep_i "--- Inside the dependency loop now " "---"
+
             # Get the dependent job name (only indices are specified in the job dependency list)
             get_name_from_list $runsas_jobdep_i $JOB_LIST_FILE 4 $RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER "Y"  
 
             # Get dependent job's return code
-            runsas_jobdep_i_jobrc=rc_${runsas_flowid}_${runsas_jobdep_i}
-            
+            get_keyval_from_batch_state runsas_jobrc runsas_jobdep_i_jobrc $runsas_jobdep_i
+
             # Sum up the return codes (of all dependents) to evaluate the dependency graph
-            let all_jobdep_rc=$all_jobdep_rc+${!runsas_jobdep_i_jobrc}
+            let all_jobdep_rc=$all_jobdep_rc+$runsas_jobdep_i_jobrc
         
             # Set the variables for "gate" success criteria (for OR & AND operators)
-            if [[ ${!runsas_jobdep_i_jobrc} -ge 0 ]] && [[ ${!runsas_jobdep_i_jobrc} -le $runsas_jobrc_max ]]; then
+            if [[ $runsas_jobdep_i_jobrc -ge 0 ]] && [[ $runsas_jobdep_i_jobrc -le $runsas_jobrc_max ]]; then
                 OR_check_passed=1
             fi
             if [[ $all_jobdep_rc -ge 0 ]] && [[ $all_jobdep_rc -le $all_jobdep_rc_max ]]; then 
                 AND_check_passed=1
             fi
-            
+
+            print2debug runsas_script_rc "--- After dependency checks " "---" 
+            print2debug runsas_job_pid 
+            print2debug runsas_jobrc 
+            print2debug all_jobdep_rc 
+            print2debug runsas_jobdep_i_jobrc 
+            print2debug OR_check_passed 
+            print2debug AND_check_passed 
+            print2debug runsas_logic_op 
+
             # Finally, evaluate the dependency:
             # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user) and this is the default if nothing has been specified
             # (2) OR: One of the job has completed
@@ -3268,16 +3320,17 @@ function runSAS(){
     total_no_of_steps_in_a_job=`grep -o 'Step:' $runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION | wc -l`
 
     # Get the PID details
-    if [[ ${!runsas_current_jobrc} -eq $RC_JOB_TRIGGERED ]] && [[ "${!runsas_current_job_pid}" == "" ]]; then
-        eval "$runsas_current_job_pid=$!"
+    if [[ $runsas_jobrc -eq $RC_JOB_TRIGGERED ]] && [[ "$runsas_job_pid" == "" ]]; then
+        assign_and_preserve runsas_job_pid $!
     fi
 
+    print2debug runsas_job_pid "Outside the dependency loop now"
+
     # Paint the rest of the message on the terminal
-    if [[ "${!runsas_current_job_pid}" == "" ]]; then
+    if [[ "$runsas_job_pid" == "" ]] || [[ -z "$runsas_job_pid" ]]; then
         printf "${grey}is waiting for dependencies to complete${white}"
     else
-        printf "${white}is running with PID ${!runsas_current_job_pid}${white}"
-        
+        printf "${white}is running with PID $runsas_job_pid${white}"
         # Runtime (history)
 	    show_job_hist_runtime_stats $runsas_job
 	fi
@@ -3295,10 +3348,6 @@ function runSAS(){
         current_job_log=${current_job_log##/*/}
     done
 
-    echo "all_jobdep_rc_max=$all_jobdep_rc_max" >> .tmp/runsas.debug
-    echo "OR_check_passed=$OR_check_passed AND_check_passed=$AND_check_passed" >> .tmp/runsas.debug
-    echo "$runsas_current_jobrc=${!runsas_current_jobrc}" >> .tmp/runsas.debug
-
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
     no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_logs_root_directory/$current_job_log | wc -l`
 
@@ -3309,7 +3358,7 @@ function runSAS(){
     get_current_terminal_cursor_position
 
     # Show progress bar
-    if [[ ${!runsas_current_jobrc} -eq $RC_JOB_TRIGGERED ]]; then
+    if [[ $runsas_jobrc -eq $RC_JOB_TRIGGERED ]]; then
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "$time_stats_msg" $progressbar_color
     fi
     
@@ -3336,9 +3385,9 @@ function runSAS(){
         display_progressbar_with_offset $no_of_steps_completed_in_log $total_no_of_steps_in_a_job -1 "" $progressbar_color
         # Optionally, abort the job run on seeing an error
         if [[ "$ABORT_ON_ERROR" == "Y" ]]; then
-            if [[ ! -z `ps -p ${!runsas_current_job_pid} -o comm=` ]]; then
-                kill_a_pid ${!runsas_current_job_pid}
-                wait ${!runsas_current_job_pid} 2>/dev/null
+            if [[ ! -z `ps -p $runsas_job_pid -o comm=` ]]; then
+                kill_a_pid $runsas_job_pid
+                wait $runsas_job_pid 2>/dev/null
                 break
             fi
         fi
@@ -3352,18 +3401,19 @@ function runSAS(){
     egrep -m${job_error_display_count_for_egrep} -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_logs_root_directory/$current_job_log > $runsas_error_w_steps_tmp_log_file
 
     # Check the job status and it's return code (check if it is still running too)
-    if [[ -z ${!runsas_current_job_pid} ]] || [[ "${!runsas_current_job_pid}" == "" ]]; then
-        eval "$runsas_current_jobrc=$RC_JOB_PENDING";
+    if [[ -z $runsas_job_pid ]] || [[ "$runsas_job_pid" == "" ]]; then
+        assign_and_preserve runsas_jobrc $RC_JOB_PENDING
     else
-        if ! [[ -z `ps -p ${!runsas_current_job_pid} -o comm=` ]]; then
-            eval "$runsas_current_jobrc=$RC_JOB_TRIGGERED";
+        if ! [[ -z `ps -p $runsas_job_pid -o comm=` ]]; then
+            assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
+
         else
-            eval "$runsas_current_jobrc=$?";
+            assign_and_preserve runsas_jobrc $?
         fi    
     fi
 
     # Keep a track of jobs that has been triggered and has completed it's run (any state DONE/FAIL)
-    if [[ ${!runsas_current_jobrc} -ge 0 ]]; then
+    if [[ $runsas_jobrc -ge 0 ]]; then
         # Add to the runSAS array that keeps a track of how many jobs have completed the run
         if [[ ${#runsas_jobs_run_array[@]} -eq 0 ]]; then # Empty array!
            runsas_jobs_run_array+=( "$runsas_flow_job_key" ) 
@@ -3371,7 +3421,7 @@ function runSAS(){
             # Add new jobs only!
             for (( r=0; r<${#runsas_jobs_run_array[@]}; r++ )); do
                 if [[ "${runsas_jobs_run_array[r]}" == "$runsas_flow_job_key" ]]; then
-                    runsas_current_job_has_run_already=1
+                    runsas_job_has_run_already=1
                 else
                     runsas_jobs_run_array+=( "$runsas_flow_job_key" )
                 fi
@@ -3385,7 +3435,7 @@ function runSAS(){
     fi
 
     # Double-check to ensure the job had no errors after the job completion
-    if [ $runsas_script_rc -le 4 ] || [ ${!runsas_current_jobrc} -le 4 ]; then
+    if [ $runsas_script_rc -le 4 ] || [ $runsas_jobrc -le 4 ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
 		$RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} -E --color "$ERROR_CHECK_SEARCH_STRING" -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT $runsas_logs_root_directory/$current_job_log > $runsas_error_tmp_log_file
 
@@ -3400,7 +3450,7 @@ function runSAS(){
     fi
 
     # Just check if the log looks complete to detect process kill by OS when resource utilization is above the allowed limit.
-    if [ $runsas_script_rc -le 4 ] && [ ${!runsas_current_jobrc} -le 4 ] && [ ${!runsas_current_jobrc} -ge 0 ] && [ ! -z `ps -p ${!runsas_current_job_pid} -o comm=` ]; then
+    if [ $runsas_script_rc -le 4 ] && [ $runsas_jobrc -le 4 ] && [ $runsas_jobrc -ge 0 ] && [ ! -z `ps -p $runsas_job_pid -o comm=` ]; then
         # Check if there are any errors in the logs (as it updates, in real-time)
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_logs_root_directory/$current_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_error_tmp_log_file
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_logs_root_directory/$current_job_log | grep "NOTE: The SAS System used:" >> $runsas_error_tmp_log_file
@@ -3409,10 +3459,17 @@ function runSAS(){
             runsas_script_rc=95
             echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_error_tmp_log_file 
         fi
+
+        # Print to debug file
+        print2debug runsas_script_rc "--- Abnormal termination " "---" 
+        print2debug runsas_job_pid
+        print2debug runsas_jobrc
+        print2debug all_jobdep_rc
+        print2debug runsas_script_rc
     fi
 
     # ERROR: Check return code, abort if there's an error in the job run
-    if [ $runsas_script_rc -gt 4 ] || [ ${!runsas_current_jobrc} -gt 4 ]; then
+    if [ $runsas_script_rc -gt 4 ] || [ $runsas_jobrc -gt 4 ]; then
         # Find the last job that ran on getting an error (there can be many jobs within a job in the world of SAS!)
         sed -n '1,/^ERROR:/ p' $runsas_logs_root_directory/$current_job_log | sed 's/Job:             Sngl Column//g' | grep "Job:" | tail -
 
@@ -3429,7 +3486,7 @@ function runSAS(){
         end_datetime_of_job=`date +%s`
 
         # Failure (FAILED) message
-        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=${!runsas_current_jobrc}-$runsas_script_rc, took "
+        printf "\b${white}${red}(FAILED on ${end_datetime_of_job_timestamp} rc=$runsas_jobrc-$runsas_script_rc, took "
         printf "%04d" $((end_datetime_of_job-start_datetime_of_job))
         printf " secs)${white}\n"
 
@@ -3475,10 +3532,17 @@ function runSAS(){
         # Log
         print_2_runsas_session_log "${white}End: $end_datetime_of_job_timestamp${white}"
 
+        # Print to debug file
+        print2debug runsas_script_rc "--- Failed " "---" 
+        print2debug runsas_job_pid
+        print2debug runsas_jobrc
+        print2debug all_jobdep_rc
+        print2debug runsas_script_rc
+
         # Clear the session
         clear_session_and_exit
 
-    elif [ $runsas_script_rc -le 4 ] && [ ${!runsas_current_jobrc} -le 4 ] && [ ${!runsas_current_jobrc} -ge 0 ]; then
+    elif [ $runsas_script_rc -le 4 ] && [ $runsas_jobrc -le 4 ] && [ $runsas_jobrc -ge 0 ]; then
 
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
@@ -3525,6 +3589,13 @@ function runSAS(){
         print_2_runsas_session_log "Log: $runsas_logs_root_directory/$current_job_log"
         print_2_runsas_session_log "End: $end_datetime_of_job_timestamp"
         print_2_runsas_session_log "Diff: $job_runtime_diff_pct"
+
+        # Print to debug file
+        print2debug runsas_script_rc "--- Success " "---" 
+        print2debug runsas_job_pid
+        print2debug runsas_jobrc
+        print2debug all_jobdep_rc
+        print2debug runsas_script_rc
 
         # Send an email (silently)
         runsas_job_completed_email $runsas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
@@ -3634,6 +3705,9 @@ script_mode_value_7="$8"
 
 # Create batch id
 create_batch_id $script_mode
+
+# Clear debug file
+delete_a_file $RUNSAS_DEBUG_FILE
 
 # Show run summary for the last run on user request
 show_last_run_summary $script_mode
