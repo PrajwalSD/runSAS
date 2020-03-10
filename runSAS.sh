@@ -2125,7 +2125,7 @@ function validate_job_list(){
     disable_enter_key keyboard
 	
 	# Set the wait message parameters
-	vjmode_show_wait_message="Checking few things in the server and getting things ready, please wait...."  
+	vjmode_show_wait_message="Checking few things in the server, and getting things ready for the batch run, please wait...."  
 	
 	# Show message
 	printf "\n${red}$vjmode_show_wait_message${white}"
@@ -2134,10 +2134,28 @@ function validate_job_list(){
 	job_counter=0
 	
 	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j(run-a-job) mode
-		while IFS='|' read -r fid fname jid j jdep op jrc o so bservdir bsh blogdir bjobdir; do
+		while IFS='|' read -r fid f jid j jdep op jrc o so sappdir bservdir bsh blogdir bjobdir; do
 
             # Counter for the job
 			let job_counter+=1
+
+            # Check if there's any discrepancy between flowid and flowname
+            get_keyval $f
+            if [[ -z "${!f}" ]] || [[ "${!f}" = "" ]]; then
+                put_keyval $f $fid # Add an entry
+            else 
+                # Check if the stored fid is same as the current flowid
+                if [[ ! "${!f}" == "$fid" ]]; then   
+                    printf "\n\n${red}*** ERROR: Flow ${black}${red_bg}$f${white}${red} at line #$job_counter in the list seems to have incorrect flowid (NOTE: flowid and flowname must be consistent across the list) *** ${white}"
+                    clear_session_and_exit
+                fi  
+            fi
+
+            # Check if the jobid is unique across the list
+            if [[ $job_counter -ne $jid ]]; then
+                printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter in the list seems to have incorrect jobid (NOTE: jobid must be unique across all flows and must be in ascending order) *** ${white}"
+                clear_session_and_exit
+            fi
 
             # Set defaults if nothing is specified
             vjmode_sas_deployed_jobs_root_directory="${bjobdir:-$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY}"
@@ -3062,9 +3080,9 @@ function runSAS(){
     JOB_COUNTER_FOR_DISPLAY=$runsas_jobid
 
     # Temporary "error" files
-    runsas_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.err
-    runsas_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.stepserr
-    runsas_errored_job_file=$RUNSAS_TMP_DIRECTORY/${runsas_flowid}_${runsas_flowid}_${runsas_jobid}.errjob	
+    runsas_error_tmp_log_file=$RUNSAS_TMP_DIRECTORY/.$runsas_flow_job_key.err
+    runsas_error_w_steps_tmp_log_file=$RUNSAS_TMP_DIRECTORY/.$runsas_flow_job_key.stepserr
+    runsas_errored_job_file=$RUNSAS_TMP_DIRECTORY/.$runsas_flow_job_key.errjob	
 
     # Set the start (i.e. pending) return code for the job 
     if [[ -z "$runsas_jobrc" ]] || [[ "$runsas_jobrc" == "" ]]; then
@@ -3288,9 +3306,13 @@ function runSAS(){
             # Set the variables for "gate" success criteria (for OR & AND operators)
             if [[ $runsas_jobdep_i_jobrc -ge 0 ]] && [[ $runsas_jobdep_i_jobrc -le $runsas_jobrc_max ]]; then
                 OR_check_passed=1
+            else
+                OR_check_passed=0
             fi
             if [[ $all_jobdep_rc -ge 0 ]] && [[ $all_jobdep_rc -le $all_jobdep_rc_max ]]; then 
                 AND_check_passed=1
+            else
+                AND_check_passed=0
             fi
 
             # Print to debug file
