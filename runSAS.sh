@@ -1933,23 +1933,11 @@ function move_terminal_cursor(){
     # Input parameters
 	target_row_pos=$1
 	target_col_pos=$2
-    target_row_offset=${3:-0}
-    target_col_offset=${4:-0}
-	
-    # Get current terminal cursor positions (returns two vars: $current_cursor_row_pos and $current_cursor_col_pos)
-	get_current_terminal_cursor_position
-	
-    # Calculate the offset from current to the target (row and colum)
-	let row_offset=$current_cursor_row_pos-$target_row_pos-$target_row_offset
-	let col_offset=$current_cursor_col_pos-$target_col_offset
+    target_row_offset=${3:-1}
+    target_col_offset=${4:-1}
 
 	# Go to the specified row
-	for (( i=1; i<=$row_offset; i++ )); do
-        echo -ne '\033M' # Scroll up one row at a time
-    done
-	
-	# Go to the specified column
-	echo -ne "\033[50D\033[${col_offset}C" 
+    tput cup $((target_row_pos-target_row_offset)) $((target_col_pos-target_col_offset))
 }
 #------
 # Name: display_message_fillers_on_terminal()
@@ -2136,6 +2124,9 @@ function validate_job_list(){
 	
 	# Show message
 	printf "\n${red}$vjmode_show_wait_message${white}"
+
+    # Sleep 
+    sleep 1
 	
 	# Reset the job counter for the validation routine
 	job_counter=0
@@ -2176,6 +2167,30 @@ function validate_job_list(){
                 printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter in the list seems to have incorrect jobid (NOTE: jobid must be unique across all flows and must be in ascending order) *** ${white}"
                 clear_session_and_exit
             fi
+
+            # Validate job dependencies
+            if [[ "$jdep" == "" ]]; then
+                jdep=$jid
+            else
+                orig_IFS=$IFS
+                IFS=','
+            fi
+            jdep_array=( $jdep )
+            jdep_array_elem_count=${#jdep_array[@]}
+            if [[ $jdep_array_elem_count -gt $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
+                printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (total jobs: $TOTAL_NO_OF_JOBS_COUNTER_CMD, dependent jobs: $jdep_array_elem_count) *** ${white}"
+                clear_session_and_exit
+            fi
+            for (( i=0; i<${jdep_array_elem_count}; i++ ));
+            do                 
+                jdep_i="${jdep_array[i]}"
+                if [[ $jdep_i -gt $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
+                    printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (job $jdep_i not found in the list, total jobs: $TOTAL_NO_OF_JOBS_COUNTER_CMD) *** ${white}"
+                    clear_session_and_exit
+                 fi
+            done
+            IFS=$orig_IFS
+            
 
             # Set defaults if nothing is specified
             vjmode_sas_deployed_jobs_root_directory="${bjobdir:-$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY}"
@@ -2377,7 +2392,7 @@ function inject_batch_state(){
     # Inject the job state (always in the context of the flow)
     if [ -f $inj_current_batchid_jobid_file ]; then
         . $inj_current_batchid_jobid_file
-        print2debug inj_current_batchid_jobid_file "Injecting"
+        print2debug inj_current_batchid_jobid_file "Injecting batch state file: "
         if [[ "$opt" == "message" ]]; then
             printf "${green}NOTE: Job state has been restored successfully! (Batch ID: $inj_batchid Job ID: $inj_jobid) ${white}"
         fi
@@ -2531,12 +2546,12 @@ function redeploy_sas_jobs(){
 				# Get the job name if it is the index
 				if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 					printf "\n"
-					get_name_from_list $depjob_from_job $depjob_job_file
+					get_name_from_list $depjob_from_job $depjob_job_file 1
 					depjob_from_job_index=$depjob_from_job
 					depjob_from_job=${job_name_from_the_list}
 				fi
 				if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-					get_name_from_list $depjob_to_job $depjob_job_file
+					get_name_from_list $depjob_to_job $depjob_job_file 1
 					depjob_to_job_index=$depjob_to_job
 					depjob_to_job=${job_name_from_the_list}
 				fi
@@ -2579,12 +2594,12 @@ function redeploy_sas_jobs(){
 					# Get the job name if it is the index
 					if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 						printf "\n"
-						get_name_from_list $depjob_from_job $depjob_job_file
+						get_name_from_list $depjob_from_job $depjob_job_file 1
 						depjob_from_job_index=$depjob_from_job
 						depjob_from_job=${job_name_from_the_list}
 					fi
 					if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-						get_name_from_list $depjob_to_job $depjob_job_file
+						get_name_from_list $depjob_to_job $depjob_job_file 1
 						depjob_to_job_index=$depjob_to_job
 						depjob_to_job=${job_name_from_the_list}
 					fi
@@ -2830,7 +2845,7 @@ function convert_job_index_to_job_names(){
                 INDEX_MODE_FIRST_JOB_NUMBER=0
                 if [[ ${#RUNSAS_PARAMETERS_ARRAY[first_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
                     printf "\n"
-                    get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} $JOB_LIST_FILE 1
+                    get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} $JOB_LIST_FILE 4
                     INDEX_MODE_FIRST_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
                     eval "script_mode_value_$first_value_p='${job_name_from_the_list}'";
                 else
@@ -2844,7 +2859,7 @@ function convert_job_index_to_job_names(){
             if [[ "${RUNSAS_PARAMETERS_ARRAY[second_value_p]}" != "" ]]; then 
                 INDEX_MODE_SECOND_JOB_NUMBER=0
                 if [[ ${#RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-                    get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} $JOB_LIST_FILE 1
+                    get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} $JOB_LIST_FILE 4
                     INDEX_MODE_SECOND_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
                     eval "script_mode_value_$second_value_p='${job_name_from_the_list}'";
                 else
@@ -3063,9 +3078,20 @@ function runSAS(){
     # Disable carriage return (ENTER key) to stop user from messing up the layout on terminal
     disable_enter_key keyboard
 
-    # Job dependencies are specifed using "space" as delimeter, convert it to an array for easy manipulation later
+    # Job dependencies are specifed using "," as delimeter, convert it to an array for easy manipulation later
+    if [[ "$runsas_jobdep_list" == "" ]]; then
+        runsas_jobdep_list=$runsas_jobid
+    else
+        orig_IFS=$IFS
+        IFS=','
+    fi
+    
+    # Convert it to array
     runsas_jobdep_array=( $runsas_jobdep_list )
     runsas_jobdep_array_elem_count=${#runsas_jobdep_array[@]}
+
+    # Reset the IFS
+    IFS=$orig_IFS
 
     # Unique flow-job key for dynamic variable names (same job can be specified in other flows or within the same flow)
     runsas_flow_job_key=${runsas_flowid}_${runsas_jobid}
@@ -3073,7 +3099,7 @@ function runSAS(){
     # Print to debug file
     print2debug runsas_job "\n=======[ Looping " " with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]===== "
 
-    # Reset these variables for each job runs
+    # Reset these job-specific variables for each job runs (the state is injected subsequently)
     runsas_script_rc=0
     runsas_job_cursor_row_pos=""
     runsas_job_cursor_col_pos=""
@@ -3085,6 +3111,20 @@ function runSAS(){
     st_time_since_run_in_secs=""
 
     # Print to debug file
+    print2debug runsas_flowid
+    print2debug runsas_flow 
+    print2debug runsas_jobid
+    print2debug runsas_job
+    print2debug runsas_jobdep_list
+    print2debug runsas_logic_op
+    print2debug runsas_jobrc_max
+    print2debug runsas_opt
+    print2debug runsas_subopt
+    print2debug runsas_app_root_directory
+    print2debug runsas_batch_server_root_directory
+    print2debug runsas_sh
+    print2debug runsas_logs_root_directory
+    print2debug runsas_deployed_jobs_root_directory
     print2debug runsas_script_rc 
     print2debug runsas_job_pid
     print2debug runsas_jobrc 
@@ -3114,7 +3154,7 @@ function runSAS(){
 
     # Skip the loop, if the job has been processed already (even if it is failed)
     if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]]; then
-        print2debug runsas_jobrc "Skipping the loop as the job is still running...) "
+        print2debug runsas_jobrc "Skipping the loop as the job is still running... "
         continue
     fi
 
@@ -3165,7 +3205,7 @@ function runSAS(){
     fi
 
     # Reset the cursor to the right positions (in every loop based on which job it is)
-    move_terminal_cursor $runsas_job_cursor_row_pos $runsas_job_cursor_col_pos 0 2
+    move_terminal_cursor $runsas_job_cursor_row_pos $runsas_job_cursor_col_pos
 
     # Run all the jobs post specified job (including that specified job)
     run_from_a_job_mode_check
@@ -3290,11 +3330,14 @@ function runSAS(){
             assign_and_preserve start_datetime_of_job "`date +%s`" "STRING"
 
             # Print to debug file
-            print2debug runsas_job "Job launched >>> "  
+            print2debug runsas_job "Job launched (SUCCESS) >>> "  
             print2debug runsas_job_pid
             print2debug runsas_jobrc
         fi
     }
+
+    # Reset the dependent job run counter
+    count_of_dep_jobs_that_has_run=0
 
     # No dependency has been specified or specified as self-dependent
     if [[ "$runsas_jobdep_list" == "" ]] || [[ "$runsas_jobdep_list" == "$runsas_jobid" ]]; then
@@ -3303,46 +3346,49 @@ function runSAS(){
             # Print to debug file
             print2debug runsas_jobdep_list "No dependency "
     else
-        # Dependency has been specified, loop through each dependent to see if the current job is OK to run
-        all_jobdep_rc=0
-
-        # Calculate the return code allowed for all dependents (i.e. dependent job count x job rc specificed by the user)
-        all_jobdep_rc_max=`bc <<< "scale = 0; $runsas_jobdep_array_elem_count * $runsas_jobrc_max"`
-        
         # Dependency check loop begins here
-        for runsas_jobdep_i in $runsas_jobdep_list
+        for (( i=0; i<${runsas_jobdep_array_elem_count}; i++ ));
         do                 
-            print2debug runsas_jobdep_list runsas_jobdep_i "--- Inside the dependency loop now " " ---"
-
-            # Get the dependent job name (only indices are specified in the job dependency list)
-            get_name_from_list $runsas_jobdep_i $JOB_LIST_FILE 4 $RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER "Y"  
+            # Get one dependency at a time, check the RC
+            runsas_jobdep_i="${runsas_jobdep_array[i]}"
+    
+            print2debug i "--- Inside the dependency loop now " " ---"
+            print2debug runsas_jobdep_i
 
             # Get dependent job's return code
-            get_keyval_from_batch_state runsas_jobrc runsas_jobdep_i_jobrc $runsas_jobdep_i
-
-            # Sum up the return codes (of all dependents) to evaluate the dependency graph
-            let all_jobdep_rc=$all_jobdep_rc+$runsas_jobdep_i_jobrc
+            if [[ $runsas_jobdep_i -eq $runsas_jobid ]]; then
+                runsas_jobdep_i_jobrc=0 # Self dependency!
+            else
+                get_keyval_from_batch_state runsas_jobrc runsas_jobdep_i_jobrc $runsas_jobdep_i
+            fi
         
-            # Set the variables for "gate" success criteria (for OR & AND operators)
+            # Keep a track of how many jobs have run (and see if they have run with 0 <= RC <= maxRC specified by the user in the job list)
             if [[ $runsas_jobdep_i_jobrc -ge 0 ]] && [[ $runsas_jobdep_i_jobrc -le $runsas_jobrc_max ]]; then
+                let count_of_dep_jobs_that_has_run=$count_of_dep_jobs_that_has_run+1
+            fi
+
+            # Gate criteria (AND/OR)
+            # AND gate: all of the dependent jobs have run with 0 <= RC <= maxRC
+            #  OR gate: any one of the job has run with 0 <= RC <= maxRC
+            if [[ $count_of_dep_jobs_that_has_run -ge 1 ]]; then 
                 OR_check_passed=1
+                if [[ $count_of_dep_jobs_that_has_run -ge ${runsas_jobdep_array_elem_count} ]]; then
+                    AND_check_passed=1
+                else
+                    AND_check_passed=0
+                fi
             else
                 OR_check_passed=0
             fi
-            if [[ $all_jobdep_rc -ge 0 ]] && [[ $all_jobdep_rc -le $all_jobdep_rc_max ]]; then 
-                AND_check_passed=1
-            else
-                AND_check_passed=0
-            fi
 
             # Print to debug file
-            print2debug runsas_script_rc "--- Post-dependency checks " " ---" 
+            print2debug runsas_script_rc "--- Post dependency checks " " ---" 
             print2debug runsas_job_pid 
             print2debug runsas_jobrc 
-            print2debug all_jobdep_rc 
             print2debug runsas_jobdep_i_jobrc 
             print2debug runsas_logic_op 
             print2debug runsas_jobrc_max
+            print2debug count_of_dep_jobs_that_has_run
             print2debug OR_check_passed 
             print2debug AND_check_passed 
 
@@ -3376,7 +3422,19 @@ function runSAS(){
 
     # Paint the rest of the message on the terminal
     if [[ "$runsas_job_pid" == "" ]] || [[ -z "$runsas_job_pid" ]]; then
-        printf "${grey}is waiting for dependencies to complete${white}"
+        depjob_wait_msg=""
+        for (( i=0; i<${runsas_jobdep_array_elem_count}; i++ ));
+        do                 
+            # One dependent at a time
+            runsas_jobdep_i="${runsas_jobdep_array[i]}"
+            # Get dependent job's return code
+            get_keyval_from_batch_state runsas_jobrc runsas_jobdep_i_jobrc $runsas_jobdep_i
+            # Construct the message string 
+            if [[ $runsas_jobdep_i_jobrc -lt 0 ]]; then
+                depjob_wait_msg+="$runsas_jobdep_i "
+            fi
+        done
+        printf "${grey}is waiting for the dependent jobs ($runsas_jobdep_list) to complete, pending job(s): $depjob_wait_msg${white}" 
     else
         printf "${white}is running with PID $runsas_job_pid${white}"
         # Runtime (history)
@@ -3387,7 +3445,7 @@ function runSAS(){
     printf "${white} ${green}"
 
     # Sleep before the log is generated
-    sleep 0.5
+    sleep 0.25
 
     # Get the current job log filename (absolute path), wait until the log is generated...
     while [[ ! "$current_job_log" =~ "log" ]]; do 
@@ -3515,7 +3573,6 @@ function runSAS(){
     print2debug runsas_script_rc "--- Just before final job status checks " " ---" 
     print2debug runsas_job_pid
     print2debug runsas_jobrc
-    print2debug all_jobdep_rc
     print2debug runsas_script_rc
 
     # ERROR: Check return code, abort if there's an error in the job run
@@ -3585,10 +3642,9 @@ function runSAS(){
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Print to debug file
-        print2debug runsas_script_rc "--- Inside FAIL " " ---" 
+        print2debug runsas_script_rc "--- Inside ERROR/FAIL " " ---" 
         print2debug runsas_job_pid
         print2debug runsas_jobrc
-        print2debug all_jobdep_rc
         print2debug runsas_script_rc
 
         # Clear the session
@@ -3648,7 +3704,6 @@ function runSAS(){
         print2debug runsas_script_rc "--- Inside DONE (SUCCESS) " " ---" 
         print2debug runsas_job_pid
         print2debug runsas_jobrc
-        print2debug all_jobdep_rc
         print2debug runsas_script_rc
 
         # Send an email (silently)
@@ -3657,10 +3712,9 @@ function runSAS(){
         printf "\n"
         
         # Print to debug file
-        print2debug runsas_script_rc "--- Inside ELSE section (something is not right) " " ---" 
+        print2debug runsas_script_rc "--- Inside ELSE section (WARNING: empty section) " " ---" 
         print2debug runsas_job_pid
         print2debug runsas_jobrc
-        print2debug all_jobdep_rc
         print2debug runsas_script_rc
     fi
 
@@ -3840,7 +3894,7 @@ show_the_update_compatible_script_version_number $1
 display_welcome_ascii_banner
 
 # Dependency checks on each launch
-check_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf
+check_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf tput
 
 # Show intro message (only shown once)
 show_first_launch_intro_message
