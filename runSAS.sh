@@ -2125,10 +2125,8 @@ function validate_job_list(){
     vld_job_list_file=$1
 
     # Other parameters
-    vld_temp_keyval_file=$RUNSAS_TMP_VALIDATION_FILE
-
-    # Create file
-    create_a_file_if_not_exists $vld_temp_keyval_file
+    vld_temp_flowname_keyval_file=$RUNSAS_TMP_FLOWNAME_VALIDATION_FILE
+    vld_temp_flowid_keyval_file=$RUNSAS_TMP_FLOWID_VALIDATION_FILE
     
     # For those enter key hitters :)
     disable_enter_key keyboard
@@ -2149,9 +2147,9 @@ function validate_job_list(){
 			let job_counter+=1
 
             # Check if there's any discrepancy between flowid and flowname
-            get_keyval $f $vld_temp_keyval_file
+            get_keyval $f $vld_temp_flowid_keyval_file
             if [[ -z "${!f}" ]] || [[ "${!f}" = "" ]]; then
-                put_keyval $f $fid $vld_temp_keyval_file # Add an entry
+                put_keyval $f $fid $vld_temp_flowid_keyval_file # Add an entry
             else 
                 # Check if the stored flow id is same as the current flow id
                 if [[ ! "${!f}" == "$fid" ]]; then   
@@ -2162,9 +2160,9 @@ function validate_job_list(){
 
             # Check if there's any discrepancy between flowid and flowname (other way around too!)
             flow_fid=flow_$fid 
-            get_keyval $flow_fid $vld_temp_keyval_file
+            get_keyval $flow_fid $vld_temp_flowname_keyval_file
             if [[ -z "${!flow_fid}" ]] || [[ "${!flow_fid}" = "" ]]; then
-                put_keyval $flow_fid $f $vld_temp_keyval_file # Add an entry
+                put_keyval $flow_fid $f $vld_temp_flowname_keyval_file # Add an entry
             else 
                 # Check if the stored flow id is same as the current flow id
                 if [[ ! "${!flow_fid}" == "$f" ]]; then   
@@ -3750,7 +3748,8 @@ RUNSAS_GLOBAL_USER_PARAMETER_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_
 RUNSAS_SAS_SH_TRACE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_sas_sh.trace
 RUNSAS_TERM_CURSOR_POS_KEYVALUE_FILE=$RUNSAS_TMP_DIRECTORY/.runsas_global_batch_cursor.parms
 RUNSAS_DEBUG_FILE=$RUNSAS_TMP_DIRECTORY/.runsas.debug
-RUNSAS_TMP_VALIDATION_FILE=$RUNSAS_TMP_DIRECTORY/.tmp.vld
+RUNSAS_TMP_FLOWNAME_VALIDATION_FILE=$RUNSAS_TMP_DIRECTORY/.tmp_flowname.vld
+RUNSAS_TMP_FLOWID_VALIDATION_FILE=$RUNSAS_TMP_DIRECTORY/.tmp_flowid.vld
 
 # Bash color codes for the terminal
 set_colors_codes
@@ -3773,6 +3772,8 @@ create_batch_id $script_mode
 
 # Clear debug file
 delete_a_file $RUNSAS_DEBUG_FILE 0
+delete_a_file $RUNSAS_TMP_FLOWNAME_VALIDATION_FILE 0
+delete_a_file $RUNSAS_TMP_FLOWID_VALIDATION_FILE 0
 
 # Show run summary for the last run on user request
 show_last_run_summary $script_mode
