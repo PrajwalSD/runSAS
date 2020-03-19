@@ -1699,6 +1699,10 @@ function clear_session_and_exit(){
         reset
     fi
 
+    # Ensure you have not messed up the terminal messages due to absolute cursor positioning in runSAS routine
+    get_keyval_from_batch_state runsas_job_cursor_row_pos last_job_cursor_row_pos $TOTAL_NO_OF_JOBS_COUNTER_CMD $stallcheck_batchid
+    move_cursor $((last_job_cursor_row_pos+2)) 1
+ 
     printf "${green}*** runSAS is exiting now ***${white}\n\n"
     exit 1
 }
@@ -3608,7 +3612,7 @@ function runSAS(){
         done
         # Show rest of the message for the job
         display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
-        printf "${!runsas_job_status_color}waiting on dependents($runsas_jobdep), pending: `echo $depjob_pending_jobs | tr -s " "`    ${white}" 
+        printf "${!runsas_job_status_color}waiting on dependents (Job: `echo $depjob_pending_jobs | tr -s " "`)   ${white}" 
     else
         display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
         printf "${!runsas_job_status_color}PID $runsas_job_pid${white}"
