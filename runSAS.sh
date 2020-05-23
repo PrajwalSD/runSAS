@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: SAS job/flow scheduler command line tool                                                              #
 #                                                                                                                    #
-#     Version: 31.6                                                                                                  #
+#     Version: 31.7                                                                                                  #
 #                                                                                                                    #
-#        Date: 14/03/2020                                                                                            #
+#        Date: 23/05/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -118,7 +118,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=31.6
+	RUNSAS_CURRENT_VERSION=31.7
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=31.6
     # Show version numbers
@@ -3432,12 +3432,15 @@ function restore_cursor_positions(){
     print2debug runsas_job_cursor_row_pos
 
     # If the current row position is equal (or greater than) to the max no of rows on the terminal, the terminal will scroll so make the cursor position relative than absolute
-    if [[ $current_cursor_row_pos -ge $term_total_no_of_rows ]] && [[ $term_row_offset -le $((TOTAL_NO_OF_JOBS_COUNTER_CMD+1)) ]]; then
-        let term_row_offset+=1
+    if [[ $current_cursor_row_pos -ne $(tput lines) ]]; then # If the cursor returned from message bar then do not apply offset.
+        if [[ $current_cursor_row_pos -ge $term_total_no_of_rows ]] && [[ $term_row_offset -le $((TOTAL_NO_OF_JOBS_COUNTER_CMD+1)) ]]; then
+            let term_row_offset+=1
+        fi
     fi
 
     # Print to debug file
-    print2debug term_row_offsetR
+    print2debug term_total_no_of_rows
+    print2debug term_row_offset
 
     # Get the row position from the first job
     get_keyval_from_batch_state runsas_job_cursor_row_pos first_runsas_job_cursor_row_pos 1
@@ -3606,9 +3609,9 @@ function runSAS(){
     # Update the "run flag" and "interactive flag"
     update_job_mode_flags
 
-    # Interactive mode (-i)
+    # Interactive mode 
     if [[ $runsas_mode_interactiveflag -eq 1 ]]; then
-        # Flow-wise (after each flow the batch is paused)
+        # The batch must be run in sequential mode, check if --byflow override has been specified to switch the default behaviour of pausing by job
         if [[ $in_byflow_mode -eq 1 ]]; then
             # Rest the dependency by job
             if [[ $runsas_flowid -gt 1 ]]; then
@@ -3641,7 +3644,7 @@ function runSAS(){
                 runsas_flowid_prev=$runsas_flowid
             fi
         else
-            # Job-wise (after each job the batch is stopped)
+            # Rest the dependency by job
             if [[ $runsas_jobid -gt 1 ]]; then
                 runsas_jobdep=$((runsas_jobid-1))
                 publish_to_messagebar "${green_bg}${black}NOTE: The job dependency for the job $runsas_jobid was changed to [$runsas_jobdep] due to -i (interactive mode)"
@@ -4227,7 +4230,7 @@ RC_JOB_COMPLETE_WITH_WARNING=4
 RC_JOB_ERROR=9
 RC_JOB_ABNORMAL_TERMINATION=99
 
-# Mode type arrays (values must be wrapped with spaces)
+# Mode type arrays (all values must be wrapped with "spaces" around them)
 SHORTFORM_MODE_NO_PARMS=( " -i " " -v " )
 SHORTFORM_MODE_SINGLE_PARM=( " -f " " -u " " -o " " -j " )
 SHORTFORM_MODE_DOUBLE_PARMS=( " -fu " " -fui " " -fuis " )
