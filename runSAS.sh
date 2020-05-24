@@ -88,6 +88,7 @@ ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Defaul
 ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
+CONCURRENT_JOBS_LIMIT=MAX                                               # Default is MAX                  ---> Specify the available job slots as a number (e.g. 2), "ALL" will use the CPU count instead (uses nproc)
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -118,7 +119,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version
-	RUNSAS_CURRENT_VERSION=31.7
+	RUNSAS_CURRENT_VERSION=31.6
     # Compatible version for the in-place upgrade feature (set by the developer, do not change this)                                 
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=31.6
     # Show version numbers
@@ -1478,17 +1479,36 @@ function evalf(){
     eval "${!ev_paramater}=$ev_parameter_value"
 }
 #------
+# Name: check_for_concurrency_overrides()
+# Desc: Set the job slots based on the CPU count (user can override this)
+#   In: <NA>
+#  Out: <NA>
+#------
+function check_for_concurrency_overrides(){
+    # Get CPU count
+    sjs_cpu_count=`nproc`
+
+    # Check if the user has specified any overrides?
+    if [[ "$CONCURRENT_JOBS_LIMIT" == "" ]] || [[ "$CONCURRENT_JOBS_LIMIT" == "ALL" ]]; then
+        sjs_concurrent_job_count_limit=$sjs_cpu_count
+    elif [[ "$CONCURRENT_JOBS_LIMIT" == "MAX" ]]; then
+        sjs_concurrent_job_count_limit=999999
+    else
+        sjs_concurrent_job_count_limit=$CONCURRENT_JOBS_LIMIT
+    fi
+}
+#------
 # Name: store_job_runtime_stats()
 # Desc: Capture job runtime stats, single version of history is kept per job
-#   In: job-name, total-time-taken-by-job, change-in-runtime, logname, start-timestamp, end-timestamp
+#   In: flow-name, job-name, total-time-taken-by-job, change-in-runtime, logname, start-timestamp, end-timestamp
 #  Out: <NA>
 #------
 function store_job_runtime_stats(){
     # Remove the previous entry
-    sed -i "/\b$1\b/d" $JOB_STATS_FILE
+    sed -i "/\b$2\b/d" $JOB_STATS_FILE
     # Add new entry 
-    echo "$1 $2 ${3}% $4 $5 $6" >> $JOB_STATS_FILE # Add a new entry 
-	echo "$1 $2 ${3}% $4 $5 $6" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
+    echo "$1 $2 $3 ${4}% $5 $6 $7" >> $JOB_STATS_FILE # Add a new entry 
+	echo "$1 $2 $3 ${4}% $5 $6 $7" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
 }
 #------
 # Name: get_job_hist_runtime_stats()
@@ -1497,7 +1517,7 @@ function store_job_runtime_stats(){
 #  Out: <NA>
 #------
 function get_job_hist_runtime_stats(){
-    hist_job_runtime=`awk -v pat="$1 " -F" " '$0~pat { print $2 }' $JOB_STATS_FILE | head -1`
+    hist_job_runtime=`awk -v pat="$1 " -F" " '$0~pat { print $3 }' $JOB_STATS_FILE | head -1`
 }
 #------
 # Name: show_job_hist_runtime_stats()
@@ -1506,7 +1526,12 @@ function get_job_hist_runtime_stats(){
 #  Out: <NA>
 #------
 function show_job_hist_runtime_stats(){
-	get_job_hist_runtime_stats $1
+    # Input parameters
+    sj_job=$1
+    
+    # Get the runtime for job
+	get_job_hist_runtime_stats $sj_job
+
 	if [[ "$hist_job_runtime" != "" ]]; then
         display_fillers $((RUNSAS_RUNNING_MESSAGE_FILLER_END_POS+11)) $RUNSAS_FILLER_CHARACTER 0 N 2 $runsas_job_status_color
 		printf "${!runsas_job_status_color}(takes ~"
@@ -2040,14 +2065,6 @@ function update_job_mode_flags(){
 #  Out: <NA>
 #------
 function validate_script_modes(){
-
-    # Mode variables:
-    # SHORTFORM_MODE_NO_PARMS=( " -i " " -v " )
-    # SHORTFORM_MODE_SINGLE_PARM=( " -f " " -u " " -o " " -j " )
-    # SHORTFORM_MODE_DOUBLE_PARMS=( " -fu " " -fui " " -fuis " )
-    # LONGFORM_MODE_NO_PARMS=( " --noemail " " --nomail " " --update " " --help " " --version " " --reset " " --parms " " --parameters " " --update-c " " --list " " --log " " --last " )
-    # LONGFORM_MODE_SINGLE_PARM=( " --delay " " --message " " --email " " --joblist " )
-    # LONGFORM_MODE_MULTI_PARMS=(  "--redeploy " )
 
     # Print to debug file
     print2debug SHORTFORM_MODE_NO_PARMS[@] "--- Mode validation parameters --- [" "]---" 
@@ -3538,6 +3555,7 @@ function runSAS(){
     progress_bar_pct_completed_charlength=""
     row_offset_applied_already=0
     first_runsas_job_cursor_row_pos=""
+    no_slots_available_flag="N"
 
     # If the user has specified a different server context, switch it here
     if [[ "$runsas_opt" == "--server" ]]; then
@@ -3767,29 +3785,48 @@ function runSAS(){
     # Job launch function (standard template for all calls), each PID is monitored by runSAS
     function trigger_the_job_now(){
         if [[ $runsas_jobrc -eq $RC_JOB_PENDING ]]; then
-            nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
-                                                                        -batch \
-                                                                        -noterminal \
-                                                                        -logparm "rollover=session" \
-                                                                        -sysin $runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
-            
-            # Get the PID details
-            if [[ -z "$runsas_job_pid" ]] || [[ "$runsas_job_pid" == "" ]] || [[ $runsas_job_pid -eq 0 ]]; then
-                assign_and_preserve runsas_job_pid $!
+            # Get the count of running jobs
+            running_jobs_count=0
+            for (( i=1; i<=$TOTAL_NO_OF_JOBS_COUNTER_CMD; i++ )); 
+            do                 
+                get_keyval_from_batch_state runsas_jobrc runsas_jobrc_i $i
+                if [[ $runsas_jobrc_i -eq $RC_JOB_TRIGGERED ]]; then
+                    let running_jobs_count+=1
+                fi
+            done
+            print2debug sjs_concurrent_job_count_limit "Checking running jobs count before triggering "  
+            print2debug running_jobs_count
+
+            # Check if the job slots are full!
+            if [[ $running_jobs_count -lt $sjs_concurrent_job_count_limit ]]; then
+                nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
+                                                                            -batch \
+                                                                            -noterminal \
+                                                                            -logparm "rollover=session" \
+                                                                            -sysin $runsas_deployed_jobs_root_directory/$runsas_job.$PROGRAM_TYPE_EXTENSION & > $RUNSAS_SAS_SH_TRACE_FILE
+                
+                # Get the PID details
+                if [[ -z "$runsas_job_pid" ]] || [[ "$runsas_job_pid" == "" ]] || [[ $runsas_job_pid -eq 0 ]]; then
+                    assign_and_preserve runsas_job_pid $!
+                fi
+                
+                # Set the triggered return code
+                assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
+
+                # Save the timestamps
+                assign_and_preserve start_datetime_of_job_timestamp "`date '+%d-%m-%Y-%H:%M:%S'`" "STRING"
+                assign_and_preserve start_datetime_of_job "`date +%s`" "STRING"
+
+                # Print to debug file
+                print2debug runsas_job "Job launched (SUCCESS) >>> "  
+                print2debug runsas_job_pid
+                print2debug runsas_jobrc
+                print2debug runsas_job_status_color
+            else
+                no_slots_available_flag="Y"
+                print2debug sjs_concurrent_job_count_limit "(Skipping the trigger as the slots are full!) "  
+                print2debug running_jobs_count
             fi
-            
-            # Set the triggered return code
-            assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
-
-            # Save the timestamps
-            assign_and_preserve start_datetime_of_job_timestamp "`date '+%d-%m-%Y-%H:%M:%S'`" "STRING"
-            assign_and_preserve start_datetime_of_job "`date +%s`" "STRING"
-
-            # Print to debug file
-            print2debug runsas_job "Job launched (SUCCESS) >>> "  
-            print2debug runsas_job_pid
-            print2debug runsas_jobrc
-            print2debug runsas_job_status_color
         fi
     }
 
@@ -3894,7 +3931,11 @@ function runSAS(){
         done
         # Show rest of the message for the job
         display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
-        printf "${!runsas_job_status_color}waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`)   ${white}" 
+        if [[ "$no_slots_available_flag" == "Y" ]]; then
+            printf "${!runsas_job_status_color}no slots available (`echo $depjob_pending_jobs | tr -s " "`)   ${white}" 
+        else
+            printf "${!runsas_job_status_color}waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`)   ${white}" 
+        fi
     else
         display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
         printf "${!runsas_job_status_color}PID $runsas_job_pid${white}"
@@ -4104,7 +4145,7 @@ function runSAS(){
 		fi
 
         # Store the stats for the next time
-        store_job_runtime_stats $runsas_job $((end_datetime_of_job-start_datetime_of_job)) $job_runtime_diff_pct $runsas_job_log $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
+        store_job_runtime_stats $runsas_flow $runsas_job $((end_datetime_of_job-start_datetime_of_job)) $job_runtime_diff_pct $runsas_job_log $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
         # Display fillers (tabulated terminal output)
         display_fillers $RUNSAS_DISPLAY_FILLER_COL_END_POS $RUNSAS_FILLER_CHARACTER 1
@@ -4366,8 +4407,8 @@ show_the_update_compatible_script_version_number $1
 # Welcome banner
 display_welcome_ascii_banner
 
-# Dependency checks on each launch
-check_runsas_linux_program_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf tput
+# Check for dependencies
+check_runsas_linux_program_dependencies ksh bc grep egrep awk sed sleep ps kill nice touch printf tput nproc
 
 # Show intro message (only shown once)
 show_first_launch_intro_message
@@ -4411,6 +4452,9 @@ validate_job_list $JOB_LIST_FILE
 
 # Validate the script launch parameters
 validate_script_modes
+
+# Set the concurrency (job slots, default is all CPUs)
+check_for_concurrency_overrides
 
 # Debug mode
 print_to_terminal_debug_only "runSAS session variables"
@@ -4482,3 +4526,4 @@ delete_a_file "$RUNSAS_TMP_DIRECTORY/*.errjob" 0
 
 # END: Clear the session, reset the terminal
 clear_session_and_exit
+
