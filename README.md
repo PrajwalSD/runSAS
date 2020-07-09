@@ -4,7 +4,7 @@ The script allows you to execute SAS programs (or SAS Data Integration Studio de
 Whilst it doesn't claim to be fully implemented scheduler like LSF or Control-M it does provide a lot of scheduler like features. The core idea behind this side project is to provide SAS environments with a simple CLI tool that doesn't need any additional softwares/programs to run SAS programs/jobs. 
 
 # Screenshots
-![runSAS in action](https://i.imgur.com/Yovyv7D.png)
+![runSAS in action](https://i.imgur.com/oJX4L2r.png)
 ![runSAS flows](https://i.imgur.com/AlaBIOh.png)
 ![runSAS on error](https://i.imgur.com/lEQRN1F.png)
 
