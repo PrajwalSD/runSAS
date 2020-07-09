@@ -8,7 +8,7 @@
 #                                                                                                                    #
 #     Version: 40.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 09/07/2020                                                                                            #
+#        Date: 10/07/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -4818,7 +4818,10 @@ function runSAS(){
 }
 #--------------------------------------------------END OF FUNCTIONS--------------------------------------------------#
 
-# BEGIN: The script execution begins from here, with a clear screen command
+# BEGIN: Version menu (if invoked via ./runSAS.sh --version or ./runSAS.sh -v or ./runSAS.sh --v)
+show_the_script_version_number $1
+
+# The script execution begins from here, with a clear screen command
 clear
 
 # Github URL
@@ -5054,9 +5057,6 @@ check_for_in_place_upgrade_request_from_user $1 $2
 
 # Help menu (if invoked via ./runSAS.sh --help)
 print_the_help_menu $1
-
-# Version menu (if invoked via ./runSAS.sh --version or ./runSAS.sh -v or ./runSAS.sh --v)
-show_the_script_version_number $1
 
 # Compatible version number
 show_the_update_compatible_script_version_number $1
