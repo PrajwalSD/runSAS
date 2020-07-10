@@ -4821,6 +4821,9 @@ function runSAS(){
 # BEGIN: Version menu (if invoked via ./runSAS.sh --version or ./runSAS.sh -v or ./runSAS.sh --v)
 show_the_script_version_number $1
 
+# Compatible version number
+show_the_update_compatible_script_version_number $1
+
 # The script execution begins from here, with a clear screen command
 clear
 
@@ -5057,9 +5060,6 @@ check_for_in_place_upgrade_request_from_user $1 $2
 
 # Help menu (if invoked via ./runSAS.sh --help)
 print_the_help_menu $1
-
-# Compatible version number
-show_the_update_compatible_script_version_number $1
 
 # Welcome banner
 display_welcome_ascii_banner
