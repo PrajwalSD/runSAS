@@ -796,9 +796,11 @@ function split_job_list_file_by_flowid(){
     awk -F\| '{print>".tmp/.flows/"$1"-"$2".flow"}' $split_in_file # TODO: Hardcoded paths must be replaced with -v in awk
 
     # Count the number of files in the directory (in ascending order)
-    # for flow_file in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
-    #     printf "${green}Flow file $flow_file created...${white}\n"
-    # done
+    flow_file_counter=0
+    for flow_file in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
+        let flow_file_counter+=1
+    done
+    put_keyval total_flows_in_current_batch $flow_file_counter
 }
 #------
 # Name: delete_a_file()
@@ -1837,7 +1839,11 @@ function write_job_details_on_terminal(){
 
     # Show job stuff
     if [[ "$repeat_job_terminal_messages" == "Y" ]]; then
-        printf "${!wjd_begin_color}│  └──Job #$runsas_jobid"
+        if [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
+            printf "${!wjd_begin_color}   ┖──Job #$runsas_jobid"
+        else
+           printf "${!wjd_begin_color}┃  ┖──Job #$runsas_jobid" 
+        fi
         # printf "%02d" $JOB_COUNTER_FOR_DISPLAY
         # printf " of " 
         # printf "%02d" $TOTAL_NO_OF_JOBS_COUNTER_CMD
@@ -2645,12 +2651,6 @@ function validate_script_modes(){
                 printf "\n${red}*** ERROR: Job ${RUNSAS_PARAMETERS_ARRAY[p1]} not found in the list, there are only $TOTAL_NO_OF_JOBS_COUNTER_CMD jobs in the list ***${white}"
                 clear_session_and_exit
             fi
-            # Check if any second parameter is specified
-            if [[ ! "${RUNSAS_PARAMETERS_ARRAY[p2]}" == "" ]]; then
-                if [[ ! "${LONGFORM_MODE_NO_PARMS[@]}${LONGFORM_MODE_SINGLE_PARM[@]}${LONGFORM_MODE_MULTI_PARMS[@]}" =~ "${RUNSAS_PARAMETERS_ARRAY[p2]}" ]]; then 
-                    printf "\n${yellow}WARNING: Second parameter \"${RUNSAS_PARAMETERS_ARRAY[p2]}\" has been ignored as it is invalid for ${RUNSAS_PARAMETERS_ARRAY[p]} option (requires just one parameter) ${white}\n\n"
-                fi
-            fi  
 
             # Looks better  
             # printf "\n"          
@@ -2698,6 +2698,27 @@ function validate_script_modes(){
 
             # Set the flag
             runsas_job_filter_mode="SF-DOUBLE"
+        fi
+
+        # Shortform - single parameter mode
+        if [[ "${LONGFORM_MODE_SINGLE_PARM[@]}" =~ " ${RUNSAS_PARAMETERS_ARRAY[p]} " ]]; then
+            # Index to values for the modes(p is the mode) 
+            let p1=p+1
+            let p2=p+2
+            let p3=p+3
+            
+            # Validations:
+            # Job index/number must be specified (no names anymore)
+            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} =~ $RUNSAS_REGEX_NUMBER ]] && [[ ! "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]]; then
+                printf "\n${red}*** ERROR: Missing second parameter for ${RUNSAS_PARAMETERS_ARRAY[p]} option ***${white}"
+                clear_session_and_exit
+            fi
+
+            # Looks better  
+            # printf "\n"          
+
+            # Set the flag
+            runsas_job_filter_mode="LF-SINGLE"
         fi
     done
 
@@ -3236,10 +3257,23 @@ function generate_a_new_batchid(){
         else
             let bid_new_batchid=$global_batchid+1
         fi
-
-        # Update the global key-value store 
-        put_keyval global_batchid $bid_new_batchid
+    else
+        # Set the requested batch id
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]}" == "" ]]; then
+            bid_new_batchid=$global_batchid
+        else
+            if [[ ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]} -gt $global_batchid ]]; then
+                printf "\n${red}*** ERROR: The batchid ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]} not found... ***${white}\n"
+                clear_session_and_exit
+            else
+                bid_new_batchid=${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]}
+                put_keyval global_batchid $bid_new_batchid
+            fi
+        fi
     fi
+
+    # Update the global key-value store 
+    put_keyval global_batchid $bid_new_batchid
 
     # Get the newly created batch id
     get_keyval global_batchid 
@@ -3254,7 +3288,7 @@ function generate_a_new_batchid(){
 
     # Show the current batch id
     if [[ "$show_batchid" == "Y" ]]; then
-        printf "${green}${batchid_gen_message}${white}\n\n"
+        printf "${green}${batchid_gen_message}${white}\n"
         publish_to_messagebar "${green_bg}${black}${batchid_gen_message}${white}"
     fi
 }
@@ -4192,11 +4226,16 @@ function runSAS(){
 
     # Inject job state for a batch (all job specific variables for a batch is restored here to support parallel processing of jobs)
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -gt -1 ]]; then
+        # Inject previous batch state
         inject_batch_state $script_mode_value_1 $runsas_jobid
+        
+        # Resume failed jobs
         if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
             assign_and_preserve runsas_jobrc $RC_JOB_PENDING
+            assign_and_preserve runsas_job_pid ""
         fi
     else
+        # Inject current batch state
         inject_batch_state $global_batchid $runsas_jobid 
     fi
 
@@ -4293,6 +4332,11 @@ function runSAS(){
     # Skip the finished jobs (failed ones will continue to refresh and skipped a bit later)
     if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
         print2debug runsas_jobrc "Skipping the loop as the job has finished running... "
+
+        # Show the skipped details if the batch is being resumed
+        if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -gt -1 ]] && [[ $runsas_jobrc -ge $RC_JOB_COMPLETE ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
+            write_job_details_on_terminal $runsas_job ".(SKIPPED, Job was already run as part of the previous batch)" "grey" "grey"
+        fi
 
         # If the job was marked a complete to recover from the stalled/failed batch show the message
         if [[ $runsas_job_marked_complete_after_failure -eq 1 ]]; then
@@ -4635,7 +4679,7 @@ function runSAS(){
     # Batch mode messages (additional)
     function show_additional_batch_mode_messages(){
         if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -gt -1 ]]; then
-            printf "${!runsas_job_status_color}│     └──[Results: Job #$runsas_jobid: $runsas_job]${white}"
+            printf "${!runsas_job_status_color}┃     ┖──[Results: Job #$runsas_jobid: $runsas_job]${white}"
         fi
     }
 
@@ -4867,7 +4911,7 @@ EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=120
 RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
 RUNSAS_BATCH_COMPLETE_FLAG=0
 SERVER_IFS=$IFS
-RUNSAS_FLOW_JOB_COUNT_MAX_LIMIT_FOR_SCREEN_REFRESH=50
+RUNSAS_FLOW_JOB_COUNT_MAX_LIMIT_FOR_SCREEN_REFRESH=35
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
 
 # Terminal size requirements for runSAS (change this as required)
@@ -5183,11 +5227,16 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     fi
 
     # Flow message
+    get_keyval total_flows_in_current_batch
     if [[ $flow_file_flow_id -eq 1 ]]; then
-        printf "${white}│  \n├──${green}$flow_file_flow_name${white} ($current_flow_job_count jobs):${white}\n"
+        printf "${white}   \n┎──${green}$flow_file_flow_name${white} ($current_flow_job_count jobs):${white}\n"
+    elif [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
+        printf "${white}┃   \n┖──${green}$flow_file_flow_name${white} ($current_flow_job_count jobs):${white}\n"
     else
-        printf "${white}│  \n│  \n├──${green}$flow_file_flow_name${white} ($current_flow_job_count jobs):${white}\n" 
+        printf "${white}┃  \n┃  \n┠──${green}$flow_file_flow_name${white} ($current_flow_job_count jobs):${white}\n" 
     fi 
+
+    sleep 0.5
 
     # Override the jobs counter command!
     TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat $flow_file_name | wc -l`
