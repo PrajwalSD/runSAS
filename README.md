@@ -4,9 +4,12 @@ The script allows you to execute SAS programs (or SAS Data Integration Studio de
 Whilst it doesn't claim to be fully implemented scheduler like LSF or Control-M it does provide a lot of scheduler like features. The core idea behind this side project is to provide SAS environments with a simple CLI tool that doesn't need any additional softwares/programs to run SAS programs/jobs. 
 
 # Screenshots
-![runSAS in action](https://i.imgur.com/LMhveST.png)
+Flows:
+![runSAS in action](https://i.imgur.com/KpcXvic.png)
+Load balancing:
 ![runSAS flows](https://i.imgur.com/AlaBIOh.png)
-![runSAS on error](https://i.imgur.com/lEQRN1F.png)
+Error handling:
+![runSAS on error](https://i.imgur.com/OFbN6S6.png)
 
 # Prerequisites
 SAS 9.x environment (Linux) with SAS BatchServer component is essential for the runSAS to execute or any equivalent would work (i.e. `sas.sh`, `sasbatch.sh` etc.). All other script dependencies are checked at every launch of the script automatically.
