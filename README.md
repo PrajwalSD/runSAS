@@ -23,7 +23,7 @@ SAS 9.x environment (Linux) with SAS BatchServer component is essential for the 
     * Specify the list of the job(s)/program(s) you want to run with dependencies
   * Execute the script simply by using `./runSAS.sh` command as a user who has job/program execution privileges (OS and SAS Metadata privileges)
   
-   _Tip: There are many invocation options and useful features in the script everything is discussed in later sections below_
+   _Tip: There are many invocation options and useful features in the script all of it is discussed in later sections below_
   
 # Configuring Parameters
 runSAS has 4 user parameter sections within the script:
@@ -56,11 +56,11 @@ runSAS has 4 user parameter sections within the script:
     
     Jobs Example:
     ```
-   Job_1
-   Job_2
-   Job_3
-   Job_4
-   Job_5
+    Job_1
+    Job_2
+    Job_3
+    Job_4
+    Job_5
     ```
   * ### Email settings – Configure the email parameters (script has an inline explanation for each parameter)
     * `ENABLE_EMAIL_ALERTS`  
