@@ -1,7 +1,9 @@
 # runSAS
-The script allows you to execute SAS programs (or SAS Data Integration Studio deployed jobs) as flows with support for parallelism via Bash environment in various interactive and non-interactive (batch) execution modes.  
+The script allows you to execute SAS programs (or SAS Data Integration Studio deployed jobs) concurrently as flows with support for many interactive and non-interactive modes.
 
-Whilst it doesn't claim to be fully implemented scheduler like LSF or Control-M it does provide a lot of scheduler like features. The core idea behind this side project is to provide SAS environments with a simple CLI tool that doesn't need any additional softwares/programs to run SAS programs/jobs. 
+Whilst it doesn't claim to be fully implemented SAS job scheduler like LSF or Control-M it does provide a lot of core scheduler features. The motivation behind this side project was to provide existing SAS 9.x environments with a simple CLI tool to manage jobs/flows with no additional third-party softwares/programs.
+
+There's everything in this guide for you to get started with runSAS.
 
 # Screenshots
 Flows:
@@ -14,20 +16,14 @@ Error handling:
 # Prerequisites
 SAS 9.x environment (Linux) with SAS BatchServer component is essential for the runSAS to execute or any equivalent would work (i.e. `sas.sh`, `sasbatch.sh` etc.). All other script dependencies are checked at every launch of the script automatically.
 
-# Is there a help menu?
- `./runSAS.sh --help`
-
-# How can I see the version of the script?
- `./runSAS.sh --version`
- 
-# How can I update to the latest version?
- `./runSAS.sh --update`
-
-# How to use the script?
-  * Download/clone `runSAS.sh` and transfer it to a SAS compute server (Linux based)
-  * Set the environment parameters (inside the script in the top section)
-  * Specify the list of the job(s)/program(s) you want to run with dependencies
-  * Execute the script (see the details on modes of execution below) as a user who has execution privileges (OS and SAS Metadata privileges)
+# Get started?
+  * Download `runSAS.sh` and transfer it to a SAS compute server (Linux based)
+  * Open `runSAS.sh` in edit mode and:
+    * Set the user parameters in the header section as per your SAS environment configuration
+    * Specify the list of the job(s)/program(s) you want to run with dependencies
+  * Execute the script simply by using `./runSAS.sh` command as a user who has job/program execution privileges (OS and SAS Metadata privileges)
+  
+   _Tip: There are many invocation options and useful features in the script everything is discussed in later sections below_
   
 # Configuring Parameters
 runSAS has 4 user parameter sections within the script:
@@ -83,7 +79,16 @@ runSAS has 4 user parameter sections within the script:
     * `ENABLE_SASTRACE_IN_JOB_CHECK=Y`           
     * `ENABLE_RUNSAS_DEPENDENCY_CHECK=Y`          
     * `BATCH_HISTORY_PERSISTENCE=ALL`             
-    * `CONCURRENT_JOBS_LIMIT=ALL`                 
+    * `CONCURRENT_JOBS_LIMIT=ALL`       
+
+# Is there a help menu?
+ `./runSAS.sh --help`
+
+# How can I see the version of the script?
+ `./runSAS.sh --version`
+ 
+# How can I update to the latest version?
+ `./runSAS.sh --update`          
    
 # Does runSAS support parallel execution (flows)?
 Yes, runSAS supports parallel execution of SAS jobs as flows. Specify details about a flow in the script parameters section with right dependencies. runSAS has options to control the level of parallelism (use `CONCURRENT_JOBS_LIMIT` parameter to set the right value for the environment)
