@@ -265,7 +265,7 @@ function show_first_launch_intro_message(){
         printf "${blue}Welcome, this is a first launch of runSAS script post installation (or update), so let's quickly check few things. \n\n${end}" 
         printf "${blue}runSAS essentially requires two things and they are set inside the script (set them if it is not done already): \n\n${end}"
         printf "${blue}    (a) SAS environment parameters and, ${end}\n"
-        printf "${blue}    (b) List of SAS deployed jobs (or flows) ${end}\n\n" 
+        printf "${blue}    (b) List of SAS deployed jobs ${end}\n\n" 
         printf "${blue}There are many features like email alerts, job reports etc. and various launch modes like run from a specific job, run in interactive mode etc. \n\n${end}"
         printf "${blue}To know more about various options available in runSAS, see the help menu (i.e. ./runSAS.sh --help) or better yet go to ${underline}$RUNSAS_GITHUB_PAGE${end}${blue} for detailed documentation. \n${end}"
         press_enter_key_to_continue 1
@@ -1032,28 +1032,23 @@ function run_a_job_mode_check(){
 #  Out: <NA>
 #------
 function check_for_job_list_override(){
-	for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); do
-		if [[ "${RUNSAS_PARAMETERS_ARRAY[p]}" == "--joblist" ]]; then
-			if [[ "${RUNSAS_PARAMETERS_ARRAY[p+1]}" == "" ]]; then
-				# Check for the jobs file (mandatory for this mode)
-				printf "\n${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
-				clear_session_and_exit
-			else
-                # Check if the user has specified it before other arguments 
-				if [[ "${RUNSAS_PARAMETERS_ARRAY[p+2]}" == "" ]]; then
-                    check_if_the_file_exists ${RUNSAS_PARAMETERS_ARRAY[p+1]}
-                    remove_empty_lines_from_file ${RUNSAS_PARAMETERS_ARRAY[p+1]}
-                    add_a_newline_char_to_eof ${RUNSAS_PARAMETERS_ARRAY[p+1]}
-                    # Replace the file that's used by runSAS
-                    cp -f ${RUNSAS_PARAMETERS_ARRAY[p+1]} $JOB_LIST_FILE
-				else 
-                    # Check for the jobs file (mandatory for this mode)
-                    printf "\n${red}*** ERROR: --joblist option must always be specified after all arguements (e.g. ./runSAS.sh -fu jobA jobB --joblist job.txt) ***${white}"
-                    clear_session_and_exit
-                fi
-			fi
-		fi
-	done
+    if [[ $RUNSAS_INVOKED_IN_JOBLIST_MODE -gt -1 ]]; then
+        if [[ "${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_JOBLIST_MODE+1]}" == "" ]]; then
+            # Check for the jobs file (mandatory for this mode)
+            printf "\n${red}*** ERROR: A file that contains a list of deployed jobs is required as a second arguement for this option (e.g.: ./runSAS.sh --joblist jobs.txt) ***${white}"
+            clear_session_and_exit
+        else
+            check_if_the_file_exists ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_JOBLIST_MODE+1]}
+            remove_empty_lines_from_file ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_JOBLIST_MODE+1]}
+            add_a_newline_char_to_eof ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_JOBLIST_MODE+1]}
+            
+            # Replace the file that's used by runSAS
+            cp -f ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_JOBLIST_MODE+1]} $JOB_LIST_FILE
+            
+            # Fix the job list file if the user has not decided to provide flow details
+            refactor_job_list_file $JOB_LIST_FILE
+        fi
+    fi
 }
 #------
 # Name: kill_a_pid()
@@ -2748,27 +2743,6 @@ function validate_script_modes(){
             # Set the flag
             runsas_job_filter_mode="SF-DOUBLE"
         fi
-
-        # Shortform - single parameter mode
-        if [[ "${LONGFORM_MODE_SINGLE_PARM[@]}" =~ " ${RUNSAS_PARAMETERS_ARRAY[p]} " ]]; then
-            # Index to values for the modes(p is the mode) 
-            let p1=p+1
-            let p2=p+2
-            let p3=p+3
-            
-            # Validations:
-            # Job index/number must be specified (no names anymore)
-            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} =~ $RUNSAS_REGEX_NUMBER ]] && [[ ! "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]]; then
-                printf "\n${red}*** ERROR: Missing second parameter for ${RUNSAS_PARAMETERS_ARRAY[p]} option ***${white}"
-                clear_session_and_exit
-            fi
-
-            # Looks better  
-            # printf "\n"          
-
-            # Do not set this flag as this is not a job filter operation
-            runsas_job_filter_mode=""
-        fi
     done
 
     # Print parameters to debug
@@ -3020,13 +2994,13 @@ function refactor_job_list_file(){
 
     # Process the job list file (if only job details has been specified create one big flow with all defaults)
     iter=1
-    while IFS='|' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
-        if [[ "$flow" == "" ]]; then
+    while IFS=' ' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
+        if [[ "$jobid" == "" ]]; then
             # Show a message to user
 	        publish_to_messagebar "${green}NOTE: runSAS has automatically constructed a flow for the specified jobs${white}"
 
-            # First field i.e. flowid is actually the job name
-            echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|" >> $out_job_list_file
+            # First field i.e. flowid is actually the job name and second is the option
+            echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
             let iter+=1
         fi
     done < $in_job_list_file
@@ -5280,17 +5254,10 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     if [[ $current_flow_job_count -ge $runsas_remaining_lines_in_screen ]] && [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
         clear
     fi
-    # if [[ $current_flow_job_count -ge $((current_terminal_height-5)) ]]; then
-        # Let the user fix it
-        check_terminal_size $((current_flow_job_count+5))
-        
-    #     # Check again?
-    #     current_terminal_height=`tput lines`
-    #     if [[ $current_flow_job_count -ge $((current_terminal_height-5) ]]; then
-    #         printf "\n${red}*** ERROR: The current flow cannot be fit into the terminal screen (there are $current_flow_job_count jobs and no of rows on screen is $current_terminal_height). Split the flows or get a bigger terminal :) ***${white}\n"
-    #     fi
-    # fi
 
+    # Ensure the flow can run within the current terminal row x col
+    check_terminal_size $((current_flow_job_count+5))
+        
     # Disable keyboards
     disable_keyboard_inputs
     disable_enter_key
