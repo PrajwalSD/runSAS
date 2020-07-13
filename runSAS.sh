@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.0
+	RUNSAS_CURRENT_VERSION=40.1
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1315,7 +1315,7 @@ function reset(){
         disable_enter_key
         read -n1 clear_script_backup_files
         if [[ "$clear_misc_print_files" == "Y" ]] || [[ "$clear_misc_print_files" == "y" ]]; then    
-            delete_a_file $RUNSAS_BACKUPS_DIRECTORY/*.* silent
+            delete_a_file $RUNSAS_BACKUPS_DIRECTORY/*.* silent -rf
         fi
 
         # Close with a clear session
@@ -2992,18 +2992,29 @@ function refactor_job_list_file(){
     # Delete old files
     delete_a_file $out_job_list_file silent
 
+    # Check if the file is pipe separated already
+    pipe_char_in_file_count=`grep '|' $in_job_list_file | wc -l`
+
     # Process the job list file (if only job details has been specified create one big flow with all defaults)
     iter=1
-    while IFS=' ' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
-        if [[ "$jobid" == "" ]]; then
-            # Show a message to user
-	        publish_to_messagebar "${green}NOTE: runSAS has automatically constructed a flow for the specified jobs${white}"
+    if [[ $pipe_char_in_file_count -eq 0 ]];then
+        while IFS=' ' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
+            if [[ "$jobid" == "" ]]; then
+                # Show a message to user
+                publish_to_messagebar "${green}NOTE: runSAS is automatically constructing a flow for the specified jobs, please wait...${white}"
 
-            # First field i.e. flowid is actually the job name and second is the option
-            echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
-            let iter+=1
-        fi
-    done < $in_job_list_file
+                # First field i.e. flowid is actually the job name and second is the option
+                echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
+                let iter+=1
+            fi
+        done < $in_job_list_file
+        print2debug pipe_char_in_file_count "*** Refactored the job list file as " " *** "
+    else
+        print2debug pipe_char_in_file_count "*** Refactoring job list routine skipped as " " *** "
+    fi
+
+    # Done
+    publish_to_messagebar ""
 
     # Update the original file (keep a backup)
     if [ -f "$out_job_list_file" ]; then
@@ -3655,9 +3666,8 @@ function redeploy_sas_jobs(){
 
             # Clear deployment directory for a fresh start (based on user input)
             if [[ "$read_depjob_clear_files" == "Y" ]]; then
-                printf "${white}\nPlease wait, clearing all the existing deployed SAS files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...\n\n${white}"
-                delete_a_file $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
-                printf "${green}\n\n${white}"
+                printf "${white}\nPlease wait, clearing all the existing deployed .sas files from the server directory $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY...\n\n${white}"
+                rm -rf $SAS_DEPLOYED_JOBS_ROOT_DIRECTORY/*.sas
             fi
 			
 			# Set the parameters (some are set to defaults and the rest is from the user inputs above)
@@ -3684,11 +3694,11 @@ function redeploy_sas_jobs(){
 			fi
 
 			# Wait for the user to confirm
-			press_enter_key_to_continue 1 0 red
+			press_enter_key_to_continue 0 0 red
 
             # Counter
             depjob_to_jobtal_count=`cat $depjob_job_file | wc -l`
-            depjob_job_curr_count=1
+            depjob_job_counter=1
             depjob_job_deployed_count=0
             
             # Newlines
@@ -3749,19 +3759,20 @@ function redeploy_sas_jobs(){
 								
 				# Make a decision (skip or execute)
 				if [[ "$depjob_from_to_job_mode" -lt "1" ]]; then	
+                    printf "${green}---${white}\n"
 					printf "${grey}Job ${grey}"
-					printf "%02d" $depjob_job_curr_count
+					printf "%02d" $depjob_job_counter
                     printf "${grey} of $depjob_to_jobtal_count: $job${white}"
                     display_fillers $((RUNSAS_DISPLAY_FILLER_COL_END_POS+35)) $RUNSAS_FILLER_CHARACTER 0 N 2 grey
                     printf "${grey}(SKIPPED)\n${white}"
-                    let depjob_job_curr_count+=1
+                    let depjob_job_counter+=1
 					continue
 				fi	
                 
 				# Show the current state of the deployment
 				printf "${green}---${white}\n"
                 printf "${green}["
-                printf "%02d" $depjob_job_curr_count
+                printf "%02d" $depjob_job_counter
                 printf "${green} of $depjob_to_jobtal_count]: Redeploying ${darkgrey_bg}${green}${job}${end}${green} now...(ignore the warnings)\n${white}"
                     
 				# Make sure the metadata tree path is specified in the job list to use --redeploy feature
@@ -3789,21 +3800,76 @@ function redeploy_sas_jobs(){
 															
 				# Fix the file name with underscores (SAS DI currently does this by default, just to keep it in-sync with deployed job name referred in .jobs.list file)
 				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
-                
-                # A way to check if the job was deployed at all?
-                check_if_the_file_exists "$deployed_job_sas_file" noexit "Job was not deployed correctly. "
 
                 # Fix the names (add underscores etc.)
-				mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
+                if [[ -f "$deployed_job_sas_file" ]]; then
+				    mv "$deployed_job_sas_file" "${deployed_job_sas_file// /_}"
+                    let depjob_job_deployed_count+=1
+                else
+                    printf "${red}ERROR: Something went wrong, above job was not deployed correctly${white}\n"
+                fi
 
                 # Add it to audit log
-                print2log "Reploying job $depjob_job_curr_count of $depjob_to_jobtal_count: $job"
+                print2log "Reploying job $depjob_job_counter of $depjob_to_jobtal_count: $job"
 
                 # Increment the job counter
-                let depjob_job_curr_count+=1
+                let depjob_job_counter+=1
 
-                # Increment the deployed job counter
-                let depjob_job_deployed_count+=1
+			done < $depjob_job_file
+
+            # Check if it was deployed correctly
+            # Run the jobs from the list one at a time (here's where everything is brought together!)
+            depjob_job_not_deployed_counter=0
+            depjob_job_counter=0
+			while IFS='|' read -r job; do
+				# Check if the current job is between the filters (only in filter mode)
+				if [[ "$depjob_in_filter_mode" -eq "1" ]]; then	
+					if [[ "${depjob_from_job}" == "${job}" ]]; then
+						depjob_from_to_job_mode=1
+					else
+						if [[ "${depjob_to_job}" == "${job}" ]]; then
+							depjob_from_to_job_mode=2
+						else
+							if  [[ $depjob_from_to_job_mode -eq 1 ]]; then
+								depjob_from_to_job_mode=1
+							else
+								if [[ $depjob_from_to_job_mode -eq 2 ]]; then
+									depjob_from_to_job_mode=0
+								fi
+							fi
+							if [[ "${depjob_to_job}" == "${depjob_from_job}" ]]; then
+								depjob_from_to_job_mode=0
+							fi
+						fi
+					fi
+				else
+					depjob_from_to_job_mode=1
+				fi
+								
+				# Make a decision (skip or execute)
+				if [[ "$depjob_from_to_job_mode" -lt "1" ]]; then	
+                    let depjob_job_counter+=1
+					continue
+				fi	
+															
+				# Fix the file name with underscores (SAS DI currently does this by default, just to keep it in-sync with deployed job name referred in .jobs.list file)
+				deployed_job_sas_file=$depjob_sourcedir/${job##/*/}.sas
+                
+                # Increment the job counter
+                let depjob_job_counter+=1
+
+                # A way to check if the job was deployed at all?
+                if [[ ! -f "${deployed_job_sas_file// /_}" ]]; then
+                    let depjob_job_not_deployed_counter+=1
+                    if [[ $depjob_job_not_deployed_counter -eq 1 ]]; then
+                        printf "\n"
+                        printf "\n${red}--------${white}"
+                        printf "\n${red}Summary:${white}"
+                        printf "\n${red}--------${white}"
+                    fi
+                    printf "\n${red}┖─Job #$depjob_job_counter: $job was not deployed (${deployed_job_sas_file// /_} not found!) ${white}"
+                fi
+
 
 			done < $depjob_job_file
 
@@ -3811,27 +3877,38 @@ function redeploy_sas_jobs(){
             end_datetime_of_session_timestamp=`date '+%d-%m-%Y-%H:%M:%S'`
             end_datetime_of_session=`date +%s`
 
-			# Clear session
+            # Total runtime
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
-            printf "${green}\nThe redeployment of $depjob_job_deployed_count jobs completed at $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete.${white}"
 
+			# Show messages
+            if [[ $depjob_job_not_deployed_counter -gt 0 ]]; then
+                # Error
+                redeploy_detailed_message="*** The redeployment of jobs failed ($depjob_job_deployed_count jobs passed, $depjob_job_not_deployed_counter failed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to run. ***"
+                redeploy_summary_message="$depjob_job_deployed_count jobs deployed, $depjob_job_not_deployed_counter failed!"
+                printf "\n\n${red}${redeploy_detailed_message}${white}"
+            else
+                # Success
+                redeploy_detailed_message="*** The redeployment of jobs completed ($depjob_job_deployed_count of $depjob_job_counter jobs deployed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete. ***"
+                redeploy_summary_message="All $depjob_job_deployed_count jobs deployed successfully!"
+                printf "\n${green}${redeploy_detailed_message}${white}"
+            fi
+            
             # Store runtime for future use
             put_keyval depjob_total_runtime $depjob_total_runtime
 
             # Send an email
 			if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
-				echo "The redeployment of $depjob_job_deployed_count job(s) is complete, took a total of $depjob_total_runtime seconds to complete. " > $EMAIL_BODY_MSG_FILE
+				echo $redeploy_detailed_message > $EMAIL_BODY_MSG_FILE
 				add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-				send_an_email -v "" "$depjob_job_deployed_count job(s) redeployed" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+				send_an_email -v "" "$redeploy_summary_message" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
             fi
 
             # End
             print2log "Redeployment end timestamp: $end_datetime_of_session_timestamp"
             print2log "Total time taken (in seconds): $depjob_total_runtime"
 
-            # Enable enter key
+            # Exit 
             enable_enter_key keyboard
-
 			clear_session_and_exit
 		fi
 	fi
@@ -5186,6 +5263,9 @@ check_for_email_option
 # Check if the user has specified --message option
 check_for_user_messages_option
 
+# Redeploy jobs routine (--redeploy option)
+redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
+
 # Print job(s) list on terminal
 print_file_content_with_index $JOB_LIST_FILE jobs --prompt --server
 
@@ -5197,9 +5277,6 @@ check_for_concurrency_overrides
 
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
 run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
-
-# Redeploy jobs routine (--redeploy option)
-redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
 
 # Validate the jobs in list
 validate_job_list $JOB_LIST_FILE
