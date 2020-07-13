@@ -3861,13 +3861,19 @@ function redeploy_sas_jobs(){
                 # A way to check if the job was deployed at all?
                 if [[ ! -f "${deployed_job_sas_file// /_}" ]]; then
                     let depjob_job_not_deployed_counter+=1
+                    
+                    # Header 
                     if [[ $depjob_job_not_deployed_counter -eq 1 ]]; then
                         printf "\n"
                         printf "\n${red}--------${white}"
                         printf "\n${red}Summary:${white}"
                         printf "\n${red}--------${white}"
                     fi
-                    printf "\n${red}┖─Job #$depjob_job_counter: $job was not deployed (${deployed_job_sas_file// /_} not found!) ${white}"
+
+                    # Print the errors
+                    printf "\n${red}#"
+                    printf "%04d" $depjob_job_counter
+                    printf ": ${red_bg}${black}$job${end}${red} not deployed (${red_bg}${black}${deployed_job_sas_file// /_}${end}${red} not found!)${white}"
                 fi
 
 
