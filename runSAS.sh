@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 40.0                                                                                                  #
+#     Version: 40.2                                                                                                  #
 #                                                                                                                    #
-#        Date: 10/07/2020                                                                                            #
+#        Date: 16/07/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -46,7 +46,7 @@ SAS_DEPLOYED_JOBS_ROOT_DIRECTORY="$SAS_APP_ROOT_DIRECTORY/SASEnvironment/SASCode
 #
 cat << EOF > .job.list
 1|Flow_A|1|Job_1|1|AND|4|Y|
-1|Flow_A|2|Job_2|2|AND|0|Y|
+1|Flow_A|2|Job_2|3|AND|0|Y|
 1|Flow_A|3|Job_3|3|AND|4|Y|
 2|Flow_B|4|Job_4|1,2,3|AND|4|Y|
 2|Flow_B|5|Job_5|5|AND|4|Y|
@@ -54,9 +54,9 @@ cat << EOF > .job.list
 4|Flow_D|7|Job_7|7|AND|4|Y|
 4|Flow_D|8|Job_8|8|AND|4|Y|
 4|Flow_D|9|Job_9|9|AND|4|Y|
-5|Flow_E|10|Job_10|10|AND|4|Y|
-5|Flow_E|11|Job_11|11|AND|4|Y|
-5|Flow_E|12|Job_12|12|AND|4|Y|
+5|Flow_E|20|Job_20|20|AND|4|Y|
+5|Flow_E|21|Job_21|22|AND|4|Y|
+5|Flow_E|22|Job_22|20|AND|4|Y|
 EOF
 #
 # 3/4: Email alerts, set the first parameter to N to turn off this feature.
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.1
+	RUNSAS_CURRENT_VERSION=40.2
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1842,9 +1842,9 @@ function write_job_details_on_terminal(){
     # Show job stuff
     if [[ "$repeat_job_terminal_messages" == "Y" ]]; then
         if [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
-            printf "${!wjd_begin_color}   ┖──Job #$runsas_jobid"
+            printf "${!wjd_begin_color}${SPACE_DECORATOR}${CHILD_DECORATOR}Job #$runsas_jobid"
         else
-           printf "${!wjd_begin_color}┃  ┖──Job #$runsas_jobid" 
+           printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #$runsas_jobid" 
         fi
         # printf "%02d" $JOB_COUNTER_FOR_DISPLAY
         # printf " of " 
@@ -2012,8 +2012,10 @@ function move_cursor(){
 
 	# Go to the specified row (make sure no invalid position is requested)
     if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
-        if [[ $target_row_offset -le $target_row_pos ]] && [[ $target_col_offset -le $target_col_pos ]]; then
-            tput cup $((target_row_pos-target_row_offset)) $((target_col_pos-target_col_offset))
+        if [[ "$target_row_pos" != "" ]] && [[ "$target_col_pos" != "" ]]; then
+            if [[ $target_row_offset -le $target_row_pos ]] && [[ $target_col_offset -le $target_col_pos ]]; then
+                tput cup $((target_row_pos-target_row_offset)) $((target_col_pos-target_col_offset))
+            fi
         fi
     fi
 }
@@ -2840,18 +2842,19 @@ function publish_to_messagebar() {
     fi
 }
 #------
-# Name: check_if_batch_is_stalled()
+# Name: check_if_batch_has_stalled()
 # Desc: This function checks if the batch has stalled (or failed!)
 #   In: job-list-file, batchid (optional)
 #  Out: <NA>
 #------
-function check_if_batch_is_stalled(){
+function check_if_batch_has_stalled(){
     # Input parameters
     stallcheck_file=${1:-$JOB_LIST_FILE}
     stallcheck_batchid=${2:-$global_batchid}
 
     # Other parameters
     batch_is_stalled=1
+    cyclic_dependency_detected=0
 
     # Reset the flag if the batch is complete
     if [[ $RUNSAS_BATCH_COMPLETE_FLAG -eq 1 ]]; then
@@ -2860,14 +2863,60 @@ function check_if_batch_is_stalled(){
 
     # Loop through all jobs
     while IFS='|' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
-        # Get the current job vars
+        # Get the current job return codes and run flags
         get_keyval_from_batch_state runsas_mode_runflag runsas_mode_runflag $jobid $stallcheck_batchid
         get_keyval_from_batch_state runsas_jobrc runsas_jobrc $jobid $stallcheck_batchid
 
+        # Debug
+        print2debug jobid "Stall check for [" "]"
+
         # Check if the batch is stalled i.e. no job is currently running and there are dependent pending jobs
         if [[ $runsas_mode_runflag -eq 1 ]] && [[ "$runflag" == "Y" ]]; then
+            # If there's a job running, not stalled
             if [[ $runsas_jobrc -eq $RC_JOB_TRIGGERED ]]; then
                 batch_is_stalled=0
+            fi
+
+            # If there's a job pending/waiting, not stalled if one of them is running
+            if [[ $runsas_jobrc -eq $RC_JOB_PENDING ]]; then
+                # batch_is_stalled=0
+                
+                # Check if the pending job's dependents failed?
+                IFS=','
+                jobdep_array=( $jobdep )
+                jobdep_array_elem_count=${#jobdep_array[@]}
+                IFS=$SERVER_IFS
+
+                # Loop through dependencies
+                for (( i=0; i<${jobdep_array_elem_count}; i++ ));
+                do                 
+                    jobdep_i="${jobdep_array[i]}"
+                    get_keyval_from_batch_state runsas_jobrc jobdep_i_jobrc $jobdep_i
+                    get_keyval_from_batch_state runsas_max_jobrc jobdep_i_max_jobrc $jobdep_i
+                    # If a job is running and hasn't failed yet (but may have completed)
+                    if [[ $jobdep_i_jobrc -ge $RC_JOB_TRIGGERED ]] && [[ $jobdep_i_jobrc -le $jobdep_i_max_jobrc ]]; then
+                        batch_is_stalled=0
+                    else
+                        # Do not prompt the stall message too early (before the error message is shown for the failed job)
+                        if [[ $jobdep_i_jobrc -gt $jobdep_i_max_jobrc ]] && [[ "$error_message_shown_on_job_fail" == "Y" ]]; then
+                            batch_is_stalled=1
+                        else
+                            if [[ $runsas_flow_loop_iterator -gt 1 ]]; then # i.e. avoids premature termination, every job in the flow must have had one chance to start
+                                cyclic_dependency_detected=1
+                            else
+                                batch_is_stalled=0
+                            fi
+                        fi
+                    fi
+                    print2debug jobdep_i "${CHILD_DECORATOR}Stall check dependent job [" "] jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail"
+                done
+            fi
+
+            # If the job has failed, and there's no message shown run one more loop
+            if [[ $runsas_jobrc -ge $jobdep_i_max_jobrc ]]; then
+                if [[ "$error_message_shown_on_job_fail" != "Y" ]]; then
+                    batch_is_stalled=0
+                fi
             fi
         else
             if [[ "$runsas_mode_runflag" != "" ]]; then
@@ -2875,8 +2924,11 @@ function check_if_batch_is_stalled(){
             fi
         fi
 
+        # Increment the iteration
+        let check_iter+=1
+
         # Debug
-        # publish_to_messagebar "${yellow} Stall check: id=$jobid | stalled=$batch_is_stalled | rc=$runsas_jobrc | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag ${white}"
+        print2debug jobid "Stall check final state for [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail "
     done < $stallcheck_file
 
     # Print to debug file
@@ -2887,7 +2939,12 @@ function check_if_batch_is_stalled(){
         # If in batch mode, just exit the flow and write a message to the log with instructions to restart
         if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -gt -1 ]]; then
             # Print the message on stall
-            printf "\n${red}*** The batch has failed (or stalled), after reviewing the errors above try to resume the flow. See --help for batch restart options ***${white}\n"
+            if [[ $cyclic_dependency_detected -eq 1 ]]; then
+                printf "\n${red}*** ERROR: Cyclic dependency detected, review the job dependencies! ***${white}\n"
+                print2debug runsas_jobid "*** ERROR: Cyclic dependency detected while running job [" "] with it's dependency [$runsas_jobdep] batch terminated! ****"
+            else
+                printf "\n${red}*** The batch has failed (or stalled), after reviewing the errors above try to resume the flow. See --help for batch restart options ***${white}\n"
+            fi
 
             # Send an email alert
             if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
@@ -2908,6 +2965,13 @@ function check_if_batch_is_stalled(){
         stalled_msg_input=""
         
         while [[ ! "$stalled_msg_input" == "R" ]] && [[ ! "$stalled_msg_input" == "C" ]]; do
+            # Terminate on cyclic dependency
+            if [[ $cyclic_dependency_detected -eq 1 ]]; then
+                printf "\n\n${red}${SPACE_DECORATOR}*** ERROR: Cyclic dependency detected, review the job dependencies! ***${white}"
+                print2debug runsas_jobid"*** ERROR: Cyclic dependency detected while running job [" "] with it's dependency [$runsas_jobdep] batch terminated! ****"
+                clear_session_and_exit
+            fi
+
             # Show message and ask the user for input.
             stall_user_msg="ERROR: The batch has failed/stalled, resume the batch by typing 'R' to retry failed jobs or type 'C' to mark failed jobs complete & continue:"
 
@@ -3023,6 +3087,33 @@ function refactor_job_list_file(){
     fi
 }
 #------
+# Name: capture_flow_n_job_stats()
+# Desc: This function creates flow and job arrays
+#   In: job-list-file-name
+#  Out: <NA>
+#------
+function capture_flow_n_job_stats(){
+    # Input parameters
+    flowstats_input_job_list_file=$1
+
+    # Create arrays
+    while IFS='|' read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
+
+        # Generate arrays
+        if [[ ! " ${flow_id_array[@]} " =~ " ${fid} " ]]; then
+            flow_id_array+=( ${fid} )
+        fi
+        if [[ ! " ${job_id_array[@]} " =~ " ${jid} " ]]; then
+            job_id_array+=( $jid )
+        fi
+
+    done < $flowstats_input_job_list_file
+
+    # Debug
+    print2debug flow_id_array[@] "--- Flow ID array: [" "]---"
+    print2debug job_id_array[@] "--- Job ID array: [" "]---"
+}
+#------
 # Name: validate_job_list()
 # Desc: This function checks if the specified job's .sas file in server directory
 #   In: job-list-filename
@@ -3043,7 +3134,7 @@ function validate_job_list(){
 	vjmode_show_wait_message="Checking few things in the server, and getting things ready for the batch run, please wait...."  
 	
 	# Show message
-	printf "\n${red}$vjmode_show_wait_message${white}"
+	printf "\n${yellow}$vjmode_show_wait_message${white}"
 
     # Sleep 
     sleep 0.25
@@ -3056,10 +3147,16 @@ function validate_job_list(){
     # Error handling function
     function vld_error_post_process(){
         let validation_error_count+=1
-        # clear_session_and_exit
+        if [[ $validation_error_count -eq 1 ]]; then
+            printf "\n"
+        fi
     }
-	
-	if [[ "$script_mode" != "-j" ]]; then  # Skip the job list validation in -j(run-a-job) mode
+
+    # Collect flow and job stats
+	capture_flow_n_job_stats $vld_job_list_file # Generates flow_id_array and job_id_array
+
+    # Proceed to validation
+	if [[ $RUNSAS_INVOKED_IN_JOB_MODE -le -1 ]]; then  # Skip the job list validation in -j(run-a-job) mode
 		while IFS='|' read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
 
             # Counter for the job
@@ -3079,48 +3176,41 @@ function validate_job_list(){
                 fi
                 put_keyval flow_${fid}_jobid_max $jid # Max
             fi
-            # else
-                if [[ $fid -eq $fid_prev ]]; then
-                    put_keyval flow_${fid}_jobid_max $jid # Max 
-                else
-                    flow_job_counter=0
-                    put_keyval flow_${fid}_jobid_min $jid # Min
-                    put_keyval flow_${fid}_jobid_max $jid # Max
-                fi   
-                let flow_job_counter+=1
-                put_keyval flow_${fid}_job_count $flow_job_counter
-                fid_prev=$fid
-            # fi
+            if [[ $fid -eq $fid_prev ]]; then
+                put_keyval flow_${fid}_jobid_max $jid # Max 
+            else
+                flow_job_counter=0
+                put_keyval flow_${fid}_jobid_min $jid # Min
+                put_keyval flow_${fid}_jobid_max $jid # Max
+            fi   
+            let flow_job_counter+=1
+            put_keyval flow_${fid}_job_count $flow_job_counter
+            fid_prev=$fid
             
-            # Check if there's any discrepancy between flowid and flowname
+            # Check if same flow has multiple flow ids
             get_keyval $f $vld_temp_flowid_keyval_file
             if [[ -z "${!f}" ]] || [[ "${!f}" = "" ]]; then
                 put_keyval $f $fid $vld_temp_flowid_keyval_file # Add an entry
             else 
                 # Check if the flowid is re-used
                 if [[ ! "${!f}" == "$fid" ]]; then   
-                    printf "\n\n${red}*** ERROR: Flow ${black}${red_bg}$f${white}${red} at line #$job_counter in the list seems to have incorrect flowid (NOTE: flowid and flowname must be consistent across the list) *** ${white}"
                     vld_error_post_process
+                    printf "\n${red}*** ERROR: Flow ${black}${red_bg}$f${white}${red} at line #$job_counter in the list seems to have incorrect flowname or flowid (NOTE: Every flow must have a unique flowid) *** ${white}"
                 fi  
             fi
-
-            # Check if there's any discrepancy between flowid and flowname (other way around too!)
-            flow_fid=flow_$fid 
-            get_keyval $flow_fid $vld_temp_flowname_keyval_file
-            if [[ -z "${!flow_fid}" ]] || [[ "${!flow_fid}" = "" ]]; then
-                put_keyval $flow_fid $f $vld_temp_flowname_keyval_file # Add an entry
-            else 
-                # Check if the stored flow id is same as the current flow id
-                if [[ ! "${!flow_fid}" == "$f" ]]; then   
-                    printf "\n\n${red}*** ERROR: Flow ${black}${red_bg}$f${white}${red} at line #$job_counter in the list seems to have incorrect flowid (NOTE: flowid and flowname must be consistent across the list) *** ${white}"
-                    vld_error_post_process
-                fi  
-            fi
-
+    
             # Check if the jobid is unique across the list 
-            if [[ $jid -lt $job_counter ]]; then
-                printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter in the list seems to have incorrect jobid (NOTE: jobid must be unique across all flows and must be in the ascending order) *** ${white}"
+            if [[ " ${current_jid_id_array[@]} " =~ " ${jid} " ]]; then
                 vld_error_post_process
+                printf "\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has the same jobid (i.e. ${jid}) as one other job in the list (NOTE: jobid must be unique across all flows and must be in the ascending order) *** ${white}"
+            fi
+
+            # Build arrays as we go
+            if [[ ! " ${current_flow_id_array[@]} " =~ " ${fid} " ]]; then
+                current_flow_id_array+=( ${fid} )
+            fi
+            if [[ ! " ${current_jid_id_array[@]} " =~ " ${jid} " ]]; then
+                current_jid_id_array+=( $jid )
             fi
 
             # Validate job dependencies
@@ -3132,20 +3222,21 @@ function validate_job_list(){
             jdep_array=( $jdep )
             jdep_array_elem_count=${#jdep_array[@]}
             if [[ $jdep_array_elem_count -gt $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (total jobs: $TOTAL_NO_OF_JOBS_COUNTER_CMD, dependent jobs: $jdep_array_elem_count) *** ${white}"
                 vld_error_post_process
+                printf "\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (total jobs: $TOTAL_NO_OF_JOBS_COUNTER_CMD, dependent jobs: $jdep_array_elem_count) *** ${white}"
             fi
             for (( i=0; i<${jdep_array_elem_count}; i++ ));
             do                 
                 jdep_i="${jdep_array[i]}"
-                if [[ $jdep_i -gt $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                    printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (job $jdep_i not found in the list, total jobs: $TOTAL_NO_OF_JOBS_COUNTER_CMD) *** ${white}"
+
+                # Check if the dependent jobids are correct 
+                if [[ ! " ${job_id_array[@]} " =~ " ${jdep_i} " ]]; then
                     vld_error_post_process
+                    printf "\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter with jobid $jid has incorrect job dependencies (job $jdep_i not found in the list) *** ${white}"
                 fi
-                if [[ $jdep_i -gt $jid ]]; then
-                    printf "\n\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (job $jdep_i runs after the current job) *** ${white}"
-                    vld_error_post_process
-                fi
+                
+                # Check for cyclic dependency
+                
             done
 
             # Set defaults if nothing is specified
@@ -3164,8 +3255,8 @@ function validate_job_list(){
 
 			# Check if the deployed job file exists
 			if [ ! -f "$vjmode_sas_deployed_jobs_root_directory/$j.sas" ]; then
-				printf "\n${red}*** ERROR: Job #$job_counter ${black}${red_bg}$j${white}${red} not deployed or misspelled, $j.sas was not found in $vjmode_sas_deployed_jobs_root_directory *** ${white}"
                 vld_error_post_process
+				printf "\n${red}*** ERROR: Job #$job_counter ${black}${red_bg}$j${white}${red} not deployed or misspelled, $j.sas was not found in $vjmode_sas_deployed_jobs_root_directory *** ${white}"
 			fi
 
 			# Check if there are any sastrace options enabled in the program file
@@ -3177,7 +3268,7 @@ function validate_job_list(){
 
     # Terminate the script if there are errors
     if [[ $validation_error_count -gt 0 ]]; then
-    	printf "\n\n${red}*** ERROR: $validation_error_count errors found in the job list (see above for details), fix them all! ***${white}"
+    	printf "\n\n${red}$validation_error_count error(s) found in the job list (see above for details), fix them and restart the script${white}"
         clear_session_and_exit
     fi
 
@@ -3501,12 +3592,13 @@ function get_keyval(){
     # Debug
     # print2debug ret_key "\n*** Retreiving a key: " " with $ret_delim delimeter from $ret_file file (command: eval $ret_var=`awk -v pat="$ret_key" -F"$ret_delim" '$0~pat { print $2 }' $ret_file 2>/dev/null`) ***"
     # print2debug ret_file "---Printing state file: " "(START)---\n"
-    # cat $ret_file >> $RUNSAS_DEBUG_FILE
+    # if [ -f "$ret_file" ]; then
+    #     cat $ret_file >> $RUNSAS_DEBUG_FILE
+    # fi
 
     # Set the value found in the file to the key
     if [ -f "$ret_file" ]; then
         eval $ret_var=`awk -v pat="$ret_key" -F"$ret_delim" '$0~pat { print $2 }' $ret_file 2>/dev/null`
-        
     fi   
 
     # Debug
@@ -4261,10 +4353,10 @@ function runSAS(){
     runsas_flow="${2}"    
     runsas_jobid="${3}"
     runsas_job="${4}"
-    runsas_jobdep="${5}"
-    runsas_logic_op="${6}"
-    runsas_max_jobrc=$7
-    runsas_runflag="${8}"
+    runsas_jobdep="${5:-$3}"
+    runsas_logic_op="${6:-AND}"
+    runsas_max_jobrc=${7:-4}
+    runsas_runflag="${8:-Y}"
     runsas_opt="${9}"
     runsas_subopt="${10}"
     runsas_app_root_directory="${11:-$SAS_APP_ROOT_DIRECTORY}"
@@ -4313,6 +4405,7 @@ function runSAS(){
     run_job_with_prompt=""
     repeat_job_terminal_messages="Y"
     runsas_job_marked_complete_after_failure=0
+    error_message_shown_on_job_fail=""
 
     # If the user has specified a different server context, switch it here
     if [[ "$runsas_opt" == "--server" ]]; then
@@ -4369,7 +4462,7 @@ function runSAS(){
     fi
 
     # Store the jobrc (max)
-    assign_and_preserve runsas_max_jobrc 4
+    assign_and_preserve runsas_max_jobrc $runsas_max_jobrc
 
     print2debug runsas_jobid "--- Post Injection (before mode flags) " " ---"
     print2debug runsas_job
@@ -4606,6 +4699,8 @@ function runSAS(){
             print2debug runsas_jobdep "No dependency / self dependency "
     else
         # Dependency check loop begins here
+        runsas_jobdep_i_jobrc=$RC_JOB_PENDING # Reset
+        runsas_jobdep_i_max_jobrc=4 # Reset
         for (( i=0; i<${runsas_jobdep_array_elem_count}; i++ ));
         do                 
             # Get one dependency at a time, check the RC
@@ -4620,14 +4715,16 @@ function runSAS(){
                 # Self dependency!
                 runsas_jobdep_i_jobrc=0 
                 runsas_jobdep_i_max_jobrc=0 
+                print2debug runsas_jobid "Self dependent [" "] dep: $runsas_jobdep_i"
             else
                 # Get the dependent's rc and its rc_max
                 get_keyval_from_batch_state runsas_jobrc runsas_jobdep_i_jobrc $runsas_jobdep_i
                 get_keyval_from_batch_state runsas_max_jobrc runsas_jobdep_i_max_jobrc $runsas_jobdep_i
+                print2debug runsas_jobid "Get dependents [" "] dep: $runsas_jobdep_i | runsas_jobdep_i_jobrc=$runsas_jobdep_i_jobrc | runsas_jobdep_i_jobrc=$runsas_jobdep_i_jobrc"
             fi
         
             # Keep a track of how many jobs have run (and see if they have run with 0 <= RC <= maxRC specified by the user in the job list)
-            if [[ $runsas_jobdep_i_jobrc -ge 0 ]] && [[ $runsas_jobdep_i_jobrc -le $runsas_jobdep_i_max_jobrc ]]; then
+            if [[ $runsas_jobdep_i_jobrc -ge 0 ]] && [[ $runsas_jobdep_i_jobrc -le $runsas_jobdep_i_max_jobrc ]] && [[ "$runsas_jobdep_i_jobrc" != "" ]]; then
                 let count_of_dep_jobs_that_has_run=$count_of_dep_jobs_that_has_run+1
             fi
 
@@ -4769,8 +4866,11 @@ function runSAS(){
 
     # Check for abnormal termination of job (process killed by the server etc.), very rare and typically an incomplete log without a PID indicates this issue...
     if [[ $runsas_jobrc -ge $RC_JOB_COMPLETE ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]] && [[ ! -z `ps -p $runsas_job_pid -o comm=` ]]; then
+        # Check the logs
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_logs_root_directory/$runsas_job_log | grep "NOTE: SAS Institute Inc., SAS Campus Drive, Cary, NC USA 27513-2414" > $runsas_error_tmp_log_file
         tail -$RUNSAS_SAS_LOG_TAIL_LINECOUNT $runsas_logs_root_directory/$runsas_job_log | grep "NOTE: The SAS System used:" >> $runsas_error_tmp_log_file
+        
+        # Show the error
         if [ ! -s $runsas_error_tmp_log_file ]; then
             assign_and_preserve runsas_jobrc $RC_JOB_ABNORMAL_TERMINATION
             echo "ERROR: runSAS detected abnormal termination of the job/process by the server, there's no SAS error in the log file." > $runsas_error_tmp_log_file 
@@ -4808,7 +4908,7 @@ function runSAS(){
     # Batch mode messages (additional)
     function show_additional_batch_mode_messages(){
         if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -gt -1 ]]; then
-            printf "${!runsas_job_status_color}┃     ┖──[Results: Job #$runsas_jobid: $runsas_job]${white}"
+            printf "${!runsas_job_status_color}${NO_BRANCH_DECORATOR}${SPACE_DECORATOR}${CHILD_DECORATOR}[Results: Job #$runsas_jobid: $runsas_job]${white}"
         fi
     }
 
@@ -4836,6 +4936,9 @@ function runSAS(){
             printf "\b${white}${red}(FAIL rc=$runsas_jobrc, ${start_datetime_of_job_timestamp} to ${end_datetime_of_job_timestamp}, ~"
             printf "%05d" $((end_datetime_of_job-start_datetime_of_job))
             printf " secs)${white} "
+
+            # Set a flag
+            update_batch_state error_message_shown_on_job_fail "Y" $runsas_jobid $global_batchid
 
             # Construt the error message
             job_err_message=$(<$runsas_error_tmp_log_file)
@@ -5041,6 +5144,14 @@ RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
 RUNSAS_BATCH_COMPLETE_FLAG=0
 SERVER_IFS=$IFS
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
+
+# Graphical defaults
+SINGLE_PARENT_DECORATOR="───"
+PARENT_DECORATOR="┎──"
+BRANCH_DECORATOR="┠──"
+CHILD_DECORATOR="┖──"
+NO_BRANCH_DECORATOR="┃  "
+SPACE_DECORATOR="   "
 
 # Terminal size requirements for runSAS (change this as required)
 RUNSAS_REQUIRED_TERMINAL_ROWS=50  # Default is 65
@@ -5359,30 +5470,42 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
 
     # Flow message
     get_keyval total_flows_in_current_batch
-    if [[ $flow_file_flow_id -eq 1 ]]; then
+    if [[ $flow_file_flow_id -eq 1 && $total_flows_in_current_batch -eq 1 ]]; then
         printf "${white}   \n${white}"
-        printf "${white}┎──${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n"
+        printf "${white}${SINGLE_PARENT_DECORATOR}${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n"
+    elif [[ $flow_file_flow_id -eq 1 ]]; then
+        printf "${white}   \n${white}"
+        printf "${white}${PARENT_DECORATOR}${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n"
     elif [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
-        printf "${white}┃  \n${white}"
-        printf "${white}┖──${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n"
+        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
+        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
+        printf "${white}${CHILD_DECORATOR}${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n"
     else
-        printf "${white}┃  \n${white}"
-        printf "${white}┠──${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n" 
+        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
+        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
+        printf "${white}${BRANCH_DECORATOR}${green}$flow_file_flow_name${white} ($current_flow_job_count):${white}\n" 
     fi 
 
     # Override the jobs counter command (used in many places...)
     TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat $flow_file_name | wc -l`
     
-    # A flow at a time
+    # Trigger one flow at a time...
+    runsas_flow_loop_iterator=1
+    runsas_job_loop_iterator=1
     while [ $RUNSAS_BATCH_COMPLETE_FLAG = 0 ]; do
         # Process the job list file
         while IFS='|' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
             # Core!
             runSAS $flowid $flow $jobid ${job##/*/} $jobdep $logicop $jobrc $runflag $opt $subopt $sappdir $bservdir $bsh $blogdir $bjobdir
+            # Check if the batch is in a stalled state
+            check_if_batch_has_stalled $flow_file_name
+            # Increment the flow interator
+            let runsas_job_loop_iterator+=1
         done < $flow_file_name
-
         # Check if the batch is in a stalled state
-        check_if_batch_is_stalled $flow_file_name
+        check_if_batch_has_stalled $flow_file_name
+        # Increment the flow interator
+        let runsas_flow_loop_iterator+=1
     done
 
     # Post-process "reset" before each outer (flow-wise) loop
