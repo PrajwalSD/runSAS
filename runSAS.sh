@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 40.2                                                                                                  #
+#     Version: 40.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 16/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.2
+	RUNSAS_CURRENT_VERSION=40.3
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -160,7 +160,7 @@ function print_the_help_menu(){
         printf "${end}${blue}"
         printf "\n       There are various [script-mode] in runSAS:\n"
         printf "\n        -i    --byflow (optional)         runSAS will run the batch jobs in sequential mode, waiting for an ENTER key to continue after each mode. If you specify --byflow, the batch will pause after each flow"
-        printf "\n        -j    <job-id>                    runSAS will run a specified job even if it is not in the job list (adhoc mode, run any job using runSAS)"
+        printf "\n        -j    <job-name>                  runSAS will run a specified job even if it is not in the job list (adhoc mode, run any job using runSAS)"
         printf "\n        -u    <job-id>                    runSAS will run everything (and including) upto the specified job"
         printf "\n        -f    <job-id>                    runSAS will run from (and including) a specified job."
         printf "\n        -o    <job-id>                    runSAS will run a specified job from the job list."
@@ -1007,20 +1007,33 @@ function run_a_job_mode_check(){
     
     if [[ "$rjmode_script_mode" == "-j" ]]; then
         if [[ "$rjmode_sas_job" == "" ]]; then
-            printf "${red}\n*** ERROR: You launched the script in $rjmode_script_mode(run-a-job) mode, a job name is also required (without the .sas extension) after $script_mode option ***${white}"
+            printf "${red}\n*** ERROR: You launched the script in $rjmode_script_mode(run-a-job) mode, a job name is also required (without the .sas extension) after $script_mode option, job index/numbers are invalid here. ***${white}"
             clear_session_and_exit
         else
-            check_if_the_file_exists $rjmode_sas_deployed_jobs_root_directory/$rjmode_sas_job.sas
-			printf "\n"
-			TOTAL_NO_OF_JOBS_COUNTER_CMD=1
+            # Overwrite the global parameter by the length of the current job
+            let RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=${#rjmode_sas_job}+23
+            TOTAL_NO_OF_JOBS_COUNTER_CMD=1
 
+            # Check if the file exists?
+            if [[ ! -f "$rjmode_sas_deployed_jobs_root_directory/$rjmode_sas_job.sas" ]]; then\
+                printf "${red}*** ERROR: The deploy job file $rjmode_sas_deployed_jobs_root_directory/$rjmode_sas_job.sas was not found, have you deployed this job? Use --server option to override defaults (see --help for more details) ${white}"
+                clear_session_and_exit
+            fi
+
+            printf "\n"
+			
             # Create a batch id for the injection of job run status
             generate_a_new_batchid
             
             # Trigger the batch
+            printf "${white}   \n${white}"
+            printf "${white}${SINGLE_PARENT_DECORATOR}${green}Flow${white} (1):${white}\n"
             while [ $RUNSAS_BATCH_COMPLETE_FLAG = 0 ]; do
                 runSAS "1" "Flow" "1" ${rjmode_sas_job##/*/} "1" "AND" "4" "Y" "$rjmode_sas_opt" "$rjmode_sas_subopt" "$rjmode_sas_app_root_directory" "$rjmode_sas_batch_server_root_directory" "$rjmode_sas_sh" "$rjmode_sas_logs_root_directory" "$rjmode_sas_deployed_jobs_root_directory"
+                check_if_batch_has_stalled
             done
+
+            # Exit gracefully
             clear_session_and_exit
         fi
     fi
@@ -2680,7 +2693,7 @@ function validate_script_modes(){
     for (( p=0; p<RUNSAS_PARAMETERS_COUNT; p++ )); 
     do    
         # Shortform - single parameter mode
-        if [[ "${SHORTFORM_MODE_SINGLE_PARM[@]}" =~ " ${RUNSAS_PARAMETERS_ARRAY[p]} " ]]; then 
+        if [[ "${SHORTFORM_MODE_SINGLE_PARM[@]}" =~ " ${RUNSAS_PARAMETERS_ARRAY[p]} " ]]  && [[ ! "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]]; then 
             # Index to values for the modes(p is the mode) 
             let p1=p+1
             let p2=p+2
@@ -2688,12 +2701,12 @@ function validate_script_modes(){
             
             # Validations:
             # Job index/number must be specified (no names anymore)
-            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} =~ $RUNSAS_REGEX_NUMBER ]] && [[ ! "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]]; then
+            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} =~ $RUNSAS_REGEX_NUMBER ]]; then
                 printf "\n${red}*** ERROR: A valid job index/number is required for ${RUNSAS_PARAMETERS_ARRAY[p]} option, job names are not allowed anymore ***${white}"
                 clear_session_and_exit
             fi
             # Check if the index is within the list
-            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} -le $TOTAL_NO_OF_JOBS_COUNTER_CMD ]] && [[ ! "${RUNSAS_PARAMETERS_ARRAY[p]}" == "-j" ]]; then
+            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} -le $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
                 printf "\n${red}*** ERROR: Job ${RUNSAS_PARAMETERS_ARRAY[p1]} not found in the list, there are only $TOTAL_NO_OF_JOBS_COUNTER_CMD jobs in the list ***${white}"
                 clear_session_and_exit
             fi
@@ -3221,10 +3234,6 @@ function validate_job_list(){
             fi
             jdep_array=( $jdep )
             jdep_array_elem_count=${#jdep_array[@]}
-            if [[ $jdep_array_elem_count -gt $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                vld_error_post_process
-                printf "\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter has incorrect job dependencies (total jobs: $TOTAL_NO_OF_JOBS_COUNTER_CMD, dependent jobs: $jdep_array_elem_count) *** ${white}"
-            fi
             for (( i=0; i<${jdep_array_elem_count}; i++ ));
             do                 
                 jdep_i="${jdep_array[i]}"
@@ -3675,16 +3684,22 @@ function redeploy_sas_jobs(){
 				depjob_in_filter_mode=1
 				
 				# Get the job name if it is the index
-				if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+				if [[ ${#depjob_from_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 					printf "\n"
 					get_name_from_list $depjob_from_job $depjob_job_file 1
 					depjob_from_job_index=$depjob_from_job
 					depjob_from_job=${job_name_from_the_list}
+                else
+                    printf "${red}*** ERROR: The job index/number length limit exceeded for $depjob_from_job (limit is set by the following parameter JOB_NUMBER_DEFAULT_LENGTH_LIMIT=$JOB_NUMBER_DEFAULT_LENGTH_LIMIT) ${white}"
+                    clear_session_and_exit
 				fi
-				if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+				if [[ ${#depjob_to_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 					get_name_from_list $depjob_to_job $depjob_job_file 1
 					depjob_to_job_index=$depjob_to_job
 					depjob_to_job=${job_name_from_the_list}
+				else
+                    printf "${red}*** ERROR: The job index/number length limit exceeded for $depjob_to_job (limit is set by the following parameter JOB_NUMBER_DEFAULT_LENGTH_LIMIT=$JOB_NUMBER_DEFAULT_LENGTH_LIMIT) ${white}"
+                    clear_session_and_exit
 				fi
 			else
                 # Print the jobs file
@@ -3723,17 +3738,23 @@ function redeploy_sas_jobs(){
 					depjob_to_job=${read_depjob_filters_required_parms_array[1]}
 
 					# Get the job name if it is the index
-					if [[ ${#depjob_from_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+					if [[ ${#depjob_from_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 						printf "\n"
 						get_name_from_list $depjob_from_job $depjob_job_file 1
 						depjob_from_job_index=$depjob_from_job
 						depjob_from_job=${job_name_from_the_list}
-					fi
-					if [[ ${#depjob_to_job} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
+					else
+                        printf "${red}*** ERROR: The job index/number length limit exceeded for $depjob_from_job (limit is set by the following parameter JOB_NUMBER_DEFAULT_LENGTH_LIMIT=$JOB_NUMBER_DEFAULT_LENGTH_LIMIT)${white}"
+                        clear_session_and_exit
+                    fi
+					if [[ ${#depjob_to_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 						get_name_from_list $depjob_to_job $depjob_job_file 1
 						depjob_to_job_index=$depjob_to_job
 						depjob_to_job=${job_name_from_the_list}
-					fi
+					else
+                        printf "${red}*** ERROR: The job index/number length limit exceeded for $depjob_to_job (limit is set by the following parameter JOB_NUMBER_DEFAULT_LENGTH_LIMIT=$JOB_NUMBER_DEFAULT_LENGTH_LIMIT)${white}"
+                        clear_session_and_exit
+                    fi
 				fi
 			fi
 			
@@ -5383,17 +5404,17 @@ check_for_user_messages_option
 # Redeploy jobs routine (--redeploy option)
 redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
 
-# Print job(s) list on terminal
-print_file_content_with_index $JOB_LIST_FILE jobs --prompt --server
-
-# Validate the script launch parameters
-validate_script_modes
-
 # Set the concurrency (job slots, default is all CPUs)
 check_for_concurrency_overrides
 
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
 run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
+
+# Print job(s) list on terminal
+print_file_content_with_index $JOB_LIST_FILE jobs --prompt --server
+
+# Validate the script launch parameters
+validate_script_modes
 
 # Validate the jobs in list
 validate_job_list $JOB_LIST_FILE
