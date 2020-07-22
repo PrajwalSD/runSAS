@@ -4945,9 +4945,11 @@ function runSAS(){
             # Show rest of the message for the job
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
             if [[ "$no_slots_available_flag" == "Y" ]]; then
-                printf "${!runsas_job_status_color}no slots available (`echo $depjob_pending_jobs | tr -s " "`)   ${white}" 
+                printf "${!runsas_job_status_color}no slots available (`echo $depjob_pending_jobs | tr -s " "`)      ${white}" 
+                printf "%${runsas_jobdep_array_elem_count}s" " " # No residue characters on screen
             else
-                printf "${!runsas_job_status_color}waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`)   ${white}" 
+                printf "${!runsas_job_status_color}waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`)     ${white}" 
+                printf "%${runsas_jobdep_array_elem_count}s" " "  # No residue characters on screen
             fi
         else
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
