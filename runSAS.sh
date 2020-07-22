@@ -2942,6 +2942,8 @@ function check_if_batch_has_stalled(){
     # Other parameters
     batch_is_stalled=0 
     cyclic_dependency_detected=0
+    count_of_dep_jobs_currently_running=0
+    count_of_jobs_currently_running=0
 
     # Reset the flag if the batch is complete
     if [[ $RUNSAS_BATCH_COMPLETE_FLAG -eq 1 ]]; then
@@ -2955,7 +2957,7 @@ function check_if_batch_has_stalled(){
         get_keyval_from_batch_state runsas_jobrc runsas_jobrc $jobid $stallcheck_batchid
 
         # Debug
-        print2debug jobid "Stall check for [" "]"
+        print2debug jobid "\n*** Stall check for [" "] ***"
 
         # Check if the batch is stalled
         if [[ $runsas_mode_runflag -eq 1 ]] && [[ "$runflag" == "Y" ]]; then
@@ -2967,7 +2969,7 @@ function check_if_batch_has_stalled(){
                 IFS=$SERVER_IFS
 
                 # Debug
-                print2debug jobid "Stall check for PENDING job [" "]"
+                print2debug jobid "${CHILD_DECORATOR}PENDING job check for [" "]" 
 
                 # Loop through dependencies of the current job
                 for (( i=0; i<${jobdep_array_elem_count}; i++ ));
@@ -2987,18 +2989,20 @@ function check_if_batch_has_stalled(){
 
                         # Are all dependent jobs still in pending state?
                         if [[ $jobdep_i_jobrc -eq $RC_JOB_PENDING ]]; then
-                            if [[ $runsas_flow_loop_iterator -gt 5 ]]; then # i.e. avoids premature termination, every job in the flow must have had one chance to start!
+                            if [[ $runsas_flow_loop_iterator -gt 5 ]] && [[ $count_of_dep_jobs_currently_running -le 0 ]]; then # avoids premature termination, every job in the flow must have had one chance to start!
                                 cyclic_dependency_detected=1
                             fi
                         fi
 
                         # Is any dependent job still running?
-                        if [[ $jobdep_i_jobrc -ge $RC_JOB_TRIGGERED ]]; then
-                            cyclic_dependency_detected=0
+                        if [[ $jobdep_i_jobrc -eq $RC_JOB_TRIGGERED ]]; then 
+                            cyclic_dependency_detected=0 
+                            let count_of_dep_jobs_currently_running+=1
+                            runsas_flow_loop_iterator=1 # Reset this! 
                         fi
 
                         # Print to debug
-                        print2debug jobdep_i "${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected"
+                        print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
                     fi
                 done
             fi
@@ -3009,12 +3013,17 @@ function check_if_batch_has_stalled(){
                     let batch_is_stalled+=1
                     update_batch_state error_message_shown_on_job_fail "N" $jobid $global_batchid # Reset for retries
                 fi
+                print2debug jobid "${CHILD_DECORATOR}FAILED job check for [" "]" 
+                print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
             fi
 
             # (3) Status: RUNNING, at least one job is still running...
-            if [[ $runsas_jobrc -ge $RC_JOB_TRIGGERED && $runsas_jobrc -le $jobrc ]]; then
+            if [[ $runsas_jobrc -eq $RC_JOB_TRIGGERED ]] || [[ $count_of_jobs_currently_running -ge 1 ]]; then
                 cyclic_dependency_detected=0
                 batch_is_stalled=0
+                let count_of_jobs_currently_running+=1
+                print2debug jobid "${CHILD_DECORATOR}RUNNING job check for [" "]" 
+                print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
             fi
         else
             if [[ "$runsas_mode_runflag" != "" ]]; then
@@ -3026,7 +3035,7 @@ function check_if_batch_has_stalled(){
         let check_iter+=1
 
         # Debug
-        print2debug jobid "Stall check for job [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected"
+        print2debug jobid "Stall check after full iter=&check_iter. for job [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
     done < $stallcheck_file
 
     # Check if there's a cyclic dependency
