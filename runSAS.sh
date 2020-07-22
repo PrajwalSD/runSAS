@@ -1992,17 +1992,26 @@ function get_name_from_list(){
     getname_silent=$5
         
     # Get the job name from the file for a given index
-    job_name_from_the_list=`sed -n "${getname_id}p" $getname_file | awk -v getname_column=$getname_column -F "$getname_delimeter" '{print $getname_column}'`
-    if [[ -z $job_name_from_the_list ]]; then
-        printf "${red}*** ERROR: Job index is out-of-range, no job found at $1 in the list above. Please review the specified index and launch the script again ***${white}"
+    # job_name_from_the_list=`sed -n "${getname_id}p" $getname_file | awk -v getname_column=$getname_column -F "$getname_delimeter" '{print $getname_column}'`
+    getname_job_counter=0
+    while IFS="$getname_delimeter" read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
+		if [[ "$jid" == "${getname_id}" ]]; then
+			job_name_from_the_list=$j
+            break
+		fi
+        let getname_job_counter+=1
+	done < $getname_file
+
+    # Check if the name has been picked correctly by the above command
+    if [[ -z $job_name_from_the_list ]] || [[ "$job_name_from_the_list" == ""  ]]; then
+        printf "${red}*** ERROR: No job was found with jobid $1 in the list above. Please review the specified index and launch the script again ***${white}"
         clear_session_and_exit
     else
         if [[ "$getname_silent" == "" ]]; then
-            printf "${white}Job ${darkgrey_bg}${job_name_from_the_list}${white} has been selected from the job list at #$1.${white}\n"
+            printf "${white}Job ${darkgrey_bg}${job_name_from_the_list}${white} has been selected from the job list at #$getname_job_counter with jobid ${getname_id}.${white}\n"
         fi
     fi
 }
-
 #------
 # Name: show_cursor()
 # Desc: Shows the cursor
@@ -2516,7 +2525,7 @@ function update_job_mode_flags(){
     fi 
     if [[ $RUNSAS_INVOKED_IN_FROM_MODE -gt -1 ]]; then
         # runflag=1 for all jobs from the marker (including the marker) 
-        if [[ $runsas_jobid -eq ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_FROM_MODE+1]} ]]; then
+        if [[ $runsas_jobid -ge ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_FROM_MODE+1]} ]]; then 
             assign_and_preserve runsas_mode_runflag 1
         fi
     fi 
@@ -2753,6 +2762,9 @@ function validate_script_modes(){
     print2debug LONGFORM_MODE_NO_PARMS[@] 
     print2debug LONGFORM_MODE_SINGLE_PARM[@] 
     print2debug LONGFORM_MODE_MULTI_PARMS[@] 
+
+    # Refresh the counter
+    TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat .job.list | wc -l`
 
     # Set the flag (before validation)
     runsas_job_filter_mode=""
@@ -5600,6 +5612,10 @@ batch_mode_pre_process
 
 # Core 
 for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
+    # Disable keyboard inputs
+    disable_keyboard_inputs
+    disable_enter_key
+
     # Get flow name & id
     flow_file_flow_name=`basename $flow_file_name .flow`
     flow_file_flow_id=`echo $flow_file_flow_name | cut -d'-' -f 1`
