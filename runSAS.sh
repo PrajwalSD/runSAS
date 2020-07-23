@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 40.5                                                                                                  #
+#     Version: 40.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 21/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.4
+	RUNSAS_CURRENT_VERSION=40.6
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1696,12 +1696,12 @@ function evalf(){
     eval "${!ev_paramater}=$ev_parameter_value"
 }
 #------
-# Name: check_for_concurrency_overrides()
+# Name: set_concurrency_parameters()
 # Desc: Set the job slots based on the CPU count (user can override this)
 #   In: <NA>
 #  Out: <NA>
 #------
-function check_for_concurrency_overrides(){
+function set_concurrency_parameters(){
     # Get CPU count (for hyperthreaded systems, replace "nproc -all" with "grep ^cpu\\scores /proc/cpuinfo | uniq |  awk '{print $4}'")
     sjs_cpu_count=`nproc --all`
 
@@ -1714,10 +1714,13 @@ function check_for_concurrency_overrides(){
             sjs_concurrent_job_count_limit=$((sjs_cpu_count*CONCURRENT_JOBS_LIMIT_MULTIPLIER))
         fi
     elif [[ "$CONCURRENT_JOBS_LIMIT" == "MAX" ]]; then
-        sjs_concurrent_job_count_limit=999999
+        sjs_concurrent_job_count_limit=999999999 # Upper limit
     else
         sjs_concurrent_job_count_limit=$CONCURRENT_JOBS_LIMIT
     fi
+
+    # Debug
+    print2debug sjs_concurrent_job_count_limit "*** Concurrency has been set to [" "], detected $sjs_cpu_count cores via 'nproc' with CONCURRENT_JOBS_LIMIT=$CONCURRENT_JOBS_LIMIT and CONCURRENT_JOBS_LIMIT_MULTIPLIER=$CONCURRENT_JOBS_LIMIT_MULTIPLIER ***"
 }
 #------
 # Name: store_flow_runtime_stats()
@@ -1726,20 +1729,42 @@ function check_for_concurrency_overrides(){
 #  Out: <NA>
 #------
 function store_flow_runtime_stats(){
-    # Remove the previous entry
-    sed -i "/\b$1\b/d" $FLOW_STATS_FILE
-    # Add new entry 
-    echo "$1 $2 ${3}% $4 $5" >> $FLOW_STATS_FILE # Add a new entry 
-	echo "$1 $2 ${3}% $4 $5" >> $FLOW_STATS_DELTA_FILE # Add a new entry to a delta file
+    # Input parameters
+    flowstats_flowname=$1
+    flowstats_timetaken_by_flow_in_secs=$2
+    flowstats_flow_runtime_change_in_pct=$3
+    flowstats_flow_start_timestamp=$4
+    flowstats_flow_end_timestamp=$5
+    
+    # Defaults
+    flowstats_flowstats_file=$FLOW_STATS_FILE
+    flowstats_flowstats_delta_file=$FLOW_STATS_DELTA_FILE
+
+    # Add the entry
+    if [[ $flowstats_timetaken_by_flow_in_secs -gt 0 ]]; then
+        # First, remove the existing entry
+        sed -i "/\b$flowstats_flowname\b/d" $flowstats_flowstats_file
+        # Now add the new entry 
+        echo "$flowstats_flowname $flowstats_timetaken_by_flow_in_secs ${flowstats_flow_runtime_change_in_pct}% $flowstats_flow_start_timestamp $flowstats_flow_end_timestamp" >> $flowstats_flowstats_file       # Add a new entry 
+        echo "$flowstats_flowname $flowstats_timetaken_by_flow_in_secs ${flowstats_flow_runtime_change_in_pct}% $flowstats_flow_start_timestamp $flowstats_flow_end_timestamp" >> $flowstats_flowstats_delta_file # Add a new entry to a delta file
+    fi
 }
 #------
 # Name: get_flow_hist_runtime_stats()
 # Desc: Check flow runtime for the last batch run
 #   In: flow-name
-#  Out: <NA>
+#  Out: $hist_flow_runtime
 #------
 function get_flow_hist_runtime_stats(){
-    hist_flow_runtime=`awk -v pat="$1 " -F" " '$0~pat { print $2 }' $FLOW_STATS_FILE | head -1`
+    # Input parameters
+    getflowstats_flow_name=$1
+
+    # Defaults
+    getflowstats_flowstats_file=$FLOW_STATS_FILE
+    getflowstats_flowstats_delta_file=$FLOW_STATS_DELTA_FILE
+
+    # Get the flow stats
+    hist_flow_runtime=`awk -v pat="$getflowstats_flow_name " -F" " '$0~pat { print $2 }' $getflowstats_flowstats_file | head -1`
 }
 #------
 # Name: store_job_runtime_stats()
@@ -1748,20 +1773,42 @@ function get_flow_hist_runtime_stats(){
 #  Out: <NA>
 #------
 function store_job_runtime_stats(){
+    # Input parameters
+    jobstats_flowname=$1
+    jobstats_jobname=$2
+    jobstats_timetaken_by_job_in_secs=$3
+    jobstats_job_runtime_change_in_pct=$4
+    jobstats_job_logname=$5
+    jobstats_job_start_timestamp=$6
+    jobstats_job_end_timestamp=$7
+    
+    # Defaults
+    jobstats_jobstats_file=$JOB_STATS_FILE
+    jobstats_jobstats_delta_file=$JOB_STATS_DELTA_FILE
+
     # Remove the previous entry
-    sed -i "/\b$2\b/d" $JOB_STATS_FILE
+    sed -i "/\b$jobstats_jobname\b/d" $jobstats_jobstats_file
+
     # Add new entry 
-    echo "$1 $2 $3 ${4}% $5 $6 $7" >> $JOB_STATS_FILE # Add a new entry 
-	echo "$1 $2 $3 ${4}% $5 $6 $7" >> $JOB_STATS_DELTA_FILE # Add a new entry to a delta file
+    echo "$jobstats_flowname $jobstats_jobname $jobstats_timetaken_by_job_in_secs ${jobstats_job_runtime_change_in_pct}% $jobstats_job_logname $jobstats_job_start_timestamp $jobstats_job_end_timestamp" >> $jobstats_jobstats_file       # Add a new entry 
+	echo "$jobstats_flowname $jobstats_jobname $jobstats_timetaken_by_job_in_secs ${jobstats_job_runtime_change_in_pct}% $jobstats_job_logname $jobstats_job_start_timestamp $jobstats_job_end_timestamp" >> $jobstats_jobstats_delta_file # Add a new entry to a delta file
 }
 #------
 # Name: get_job_hist_runtime_stats()
 # Desc: Check job runtime for the last batch run
 #   In: job-name
-#  Out: <NA>
+#  Out: $hist_job_runtime
 #------
 function get_job_hist_runtime_stats(){
-    hist_job_runtime=`awk -v pat="$1 " -F" " '$0~pat { print $3 }' $JOB_STATS_FILE | head -1`
+     # Input parameters
+    getjobstats_flow_name=$1
+
+    # Defaults
+    getjobstats_flowstats_file=$JOB_STATS_FILE
+    getjobstats_flowstats_delta_file=$JOB_STATS_DELTA_FILE
+
+    # Get the job stats
+    hist_job_runtime=`awk -v pat="$getjobstats_flow_name " -F" " '$0~pat { print $3 }' $getjobstats_flowstats_file | head -1`
 }
 #------
 # Name: show_job_hist_runtime_stats()
@@ -1914,14 +1961,15 @@ function write_job_details_on_terminal(){
     # Show job stuff
     if [[ "$repeat_job_terminal_messages" == "Y" ]]; then
         if [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
-            printf "${!wjd_begin_color}${SPACE_DECORATOR}${CHILD_DECORATOR}Job #$runsas_jobid"
+            printf "${!wjd_begin_color}${SPACE_DECORATOR}${CHILD_DECORATOR}Job #"
+            printf "%03d" $runsas_jobid
         else
-           printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #$runsas_jobid" 
+           printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
+           printf "%03d" $runsas_jobid
         fi
-        # printf "%02d" $JOB_COUNTER_FOR_DISPLAY
-        # printf " of " 
-        # printf "%02d" $TOTAL_NO_OF_JOBS_COUNTER_CMD
-        printf ": ${!wjd_job_color}$1${!wjd_end_color} "
+
+        # Additional info
+        printf ": ${!wjd_job_color}$wjd_job${!wjd_end_color} "
 
         # Additional message
         if [[ ! "$wjd_additional_message" == "" ]]; then
@@ -1978,6 +2026,26 @@ function batch_mode_pre_process(){
     fi
 }
 #------
+# Name: get_running_jobs_count()
+# Desc: Get the list of jobs currently running...
+#   In: job-list-file-name, delimiter
+#  Out: $running_jobs_current_count
+#------
+function get_running_jobs_count(){
+    # Input parameters
+    getname_file=${1:-$JOB_LIST_FILE} 
+    getname_delimeter="${2:-|}" # Pipe is the default
+        
+    # Get the count
+    running_jobs_current_count=0
+    while IFS="$getname_delimeter" read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
+        get_keyval_from_batch_state runsas_jobrc runsas_jobrc_i $jid
+        if [[ $runsas_jobrc_i -eq $RC_JOB_TRIGGERED ]]; then
+            let running_jobs_current_count+=1
+        fi
+	done < $getname_file
+}
+#------
 # Name: get_name_from_list()
 # Desc: Get the name when user inputs a number/index (from the list)
 #   In: id, file, column, delimeter, silent
@@ -1997,6 +2065,7 @@ function get_name_from_list(){
     while IFS="$getname_delimeter" read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
 		if [[ "$jid" == "${getname_id}" ]]; then
 			job_name_from_the_list=$j
+            flow_name_from_the_list=$f
             break
 		fi
         let getname_job_counter+=1
@@ -2008,7 +2077,7 @@ function get_name_from_list(){
         clear_session_and_exit
     else
         if [[ "$getname_silent" == "" ]]; then
-            printf "${white}Job ${darkgrey_bg}${job_name_from_the_list}${white} has been selected from the job list at #$getname_job_counter with jobid ${getname_id}.${white}\n"
+            printf "${green}Job ${darkgrey_bg}${job_name_from_the_list}${end}${green} from flow ${darkgrey_bg}$flow_name_from_the_list${end}${green} has been selected from the job list at line ${darkgrey_bg}#$getname_job_counter${end}${green} with jobid ${darkgrey_bg}${getname_id}${end}${green}${white}\n"
         fi
     fi
 }
@@ -2788,11 +2857,6 @@ function validate_script_modes(){
                 printf "\n${red}*** ERROR: A valid job index/number is required for ${RUNSAS_PARAMETERS_ARRAY[p]} option, job names are not allowed anymore ***${white}"
                 clear_session_and_exit
             fi
-            # Check if the index is within the list
-            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} -le $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                printf "\n${red}*** ERROR: Job ${RUNSAS_PARAMETERS_ARRAY[p1]} not found in the list, there are only $TOTAL_NO_OF_JOBS_COUNTER_CMD jobs in the list ***${white}"
-                clear_session_and_exit
-            fi
 
             # Looks better  
             # printf "\n"          
@@ -2813,16 +2877,6 @@ function validate_script_modes(){
 
             if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} =~ $RUNSAS_REGEX_NUMBER ]] || [[ ! ${RUNSAS_PARAMETERS_ARRAY[p2]} =~ $RUNSAS_REGEX_NUMBER ]]; then
                 printf "\n${red}*** ERROR: Two valid job indexes/numbers (i.e. from job and to job) are required for ${RUNSAS_PARAMETERS_ARRAY[p]} option (jobnames are not allowed anymore in latest versions of runSAS) ***${white}"
-                clear_session_and_exit
-            fi
-            # Check if the index is within the list
-            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p1]} -le $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                printf "\n${red}*** ERROR: Job ${RUNSAS_PARAMETERS_ARRAY[p1]} not found in the list, there are only $TOTAL_NO_OF_JOBS_COUNTER_CMD jobs in the list ***${white}"
-                clear_session_and_exit
-            fi
-            # Check if the index is within the list
-            if [[ ! ${RUNSAS_PARAMETERS_ARRAY[p2]} -le $TOTAL_NO_OF_JOBS_COUNTER_CMD ]]; then
-                printf "\n${red}*** ERROR: Job ${RUNSAS_PARAMETERS_ARRAY[p2]} not found in the list, there are only $TOTAL_NO_OF_JOBS_COUNTER_CMD jobs in the list ***${white}"
                 clear_session_and_exit
             fi
             # Check if any second parameter is specified
@@ -4806,19 +4860,11 @@ function runSAS(){
     function trigger_the_job_now(){
         if [[ $runsas_jobrc -eq $RC_JOB_PENDING ]]; then
             # Get the count of running jobs
-            running_jobs_count=0
-            for (( i=1; i<=$TOTAL_NO_OF_JOBS_COUNTER_CMD; i++ )); 
-            do                 
-                get_keyval_from_batch_state runsas_jobrc runsas_jobrc_i $i
-                if [[ $runsas_jobrc_i -eq $RC_JOB_TRIGGERED ]]; then
-                    let running_jobs_count+=1
-                fi
-            done
-            print2debug sjs_concurrent_job_count_limit "Checking running jobs count before triggering "  
-            print2debug running_jobs_count
+            get_running_jobs_count $flow_file_name
+            print2debug running_jobs_current_count "There are [" "] jobs running currently with sjs_concurrent_job_count_limit=$sjs_concurrent_job_count_limit"
 
             # Check if the job slots are full!
-            if [[ $running_jobs_count -lt $sjs_concurrent_job_count_limit ]]; then
+            if [[ $running_jobs_current_count -lt $sjs_concurrent_job_count_limit ]]; then
                 nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
                                                                             -batch \
                                                                             -noterminal \
@@ -4845,7 +4891,7 @@ function runSAS(){
             else
                 no_slots_available_flag="Y"
                 print2debug sjs_concurrent_job_count_limit "(Skipping the trigger as the slots are full!) "  
-                print2debug running_jobs_count
+                print2debug running_jobs_current_count
             fi
         fi
     }
@@ -4957,11 +5003,11 @@ function runSAS(){
             # Show rest of the message for the job
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
             if [[ "$no_slots_available_flag" == "Y" ]]; then
-                printf "${!runsas_job_status_color}no slots available (`echo $depjob_pending_jobs | tr -s " "`)      ${white}" 
-                printf "%${runsas_jobdep_array_elem_count}s" " " # No residue characters on screen
+                printf "${!runsas_job_status_color}no slots available ${running_jobs_current_count}:${sjs_concurrent_job_count_limit} (`echo $depjob_pending_jobs | tr -s " "`)     ${white}" 
+                printf "%${runsas_jobdep_array_elem_count}s" " " # No residue characters must be left on screen
             else
                 printf "${!runsas_job_status_color}waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`)     ${white}" 
-                printf "%${runsas_jobdep_array_elem_count}s" " "  # No residue characters on screen
+                printf "%${runsas_jobdep_array_elem_count}s" " "  # No residue characters must be left on screen
             fi
         else
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
@@ -5560,7 +5606,7 @@ check_for_user_messages_option
 redeploy_sas_jobs $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3
 
 # Set the concurrency (job slots, default is all CPUs)
-check_for_concurrency_overrides
+set_concurrency_parameters
 
 # Check if the user wants to run a job in adhoc mode (i.e. the job is not specified in the list)
 run_a_job_mode_check $script_mode $script_mode_value_1 $script_mode_value_2 $script_mode_value_3 $script_mode_value_4 $script_mode_value_5 $script_mode_value_6 $script_mode_value_7
@@ -5654,7 +5700,7 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
 
     # Get flow stats
     get_flow_hist_runtime_stats $flow_file_flow_name
-    if [[ ! "$hist_flow_runtime" = "" ]]; then
+    if [[ ! "$hist_flow_runtime" = "" ]] && [[ $hist_flow_runtime -gt 0 ]]; then
         flow_stats_message="(takes ~$hist_flow_runtime secs)"
     else
         flow_stats_message=""
