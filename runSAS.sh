@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 40.6                                                                                                  #
+#     Version: 40.8                                                                                                  #
 #                                                                                                                    #
-#        Date: 21/07/2020                                                                                            #
+#        Date: 27/07/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.6
+	RUNSAS_CURRENT_VERSION=40.8
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -186,7 +186,7 @@ function print_the_help_menu(){
         printf "\n       Tip #4: You can add --email <email-address> option during the launch to override the email address setting during runtime (must be added at the end of all arguments)"        
         printf "\n       Tip #5: You can add --message option during the launch for an additional user message for the batch (useful for tagging the batch runs)"        
         printf "\n       Tip #6: You can add --nocolors option during the launch to remove color highlighting in --batch mode"        
-        printf "\n       Tip #7: To schedule runSAS in Crontab just use the --batch mode e.g. nohup ./runSAS.sh -fu 1 20 --batch --nocolors &"        
+        printf "\n       Tip #7: To schedule runSAS in Crontab just use the --batch mode with other options e.g.: nohup ./runSAS.sh -fu 1 20 --batch --nocolors &"        
         printf "${underline}"
         printf "\n\nVERSION\n"
         printf "${end}${blue}"
@@ -2062,6 +2062,8 @@ function get_name_from_list(){
     # Get the job name from the file for a given index
     # job_name_from_the_list=`sed -n "${getname_id}p" $getname_file | awk -v getname_column=$getname_column -F "$getname_delimeter" '{print $getname_column}'`
     getname_job_counter=0
+    job_name_from_the_list=""
+    flow_name_from_the_list=""
     while IFS="$getname_delimeter" read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
 		if [[ "$jid" == "${getname_id}" ]]; then
 			job_name_from_the_list=$j
@@ -2106,10 +2108,14 @@ function hide_cursor(){
 #------
 # Name: clear_session_and_exit()
 # Desc: Resets the terminal
-#   In: <NA>
+#   In: email-short-message, email-long-message
 #  Out: <NA>
 #------
 function clear_session_and_exit(){
+    # Input parameters
+    clear_session_and_exit_email_short_message=$1
+    clear_session_and_exit_email_long_message=${2:-$clear_session_and_exit_email_short_message}
+
     # Disable the keyboard
     disable_enter_key
     disable_keyboard_inputs
@@ -2117,8 +2123,18 @@ function clear_session_and_exit(){
     # Print two newlines
     printf "${white}\n\n${white}"
 
+    # Check if an email is requested
+    if [[ "$clear_session_and_exit_email_short_message" != "" ]]; then
+        if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
+            echo "$clear_session_and_exit_email_long_message" > $EMAIL_BODY_MSG_FILE
+            add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
+            send_an_email -v "" "clear_session_and_exit_email_short_message" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+            print2debug clear_session_and_exit_email_short_message "*** Email was sent [" "]"
+        fi
+    fi
+
     publish_to_messagebar "${green}*** runSAS is exiting now ***${white}"
-    print2debug global_batchid "*** Exit for batchid:" " ***"
+    print2debug global_batchid "*** runSAS is exiting now for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
 
     # Save debug logs for future reference
     copy_files_to_a_directory "$RUNSAS_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
@@ -2135,7 +2151,7 @@ function clear_session_and_exit(){
     
     # Goodbye!
     publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now ***${white}"
-    sleep 0.5
+    sleep 0.3
     publish_to_messagebar "${white} ${white}"
 
     # Show cursor
@@ -2204,7 +2220,7 @@ function get_current_terminal_cursor_position() {
 # Name: get_remaining_lines_on_terminal()
 # Desc: Get the rows/lines remaining on screen
 #   In: <NA>
-#  Out: current_cursor_row_pos, current_cursor_col_pos
+#  Out: runsas_remaining_lines_in_screen
 #------
 function get_remaining_lines_on_terminal(){
     # Output 
@@ -2224,6 +2240,33 @@ function get_remaining_lines_on_terminal(){
 
     # Debug
     print2debug runsas_remaining_lines_in_screen ">>> Remaining lines on the screen: " " <<<"   
+}
+#------
+# Name: get_remaining_cols_on_terminal()
+# Desc: Get the cols remaining on screen
+#   In: <NA>
+#  Out: runsas_remaining_cols_in_screen
+#------
+function get_remaining_cols_on_terminal(){
+    runsas_remaining_cols_in_screen=1
+
+    # Get the current terminal cursor position
+    get_current_terminal_cursor_position
+    current_available_cols=`tput cols`            
+    runsas_remaining_cols_in_screen=$((current_available_cols-$col_pos_output_var))
+}
+#------
+# Name: clear_the_rest_of_the_line()
+# Desc: Clear the rest of the line
+#   In: <NA>
+#  Out: <NA>
+#------
+function clear_the_rest_of_the_line(){
+    # Get the remaining columns on the current line
+    get_remaining_cols_on_terminal
+
+    # Clear the columns with blanks
+    printf "%${runsas_remaining_cols_in_screen}s" " "
 }
 #------
 # Name: refresh_term_screen_size()
@@ -2858,9 +2901,6 @@ function validate_script_modes(){
                 clear_session_and_exit
             fi
 
-            # Looks better  
-            # printf "\n"          
-
             # Show job name for the index
             get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[p1]} $JOB_LIST_FILE 4
 
@@ -2884,9 +2924,6 @@ function validate_script_modes(){
                 printf "\n${red}*** ERROR: A valid second parameter (i.e. \"to\" job name) was not provided for ${RUNSAS_PARAMETERS_ARRAY[p]} option (received \"${RUNSAS_PARAMETERS_ARRAY[p2]}\" instead) *** ${white}"
                 clear_session_and_exit
             fi
-
-            # Looks better
-            # printf "\n"
 
             # Show job name for the index
             get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[p1]} $JOB_LIST_FILE 4
@@ -3035,7 +3072,7 @@ function check_if_batch_has_stalled(){
                 IFS=$SERVER_IFS
 
                 # Debug
-                print2debug jobid "${CHILD_DECORATOR}PENDING job check for [" "]" 
+                # print2debug jobid "${CHILD_DECORATOR}PENDING job check for [" "]" 
 
                 # Loop through dependencies of the current job
                 for (( i=0; i<${jobdep_array_elem_count}; i++ ));
@@ -3068,7 +3105,7 @@ function check_if_batch_has_stalled(){
                         fi
 
                         # Print to debug
-                        print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
+                        # print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
                     fi
                 done
             fi
@@ -3079,8 +3116,8 @@ function check_if_batch_has_stalled(){
                     let batch_is_stalled+=1
                     update_batch_state error_message_shown_on_job_fail "N" $jobid $global_batchid # Reset for retries
                 fi
-                print2debug jobid "${CHILD_DECORATOR}FAILED job check for [" "]" 
-                print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
+                # print2debug jobid "${CHILD_DECORATOR}FAILED job check for [" "]" 
+                # print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
             fi
 
             # (3) Status: RUNNING, at least one job is still running...
@@ -3088,8 +3125,8 @@ function check_if_batch_has_stalled(){
                 cyclic_dependency_detected=0
                 batch_is_stalled=0
                 let count_of_jobs_currently_running+=1
-                print2debug jobid "${CHILD_DECORATOR}RUNNING job check for [" "]" 
-                print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
+                # print2debug jobid "${CHILD_DECORATOR}RUNNING job check for [" "]" 
+                # print2debug jobdep_i "${SPACE_DECORATOR}${CHILD_DECORATOR}Stall check dependent job [" "] stalled=$batch_is_stalled | jobdep_i_jobrc=$jobdep_i_jobrc | jobdep_i_max_jobrc=$jobdep_i_max_jobrc | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
             fi
         else
             if [[ "$runsas_mode_runflag" != "" ]]; then
@@ -3101,8 +3138,11 @@ function check_if_batch_has_stalled(){
         let check_iter+=1
 
         # Debug
-        print2debug jobid "Stall check after full iter=&check_iter. for job [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
+        # print2debug jobid "Stall check after full iter=&check_iter. for job [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
     done < $stallcheck_file
+
+    # Stall check
+    print2debug jobid "Stall check after full iter=&check_iter. for job [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
 
     # Check if there's a cyclic dependency
     if [[ $cyclic_dependency_detected -eq 1 ]]; then
@@ -3124,15 +3164,8 @@ function check_if_batch_has_stalled(){
                 printf "\n${red}*** The batch has failed (or stalled), after reviewing the errors above try to resume the flow. See --help for batch restart options ***${white}\n"
             fi
 
-            # Send an email alert
-            if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
-				echo "Batch failed!" > $EMAIL_BODY_MSG_FILE
-				add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-				send_an_email -v "" "The batch has failed (or stalled), review the runSAS log and job logs (once the fix has been applied to the job, you can resume the batch by using --resume feature." $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
-            fi
-
             # Gracefully exit!
-            clear_session_and_exit
+            clear_session_and_exit "The batch has failed (or stalled)" "The batch has failed (or stalled), review the runSAS log and job logs (once the fix has been applied to the job, you can resume the batch by using --resume feature"
         fi
     
         # Enable the keyboard & cursor
@@ -3147,7 +3180,7 @@ function check_if_batch_has_stalled(){
             if [[ $cyclic_dependency_detected -eq 1 ]]; then
                 printf "\n\n${SPACE_DECORATOR}${red_bg}${black}*** ERROR: Cyclic dependency detected, review the job dependencies! ***${white}"
                 print2debug runsas_jobid "*** ERROR: Cyclic dependency detected while running job [" "] with it's dependency [$runsas_jobdep] batch terminated! ****"
-                clear_session_and_exit
+                clear_session_and_exit "The batch has failed (or stalled)" "ERROR: Cyclic dependency detected, review the job dependencies!"
             fi
 
             # Show message and ask the user for input.
@@ -3170,11 +3203,11 @@ function check_if_batch_has_stalled(){
 
         # Show acknoweldgement
         if [[ "$stalled_msg_input" == "R" ]]; then
-            publish_to_messagebar "${green}*** Retrying failed job(s), batch will be resumed in $RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS secs (Press CTRL+C to change your mind)... ***${white}"
+            publish_to_messagebar "${green}*** Retrying failed job(s), resuming batch in $RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS secs (Press CTRL+C to change your mind)... ***${white}"
             sleep $RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS
             publish_to_messagebar "${white}"
         elif [[ "$stalled_msg_input" == "C" ]]; then
-            publish_to_messagebar "${green}*** Skipping failed job(s), batch will be resumed in $RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS secs (Press CTRL+C to change your mind)... ***${white}"
+            publish_to_messagebar "${green}*** Skipping failed job(s), resuming batch in $RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS secs (Press CTRL+C to change your mind)... ***${white}"
             sleep $RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS
             publish_to_messagebar "${white}"
         fi
@@ -3281,7 +3314,6 @@ function capture_flow_n_job_stats(){
 
     # Create arrays
     while IFS='|' read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
-
         # Generate arrays
         if [[ ! " ${flow_id_array[@]} " =~ " ${fid} " ]]; then
             flow_id_array+=( ${fid} )
@@ -3289,7 +3321,6 @@ function capture_flow_n_job_stats(){
         if [[ ! " ${job_id_array[@]} " =~ " ${jid} " ]]; then
             job_id_array+=( $jid )
         fi
-
     done < $flowstats_input_job_list_file
 
     # Debug
@@ -3314,7 +3345,7 @@ function validate_job_list(){
     disable_enter_key keyboard
 	
 	# Set the wait message parameters
-	vjmode_show_wait_message="Checking few things in the server, and getting things ready for the batch run, please wait...."  
+	vjmode_show_wait_message="Checking few things in the server, and getting things ready for the batch run, please wait..."  
 	
 	# Show message
 	printf "\n${yellow}$vjmode_show_wait_message${white}"
@@ -3412,10 +3443,7 @@ function validate_job_list(){
                 if [[ ! " ${job_id_array[@]} " =~ " ${jdep_i} " ]]; then
                     vld_error_post_process
                     printf "\n${red}*** ERROR: Job ${black}${red_bg}$j${white}${red} at line #$job_counter with jobid $jid has incorrect job dependencies (job $jdep_i not found in the list) *** ${white}"
-                fi
-                
-                # Check for cyclic dependency
-                
+                fi                
             done
 
             # Set defaults if nothing is specified
@@ -3447,7 +3475,7 @@ function validate_job_list(){
 
     # Terminate the script if there are errors
     if [[ $validation_error_count -gt 0 ]]; then
-    	printf "\n\n${red}$validation_error_count error(s) found in the job list (see above for details), fix them and restart the script${white}"
+    	printf "\n\n${red}$validation_error_count error(s) found in the job list (see above for details), fix them and restart the script.${white}"
         clear_session_and_exit
     fi
 
@@ -3456,11 +3484,12 @@ function validate_job_list(){
     for n in "${j_len_array[@]}" ; do
         ((n > j_len_array_max)) && j_len_array_max=$n
     done
-
-    # Overwrite the global parameter (17 because it gives ... from the biggest job)
+    print2debug j_len_array_max "NOTE: The length of the longest job name in the list is [" "]"
     print2debug RUNSAS_RUNNING_MESSAGE_FILLER_END_POS "The value (before adjustment) of RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=[" "]"
+
+    # Overwrite the global parameter (23 because it gives ... from the biggest job)
     RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=$((j_len_array_max+23)) 
-    print2debug RUNSAS_RUNNING_MESSAGE_FILLER_END_POS "The value (after adjustment) of RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=[" "]"
+    print2debug RUNSAS_RUNNING_MESSAGE_FILLER_END_POS "The value (after adjustment, adding 23 to j_len_array_max=$j_len_array_max) of RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=[" "]"
 
 	# Remove the message, reset the cursor
 	echo -ne "\r"
@@ -3544,7 +3573,6 @@ function assign_and_preserve(){
     else
         printf "${red} *** ERROR: ASSIGN_AND_PRESERVE() routine received an invalid input *** ${white}"
     fi
-
 }
 #------
 # Name: generate_a_new_batchid()
@@ -3576,19 +3604,19 @@ function generate_a_new_batchid(){
             # Wrong batch id inputs
             if [[ ! $requested_resume_batchid =~ $RUNSAS_REGEX_NUMBER ]] || [[ $requested_resume_batchid -le 0 ]] || [[ "$requested_resume_batchid" == "" ]]; then
                 printf "${red}*** ERROR: Invalid input for batchid ${red_bg}${black}$requested_resume_batchid${end}${red}, must be a number greater than 0 ***${white}\n"
-                clear_session_and_exit
+                clear_session_and_exit "The batch has failed" "ERROR: Invalid input for batchid $requested_resume_batchid, must be a number greater than 0 "
             fi 
             # History is not enough!
             if [[ "$BATCH_HISTORY_PERSISTENCE" != "ALL" ]]; then 
                 if [[ $((global_batchid-requested_resume_batchid)) -gt $BATCH_HISTORY_PERSISTENCE ]]; then
                     printf "${red}*** ERROR: The requested batchid ${red_bg}${black}$requested_resume_batchid${end}${red} was not found in the persisted batch history (currently BATCH_HISTORY_PERSISTENCE=$BATCH_HISTORY_PERSISTENCE) ***${white}\n"
-                    clear_session_and_exit
+                    clear_session_and_exit "The batch has failed" "ERROR: The requested batchid $requested_resume_batchid was not found in the persisted batch history (currently BATCH_HISTORY_PERSISTENCE=$BATCH_HISTORY_PERSISTENCE)"
                 fi
             fi          
             # The requested batch id has not been run yet!
             if [[ $requested_resume_batchid -gt $global_batchid ]]; then
                 printf "${red}*** ERROR: The requested batchid ${red_bg}${black}$requested_resume_batchid${end}${red} was not found in the batch history (> last batchid=$global_batchid) ***${white}\n"
-                clear_session_and_exit
+                clear_session_and_exit "The batch has failed" "ERROR: The requested batchid $requested_resume_batchid was not found in the batch history (> last batchid=$global_batchid)"
             else
                 bid_new_batchid=${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]}
                 put_keyval global_batchid $bid_new_batchid
@@ -3614,6 +3642,12 @@ function generate_a_new_batchid(){
     if [[ "$show_batchid" == "Y" ]]; then
         printf "${green}${batchid_gen_message}${white}\n"
         publish_to_messagebar "${green_bg}${black}${batchid_gen_message}${white}"
+    fi
+
+    # Terminate if the batch id is missing!
+    if [[ "$global_batchid" == "" || $global_batchid -lt 0 ]]; then
+        printf "${red}*** ERROR: Critical error as batchid was not generated (global_batchid=$global_batchid) ***${white}\n"
+        clear_session_and_exit "The batch has failed (batchid value error)"
     fi
 }
 #------
@@ -4712,7 +4746,7 @@ function runSAS(){
     # Interactive mode 
     if [[ $runsas_mode_interactiveflag -eq 1 ]]; then
         # The batch must be run in sequential mode, check if --byflow override has been specified to switch the default behaviour of pausing by job
-        if [[ $RUNSAS_INVOKED_IN_BYFLOW_MODE -gt -1 ]]; then
+        if [[ $RUNSAS_INVOKED_IN_BYFLOW_MODE -gt -1 ]] && [[ $escape_interactive_mode -ne 1 ]]; then
             # Nothing much is done here, the actual flow-wise pause is applied later
             publish_to_messagebar "${green}NOTE: The batch will pause after each flow (-i with --byflow was applied)${white}"
             interactive_mode_at_flow_level_applied=1
@@ -5003,11 +5037,17 @@ function runSAS(){
             # Show rest of the message for the job
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
             if [[ "$no_slots_available_flag" == "Y" ]]; then
-                printf "${!runsas_job_status_color}no slots available ${running_jobs_current_count}:${sjs_concurrent_job_count_limit} (`echo $depjob_pending_jobs | tr -s " "`)     ${white}" 
-                printf "%${runsas_jobdep_array_elem_count}s" " " # No residue characters must be left on screen
+                printf "${!runsas_job_status_color}no slots available ${running_jobs_current_count}:${sjs_concurrent_job_count_limit} (`echo $depjob_pending_jobs | tr -s " "`) ${white}" 
+                clear_the_rest_of_the_line # No residue chars
             else
-                printf "${!runsas_job_status_color}waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`)     ${white}" 
-                printf "%${runsas_jobdep_array_elem_count}s" " "  # No residue characters must be left on screen
+                get_remaining_cols_on_terminal 
+                show_waiting_deps_message="waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`"
+                if [[ ${#show_waiting_deps_message} -le $((runsas_remaining_cols_in_screen-5)) ]]; then
+                    printf "${!runsas_job_status_color}${show_waiting_deps_message})${white}"
+                else
+                    printf "${!runsas_job_status_color}${show_waiting_deps_message:0:$((runsas_remaining_cols_in_screen-5))}...)${white}"
+                fi
+                clear_the_rest_of_the_line # No residue chars
             fi
         else
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
@@ -5155,16 +5195,13 @@ function runSAS(){
             # Construt the error message
             job_err_message=$(<$runsas_error_tmp_log_file)
             if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
-                get_current_terminal_cursor_position
-                current_available_cols=`tput cols`            
-                remaining_cols_in_terminal=$((current_available_cols-$col_pos_output_var))
+                get_remaining_cols_on_terminal
                 job_err_message_with_log=$job_err_message" ($runsas_job_log)"
-
                 # Append the error message to the row without disturbing the row hence I substring the error message
-                printf "${red}${job_err_message_with_log:0:$((remaining_cols_in_terminal-7))}${white}"
+                printf "${red}${job_err_message_with_log:0:$((runsas_remaining_cols_in_screen-7))}${white}"
             else
                 #Append the full error message to the log
-                printf "${red}${job_err_message} (Log: $runsas_logs_root_directory/$runsas_job_log)${white}\n"
+                printf "${red}${job_err_message} ($runsas_logs_root_directory/$runsas_job_log)${white}\n"
             fi
         fi
 
@@ -5359,6 +5396,7 @@ RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
 RUNSAS_BATCH_COMPLETE_FLAG=0
 SERVER_IFS=$IFS
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
+RUNSAS_SCREEN_LINES_OVERFLOW_BUFFER=5
 
 # Graphical defaults
 SINGLE_PARENT_DECORATOR="───"
@@ -5656,7 +5694,7 @@ add_more_info_to_log_in_batch_mode
 # Clear the screen to reclaim the screen space!
 batch_mode_pre_process
 
-# Core 
+# Core (this is where it all comes together)
 for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     # Disable keyboard inputs
     disable_keyboard_inputs
@@ -5675,18 +5713,21 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     
     # Clear the screen if there isn't any space
     get_remaining_lines_on_terminal
-    if [[ $current_flow_job_count -ge $runsas_remaining_lines_in_screen ]] && [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
+    # publish_to_messagebar "DEBUG: flow_file_flow_id=$flow_file_flow_id [$flow_file_flow_name] | lines remaining=$runsas_remaining_lines_in_screen | job count=$current_flow_job_count"
+    print2debug flow_file_flow_id "Checking terminal lines count for flow: [" " -- $flow_file_flow_name] > runsas_remaining_lines_in_screen=$runsas_remaining_lines_in_screen current_flow_job_count=$current_flow_job_count" ""
+    if [[ $current_flow_job_count -ge $((runsas_remaining_lines_in_screen-$RUNSAS_SCREEN_LINES_OVERFLOW_BUFFER)) ]] && [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
+        print2debug "*** Terminal screen cleared for flow_file_flow_id=$flow_file_flow_id [$flow_file_flow_name] ***"
         clear
     fi
 
-    # Ensure the flow can run within the current terminal row x col
-    check_terminal_size $((current_flow_job_count+5))
+    # Ensure the flow can run within the current terminal row x col (add a buffer just in case!)
+    check_terminal_size $((current_flow_job_count+7))
         
     # Disable keyboards
     disable_keyboard_inputs
     disable_enter_key
 
-    # Check if interactive mode has been invoked in --byflow mode
+    # Check if interactive mode has been invoked in "--byflow" mode
     if [[ $RUNSAS_INVOKED_IN_INTERACTIVE_MODE -gt -1 ]] && [[ $RUNSAS_INVOKED_IN_BYFLOW_MODE -gt -1 ]] && [[ $flow_file_flow_id -gt 1 ]]; then
         if [[ "$escape_interactive_mode" != "1" ]]; then
             enable_enter_key keyboard
@@ -5727,9 +5768,11 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     # Override the jobs counter command (used in many places...)
     TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat $flow_file_name | wc -l`
     
-    # Trigger one flow at a time...
+    # Iterator variables (used for stall checks)
     runsas_flow_loop_iterator=1
     runsas_job_loop_iterator=1
+
+    # Run until the batch is complete, trigger one flow at a time
     while [ $RUNSAS_BATCH_COMPLETE_FLAG = 0 ]; do
         # Launch a single flow at a time
         while IFS='|' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
