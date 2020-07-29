@@ -1047,7 +1047,7 @@ function run_a_job_mode_check(){
             printf "${green}${SPACE_DECORATOR}${CHILD_DECORATOR}The flow took $((end_datetime_of_flow-start_datetime_of_flow)) seconds to complete.${white}" SPACE_DECORATOR
 
             # Exit gracefully
-            clear_session_and_exit
+            clear_session_and_exit "" "" 0
         fi
     fi
 }
@@ -1236,7 +1236,7 @@ function show_runsas_parameters(){
 
         # Exit
 		if [[ "$2" == "X" ]]; then
-			clear_session_and_exit   
+			clear_session_and_exit "" "" 0   
 		fi
     fi 
 }                                   
@@ -1257,7 +1257,7 @@ function reset(){
         if [[ "$reset_mode_optionals" == "--batchid" ]] || [[ "$reset_mode_optionals" == "--batchnum" ]]; then
             delete_a_file $RUNSAS_TMP_DIRECTORY/.runsas_global_user.parm silent
             printf "${green}\nBatch ID has been reset...${white}"
-            clear_session_and_exit
+            clear_session_and_exit "" "" 0
         fi
 
         # Clear the temporary files
@@ -1350,7 +1350,7 @@ function reset(){
         fi
 
         # Close with a clear session
-        clear_session_and_exit
+        clear_session_and_exit "" "" 0
     fi
 }
 #------
@@ -1934,7 +1934,7 @@ function show_last_run_summary(){
             clear_session_and_exit
         else
             print_file_to_terminal $RUNSAS_SESSION_LOG_FILE
-            clear_session_and_exit
+            clear_session_and_exit "" "" 0
         fi
     fi
 }
@@ -2120,6 +2120,7 @@ function clear_session_and_exit(){
     # Input parameters
     clear_session_and_exit_email_short_message=$1
     clear_session_and_exit_email_long_message=${2:-$clear_session_and_exit_email_short_message}
+    clear_session_and_exit_rc=${3:-1}
 
     # Disable the keyboard
     disable_enter_key
@@ -2175,7 +2176,7 @@ function clear_session_and_exit(){
     enable_enter_key keyboard
 
     # Goodbye!
-    exit 1
+    exit $clear_session_and_exit_rc
 }
 #------
 # Name: move_cursor()
@@ -3893,7 +3894,7 @@ function redeploy_sas_jobs(){
 				# Show the list of jobs
 				if [[ "$depjob_from_job" == "--list" ]]; then
 					print_file_content_with_index $depjob_job_file jobs
-					clear_session_and_exit
+					clear_session_and_exit "" "" 0
 				fi
 				
 				# Set the flag 
@@ -4244,7 +4245,7 @@ function redeploy_sas_jobs(){
 
             # Exit 
             enable_enter_key keyboard
-			clear_session_and_exit
+			clear_session_and_exit "" "" 0
 		fi
 	fi
 }
@@ -5872,4 +5873,4 @@ delete_a_file "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid/*.stepserr" si
 delete_a_file "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid/*.errjob" silent
 
 # END: Clear the session, reset the terminal
-clear_session_and_exit
+clear_session_and_exit "" "" 0
