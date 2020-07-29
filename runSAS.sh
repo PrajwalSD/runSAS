@@ -1122,9 +1122,9 @@ function kill_a_pid(){
 #------
 function show_pid_details(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
-        printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS\n"
+        printf "${darkgrey_bg}${red}$TERMINAL_MESSAGE_LINE_WRAPPERS\n"
         ps $1 # Show process details
-        printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
+        printf "${darkgrey_bg}${red}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
     fi
 }
 #------
@@ -1135,9 +1135,9 @@ function show_pid_details(){
 #------
 function show_child_pid_details(){
     if [[ ! -z `pgrep -P $1` ]]; then
-        printf "${white}Child Process(es):\n"
+        printf "${darkgrey_bg}${red}Child Process(es):\n"
         pgrep -P $1 # Show child process details
-        printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
+        printf "${darkgrey_bg}${red}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
     fi
 }
 #------
@@ -1151,14 +1151,14 @@ function running_processes_housekeeping(){
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$KILL_PROCESS_ON_USER_ABORT" ==  "Y" ]]; then
                 disable_enter_key
-                printf "\n${red}*** Attempting to clean up running $2 processes, please wait... ***\n${white}"
-                clear_the_rest_of_the_line
-                printf "\n${red}Process (PID) details for the currently running job:\n${white}"
+                printf "\n${darkgrey_bg}${red}*** Attempting to clean up running $2 processes, please wait... ***${darkgrey_bg}" 
+                printf "\n${darkgrey_bg}${red}Process (PID) details for the currently running job:\n"
                 # Show & kill!
                 show_pid_details $1
                 show_child_pid_details $1
                 kill_a_pid $1               
                 enable_enter_key
+                printf "${end}"
             else
                 echo $1 >> $RUNSAS_LAST_JOB_PID_FILE
                 printf "${red}WARNING: The last job submitted by runSAS with PID $1 is still running/active in the background, auto-kill is off, terminate it manually using ${green}pkill -TERM -P $1${white}${red} command.\n${white}"
@@ -1176,6 +1176,7 @@ function check_if_there_are_any_rogue_runsas_processes(){
     # Create an empty file it it doesn't exist already
     create_a_file_if_not_exists $RUNSAS_LAST_JOB_PID_FILE
 
+    # Check PID files
     while IFS='|' read -r j_pid; do
         # One process at a time
         runsas_last_job_pid=$j_pid
@@ -1198,6 +1199,7 @@ function check_if_there_are_any_rogue_runsas_processes(){
         fi
     done < $RUNSAS_LAST_JOB_PID_FILE 
 
+    # Delete the last PID file
     delete_a_file $RUNSAS_LAST_JOB_PID_FILE silent
 }
 #------
@@ -1329,8 +1331,8 @@ function reset(){
         disable_enter_key
         read -n1 clear_debug_files
         if [[ "$clear_debug_files" == "Y" ]] || [[ "$clear_debug_files" == "y" ]]; then    
-            rm -rf $RUNSAS_TMP_DIRECTORY/.??*.debug silent 
-            rm -rf $RUNSAS_TMP_DIRECTORY/.??*.trace silent
+            rm -rf $RUNSAS_TMP_DIRECTORY/.??*.debug 
+            rm -rf $RUNSAS_TMP_DIRECTORY/.??*.trace
         fi
 
         # Clear print and job backup files
@@ -1347,11 +1349,11 @@ function reset(){
         disable_enter_key
         read -n1 clear_script_backup_files
         if [[ "$clear_misc_print_files" == "Y" ]] || [[ "$clear_misc_print_files" == "y" ]]; then    
-            delete_a_file $RUNSAS_BACKUPS_DIRECTORY/*.* silent -rf
+            rm -rf $RUNSAS_BACKUPS_DIRECTORY/*.*
         fi
 
         # Close with a clear session
-        clear_session_and_exit "" "" 0
+        clear_session_and_exit "" "" 0 "Y"
     fi
 }
 #------
@@ -1522,7 +1524,7 @@ cd $email_optional_attachment_directory
 # Build a terminal message (first part of the message)
 email_attachment_msg=
 if [[ "$email_mode" != "-s" ]]; then
-    printf "\n${green}An email ${white}"
+    printf "${grey} (An email ${white}"
     email_attachment_msg="with no attachment "
 fi
 
@@ -1546,7 +1548,7 @@ $email_body
 "
 # Loop over the attachments, guess the type and produce the corresponding part, encoded base64
 for attached_file in "${attachments[@]}"; do
-[ ! -f "$attached_file" ] && printf "${green}$email_attachment_msg${white}" >&2 && continue
+[ ! -f "$attached_file" ] && printf "${grey}$email_attachment_msg${white}" >&2 && continue
 printf '%s\n' "--${email_boundary_string}
 Content-Type:text/plain; charset=\"US-ASCII\"
 Content-Transfer-Encoding: base64
@@ -1561,13 +1563,14 @@ printf '%s\n' "--${email_boundary_string}--"
 
 # Post email alert
 if [[ "$email_mode" != "-s" ]]; then
-    if [[ "$email_mode" == "-p" ]]; then
-        publish_to_messagebar "${green}was sent to $email_to_address$email_to_distribution_list${white}"
-    else
-        printf "${green}was sent to $email_to_address$email_to_distribution_list${white}"
-    fi
+    printf "${grey}was sent to $email_to_address$email_to_distribution_list) ${white}"
     sleep 0.5
 fi
+
+# Publish
+publish_to_messagebar "${grey}NOTE: $email_subject, notified $email_to_address$email_to_distribution_list via email...${white}"
+
+# Go back to the previous directory
 cd $curr_directory
 
 # Clear the temporary files
@@ -2122,6 +2125,7 @@ function clear_session_and_exit(){
     clear_session_and_exit_email_short_message=$1
     clear_session_and_exit_email_long_message=${2:-$clear_session_and_exit_email_short_message}
     clear_session_and_exit_rc=${3:-1}
+    clear_session_and_exit_dont_check_files_n_processes=$4
 
     # Disable the keyboard
     disable_enter_key
@@ -2143,18 +2147,24 @@ function clear_session_and_exit(){
     publish_to_messagebar "${green}*** runSAS is exiting now ($clear_session_and_exit_rc) ***${white}"
     print2debug global_batchid "*** runSAS is exiting now ($clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
 
-    # Save debug logs for future reference
-    copy_files_to_a_directory "$RUNSAS_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
-    copy_files_to_a_directory "$RUNSAS_TMP_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
-    copy_files_to_a_directory "$RUNSAS_SESSION_LOG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
+    if [[ $clear_session_and_exit_dont_check_files_n_processes == "" ]]; then
+        # Save debug logs for future reference
+        copy_files_to_a_directory "$RUNSAS_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
+        copy_files_to_a_directory "$RUNSAS_TMP_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
+        copy_files_to_a_directory "$RUNSAS_SESSION_LOG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
 
-    # Kill all running processes (one at a time, including child processes)
-    while IFS='|' read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
-        get_keyval_from_batch_state runsas_job_pid runsas_job_pid $jid $global_batchid
-        if [[ ! -z "$runsas_job_pid" && "$runsas_job_pid" != "" && $runsas_job_pid -gt 0 ]]; then
-            running_processes_housekeeping $runsas_job_pid $j
-        fi
+        # Kill all running processes (one at a time, including child processes)
+        while IFS='|' read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
+            get_keyval_from_batch_state runsas_job_pid runsas_job_pid $jid $global_batchid
+            if [[ ! -z "$runsas_job_pid" && "$runsas_job_pid" != "" && $runsas_job_pid -gt 0 ]]; then
+                running_processes_housekeeping $runsas_job_pid $j
+            fi
+        done < $JOB_LIST_FILE
     done < $JOB_LIST_FILE 
+        done < $JOB_LIST_FILE
+    done < $JOB_LIST_FILE 
+        done < $JOB_LIST_FILE
+    fi
     
     # Goodbye!
     publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now ($clear_session_and_exit_rc) ***${white}"
@@ -3183,7 +3193,7 @@ function check_if_batch_has_stalled(){
             fi
 
             # Gracefully exit!
-            clear_session_and_exit "The batch has failed (or stalled)" "The batch has failed (or stalled), review the runSAS log and job logs (once the fix has been applied to the job, you can resume the batch by using --resume feature"
+            clear_session_and_exit
         fi
     
         # Enable the keyboard & cursor
@@ -3198,7 +3208,7 @@ function check_if_batch_has_stalled(){
             if [[ $cyclic_dependency_detected -eq 1 ]]; then
                 printf "\n\n${SPACE_DECORATOR}${red_bg}${black}*** ERROR: Cyclic dependency detected, review the job dependencies! ***${white}"
                 print2debug runsas_jobid "*** ERROR: Cyclic dependency detected while running job [" "] with it's dependency [$runsas_jobdep] batch terminated! ****"
-                clear_session_and_exit "The batch has failed (or stalled)" "ERROR: Cyclic dependency detected, review the job dependencies!"
+                clear_session_and_exit 
             fi
 
             # Show message and ask the user for input.
@@ -3208,7 +3218,8 @@ function check_if_batch_has_stalled(){
 			if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:0:1}" == "Y" ]]; then
 				echo "The batch is waiting for user input (to recover from failure)" > $EMAIL_BODY_MSG_FILE
 				add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-				send_an_email -v "" "User input required to recover the failed batch" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+				send_an_email -s "" "User input required to recover the failed batch" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
+                stall_user_msg=$stall_user_msg" (notified via email)"
             fi
 
             # Ask the user for options
@@ -3605,6 +3616,13 @@ function generate_a_new_batchid(){
     # Determine the last batch run identifier (from global parms)
     get_keyval global_batchid
 
+    # Store old batchid
+    if [ -z "$global_batchid" ] || [ "$global_batchid" == "" ]; then
+        prev_global_batchid=0
+    else
+        prev_global_batchid=$global_batchid
+    fi
+
     # Check if old batch is being resumed
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]]; then
         # Create a batch state file (if it's the first time)
@@ -3617,7 +3635,7 @@ function generate_a_new_batchid(){
         # Set the requested batch id
         requested_resume_batchid=${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]}
         if [[ "$requested_resume_batchid" == "" ]]; then
-            bid_new_batchid=$global_batchid
+            bid_new_batchid=$global_batchid # Auto assign previous batchid
         else
             # Wrong batch id inputs
             if [[ ! $requested_resume_batchid =~ $RUNSAS_REGEX_NUMBER ]] || [[ $requested_resume_batchid -le 0 ]] || [[ "$requested_resume_batchid" == "" ]]; then
@@ -3650,22 +3668,22 @@ function generate_a_new_batchid(){
 
     # Create message
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]]; then
-        batchid_gen_message="Batch ID: $global_batchid "
+        batchid_gen_message="Batch ID: $global_batchid"
     else
-        batchid_gen_message="Batch ID: $global_batchid (resuming an old batch) "
+        batchid_gen_message="Batch ID: $global_batchid (resuming an old batch)"
         print2debug $global_batchid "\n\n------>>>>>>>>>>> Resuming an old batch failed/stalled batch, batchid: [" "] <<<<<<<<<<<------"
     fi
 
     # Show the current batch id
     if [[ "$show_batchid" == "Y" ]]; then
-        printf "${green}${batchid_gen_message}${white}\n"
+        printf "${green}${batchid_gen_message}${white}"
         publish_to_messagebar "${green_bg}${black}${batchid_gen_message}${white}"
     fi
 
     # Terminate if the batch id is missing!
     if [[ "$global_batchid" == "" || $global_batchid -lt 0 ]]; then
         printf "${red}*** ERROR: Critical error as batchid was not generated (global_batchid=$global_batchid) ***${white}\n"
-        clear_session_and_exit "The batch has failed (batchid value error)"
+        clear_session_and_exit "The batch has failed (batchid null value error)"
     fi
 }
 #------
@@ -3800,6 +3818,9 @@ function put_keyval(){
 	# Add the new entry (or update the entry)
     echo "$str_key$str_delim$str_val" >> $str_file # Add a new entry 
 
+    # Remove any empty lines
+    remove_empty_lines_from_file $str_file
+
     # Debug
     # print2debug str_key "\n*** Added key: " "(val: $str_val) to $str_file file ***"
     # print2debug str_file "---Printing state file: " "(START)---\n"
@@ -3819,9 +3840,6 @@ function get_keyval(){
     ret_var=${4:-$1}
     ret_debug=${5}
 
-    # Create a file if it doesn't exist
-    # create_a_file_if_not_exists $ret_file
-
     # Debug
     # print2debug ret_key "\n*** Retreiving a key: " " with $ret_delim delimeter from $ret_file file (command: eval $ret_var=`awk -v pat="$ret_key" -F"$ret_delim" '$0~pat { print $2 }' $ret_file 2>/dev/null`) ***"
     # print2debug ret_file "---Printing state file: " "(START)---\n"
@@ -3831,6 +3849,7 @@ function get_keyval(){
 
     # Set the value found in the file to the key
     if [ -f "$ret_file" ]; then
+        remove_empty_lines_from_file $ret_file
         eval $ret_var=`awk -v pat="$ret_key" -F"$ret_delim" '$0~pat { print $2 }' $ret_file 2>/dev/null`
     fi   
 
@@ -4871,7 +4890,7 @@ function runSAS(){
 		disable_enter_key
 		
 		# Ask user
-        run_or_skip_message=" Do you want to run? (y/n): "		
+        run_or_skip_message="Do you want to run? (y/n): "		
         run_or_skip_message_orig=$run_or_skip_message		
 		printf "${red}$run_or_skip_message${white}"
 		
@@ -5437,7 +5456,7 @@ SERVER_PACKAGE_INSTALLER_PROGRAM=yum
 RUNSAS_LOG_SEARCH_FUNCTION=egrep
 EMAIL_USER_MESSAGE=""
 EMAIL_FLAGS_DEFAULT_SETTING=YNYY
-EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=120
+EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=10
 RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
 RUNSAS_BATCH_COMPLETE_FLAG=0
 SERVER_IFS=$IFS
