@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 41.4                                                                                                  #
+#     Version: 41.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 28/07/2020                                                                                            #
+#        Date: 29/07/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=41.4
+	RUNSAS_CURRENT_VERSION=41.5
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1151,8 +1151,9 @@ function running_processes_housekeeping(){
         if [[ ! -z `ps -p $1 -o comm=` ]]; then
             if [[ "$KILL_PROCESS_ON_USER_ABORT" ==  "Y" ]]; then
                 disable_enter_key
-                printf "\n${red}*** Attempting to clean up running $2 processes, please wait... ***\n\n${white}"
-                printf "${white}Process (PID) details for the currently running job:\n${white}"
+                printf "\n${red}*** Attempting to clean up running $2 processes, please wait... ***\n${white}"
+                clear_the_rest_of_the_line
+                printf "\n${red}Process (PID) details for the currently running job:\n${white}"
                 # Show & kill!
                 show_pid_details $1
                 show_child_pid_details $1
@@ -1521,7 +1522,7 @@ cd $email_optional_attachment_directory
 # Build a terminal message (first part of the message)
 email_attachment_msg=
 if [[ "$email_mode" != "-s" ]]; then
-    printf "${green}An email ${white}"
+    printf "\n${green}An email ${white}"
     email_attachment_msg="with no attachment "
 fi
 
@@ -2139,8 +2140,8 @@ function clear_session_and_exit(){
         fi
     fi
 
-    publish_to_messagebar "${green}*** runSAS is exiting now ***${white}"
-    print2debug global_batchid "*** runSAS is exiting now for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
+    publish_to_messagebar "${green}*** runSAS is exiting now ($clear_session_and_exit_rc) ***${white}"
+    print2debug global_batchid "*** runSAS is exiting now ($clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
 
     # Save debug logs for future reference
     copy_files_to_a_directory "$RUNSAS_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
@@ -2156,7 +2157,7 @@ function clear_session_and_exit(){
     done < $JOB_LIST_FILE 
     
     # Goodbye!
-    publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now ***${white}"
+    publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now ($clear_session_and_exit_rc) ***${white}"
     sleep 0.3
     publish_to_messagebar "${white} ${white}"
 
@@ -2268,11 +2269,17 @@ function get_remaining_cols_on_terminal(){
 #  Out: <NA>
 #------
 function clear_the_rest_of_the_line(){
-    # Get the remaining columns on the current line
-    get_remaining_cols_on_terminal
+    if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
+        # Get the remaining columns on the current line
+        get_remaining_cols_on_terminal
 
-    # Clear the columns with blanks
-    printf "%${runsas_remaining_cols_in_screen}s" " "
+        # Clear the columns with blanks
+        if [[ $runsas_remaining_cols_in_screen -le $current_available_cols ]]; then
+            printf "%${runsas_remaining_cols_in_screen}s" " "
+        else
+            printf "%${current_available_cols}s" " "
+        fi
+    fi
 }
 #------
 # Name: refresh_term_screen_size()
@@ -4376,6 +4383,21 @@ function show_server_and_user_details(){
     printf "${white} user\n${white}"
 }
 #------
+# Name: show_additional_batch_mode_messages()
+# Desc: This function will show additional info in batch mode
+#   In: <NA>
+#  Out: <NA> 
+#------
+function show_additional_batch_mode_messages(){
+    if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -gt -1 ]]; then
+        if [[ $total_flows_in_current_batch -eq 1 ]]; then
+            printf "${!runsas_job_status_color}${SPACE_DECORATOR}${SPACE_DECORATOR}${CHILD_DECORATOR}[Results: Job #$runsas_jobid: $runsas_job]${white}"
+        else
+            printf "${!runsas_job_status_color}${NO_BRANCH_DECORATOR}${SPACE_DECORATOR}${CHILD_DECORATOR}[Results: Job #$runsas_jobid: $runsas_job]${white}"
+        fi
+    fi
+}
+#------
 # Name: update_job_status_color_palette()
 # Desc: This function will update the color variables based on the current state of the jobs (must be called within runSAS function)
 #   In: file-name (multiple files can be provided)
@@ -5181,13 +5203,6 @@ function runSAS(){
 
     # Set the "RUNSAS_BATCH_COMPLETE_FLAG" (to exit the master loop) based on how many has completed it's run (any state DONE/FAIL)
     check_if_the_batch_is_complete
-
-    # Batch mode messages (additional)
-    function show_additional_batch_mode_messages(){
-        if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -gt -1 ]]; then
-            printf "${!runsas_job_status_color}${NO_BRANCH_DECORATOR}${SPACE_DECORATOR}${CHILD_DECORATOR}[Results: Job #$runsas_jobid: $runsas_job]${white}"
-        fi
-    }
 
     # ERROR: Check return code, abort if there's an error in the job run
     if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
