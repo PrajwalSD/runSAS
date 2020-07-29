@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 40.9                                                                                                  #
+#     Version: 41.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 28/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.9
+	RUNSAS_CURRENT_VERSION=41.0
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5542,7 +5542,7 @@ if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]]; then
 fi
 
 # Create files
-create_a_file_if_not_exists $RUNSAS_DEBUG_FILE $RUNSAS_TMP_DEBUG_FILE
+create_a_file_if_not_exists $RUNSAS_DEBUG_FILE $RUNSAS_TMP_DEBUG_FILE $EMAIL_BODY_MSG_FILE
 
 # Expand the ranges in the file
 convert_ranges_in_job_dependencies $JOB_LIST_FILE
