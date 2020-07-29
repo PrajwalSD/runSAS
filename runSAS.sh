@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 41.1                                                                                                  #
+#     Version: 41.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 28/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=41.1
+	RUNSAS_CURRENT_VERSION=41.2
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5070,7 +5070,11 @@ function runSAS(){
     fi
 
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
-    no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_logs_root_directory/$runsas_job_log | wc -l`
+    if [[ -f $runsas_logs_root_directory/$runsas_job_log ]]; then
+        no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_logs_root_directory/$runsas_job_log | wc -l`
+    else
+        no_of_steps_completed_in_log=1
+    fi
     
     # Get runtime stats for the current job
     get_job_hist_runtime_stats $runsas_job
@@ -5088,15 +5092,20 @@ function runSAS(){
     fi
 
     # Check if there are any errors in the logs (as it updates, in real-time) and capture step information using "egrep"
-    $RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} \
-                                -E --color "$ERROR_CHECK_SEARCH_STRING" \
-                                -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT \
-                                $runsas_logs_root_directory/$runsas_job_log > $runsas_error_tmp_log_file
+    if [[ -f $runsas_logs_root_directory/$runsas_job_log ]]; then
+        $RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} \
+                                    -E --color "$ERROR_CHECK_SEARCH_STRING" \
+                                    -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT \
+                                    $runsas_logs_root_directory/$runsas_job_log > $runsas_error_tmp_log_file
 
-    egrep   -m$((JOB_ERROR_DISPLAY_COUNT+1)) \
-            -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" \
-            -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT \
-             $runsas_logs_root_directory/$runsas_job_log > $runsas_error_w_steps_tmp_log_file
+        egrep   -m$((JOB_ERROR_DISPLAY_COUNT+1)) \
+                -E --color "* $STEP_CHECK_SEARCH_STRING|$ERROR_CHECK_SEARCH_STRING" \
+                -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT \
+                $runsas_logs_root_directory/$runsas_job_log > $runsas_error_w_steps_tmp_log_file
+    else
+        touch $runsas_error_tmp_log_file
+        touch $runsas_error_w_steps_tmp_log_file
+    fi
 
     # Again, suppress unwanted lines in the log (typical SAS errors!)
     remove_a_line_from_file ^$ "$runsas_error_tmp_log_file"
