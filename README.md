@@ -178,7 +178,7 @@ _Tip: To disable email alerts temporarily for a run, just append `--noemail` dur
 Yes, runSAS supports a simple time based delay. just add `--delay <time-in-seconds>` during the launch i.e. `./runSAS.sh --delay 3600` to delay a batch run by 1 hour.
 
 # How to schedule runSAS batch?
-runSAS supports batch (non-interactive) mode for scheduling purposes, simply append `--batch --nocolors` to the launch command. If you're using wrappers around it the use the $? to capture the exit return code (a successful run will return 0 and a failed run will return a 1)
+runSAS supports batch (non-interactive) mode for scheduling purposes, simply append `--batch --nocolors` to the launch command. If you're intending to use it within a wrapper script then use the typical `$?` to capture the exit return code from runSAS.sh script, success=0 and error=1
   e.g. `nohup ./runSAS.sh -fu 2 3 --batch --nocolors &`
 
 # How's job/flow failure managed?
