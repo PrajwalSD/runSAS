@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 40.8                                                                                                  #
+#     Version: 40.9                                                                                                  #
 #                                                                                                                    #
-#        Date: 27/07/2020                                                                                            #
+#        Date: 28/07/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -70,12 +70,12 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 # 4/4: Script behaviors, defaults should work just fine but amend as per the environment needs.
 #
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
-RUNTIME_COMPARISON_FACTOR=30                                            # Default is 30                   ---> This is the factor used by job run times comparison module to display a % difference, specify a positive number
+RUNTIME_COMPARISON_FACTOR=30                                            # Default is 30                   ---> Runtime change threshold, increase this to display only higher % difference
 KILL_PROCESS_ON_USER_ABORT=Y                                            # Default is Y                    ---> The rogue processes are automatically killed by the script on user abort.
 ERROR_CHECK_SEARCH_STRING="^ERROR"                                      # Default is "^ERROR"             ---> This is what is grepped in the log
 STEP_CHECK_SEARCH_STRING="Step:"                                        # Default is "Step:"              ---> This is searched for the step in the log
 SASTRACE_SEARCH_STRING="^options sastrace"                              # Default is "^options sastrace"  ---> This is used for searching the sastrace option in SAS log
-ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is Y                    ---> Enables runSAS script history, specify Y/N
+ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is Y                    ---> Enables runSAS flow/job runtime history, specify Y/N
 ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=40.8
+	RUNSAS_CURRENT_VERSION=40.9
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
