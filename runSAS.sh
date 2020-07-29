@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 41.0                                                                                                  #
+#     Version: 41.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 28/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=41.0
+	RUNSAS_CURRENT_VERSION=41.1
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5517,7 +5517,7 @@ override_terminal_message_line_wrappers
 set_colors_codes
 
 # Create required directories
-create_a_new_directory -p --silent $RUNSAS_TMP_DIRECTORY $RUNSAS_RUN_STATS_DIRECTORY $RUNSAS_BATCH_STATE_ROOT_DIRECTORY
+create_a_new_directory -p --silent $RUNSAS_TMP_DIRECTORY $RUNSAS_RUN_STATS_DIRECTORY $RUNSAS_BATCH_STATE_ROOT_DIRECTORY $RUNSAS_EMAIL_DIRECTORY
 
 # Parameters passed to this script at the time of invocation (modes etc.), set the default to 0
 script_mode="$1"
