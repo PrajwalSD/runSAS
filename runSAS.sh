@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 41.3                                                                                                  #
+#     Version: 41.4                                                                                                  #
 #                                                                                                                    #
 #        Date: 28/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=41.3
+	RUNSAS_CURRENT_VERSION=41.4
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5079,13 +5079,13 @@ function runSAS(){
     if [[ $runsas_jobrc -ge $RC_JOB_TRIGGERED ]]; then
         while [[ ! "$runsas_job_log" =~ "log" ]]; do 
             sleep 0.25 
-            runsas_job_log=`ls -tr $runsas_logs_root_directory/${runsas_job}*.log | tail -1`
+            runsas_job_log=`ls -tr $runsas_logs_root_directory/${runsas_job}*.log 2> /dev/null | tail -1`
             runsas_job_log=${runsas_job_log##/*/}
         done
     fi
 
     # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
-    if [[ -f $runsas_logs_root_directory/$runsas_job_log ]]; then
+    if [[ -f "$runsas_logs_root_directory/$runsas_job_log" ]]; then
         no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_logs_root_directory/$runsas_job_log | wc -l`
     else
         no_of_steps_completed_in_log=1
@@ -5107,7 +5107,7 @@ function runSAS(){
     fi
 
     # Check if there are any errors in the logs (as it updates, in real-time) and capture step information using "egrep"
-    if [[ -f $runsas_logs_root_directory/$runsas_job_log ]]; then
+    if [[ -f "$runsas_logs_root_directory/$runsas_job_log" ]]; then
         $RUNSAS_LOG_SEARCH_FUNCTION -m${JOB_ERROR_DISPLAY_COUNT} \
                                     -E --color "$ERROR_CHECK_SEARCH_STRING" \
                                     -$JOB_ERROR_DISPLAY_LINES_AROUND_MODE$JOB_ERROR_DISPLAY_LINES_AROUND_COUNT \
