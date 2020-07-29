@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 41.2                                                                                                  #
+#     Version: 41.3                                                                                                  #
 #                                                                                                                    #
 #        Date: 28/07/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=41.2
+	RUNSAS_CURRENT_VERSION=41.3
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1475,7 +1475,7 @@ email_boundary_string="ZZ_/afg6432dfgkl.94531q"
 if [[ "$email_optional_attachment" != "" ]]; then
 	this_attachment_size=`du -b "$email_optional_attachment_directory/$email_optional_attachment" | cut -f1`
 	if (( $this_attachment_size > $EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES )); then
-		printf "${red}The log is too large to be sent as an email attachment ($this_attachment_size bytes). ${white}"
+        printf "${red}The log is too big for attachment ($this_attachment_size bytes). ${white}"
 		email_optional_attachment=;
 	fi
 fi
@@ -1560,7 +1560,12 @@ printf '%s\n' "--${email_boundary_string}--"
 
 # Post email alert
 if [[ "$email_mode" != "-s" ]]; then
-    printf "${green}was sent to $email_to_address$email_to_distribution_list${white}"
+    if [[ "$email_mode" == "-p" ]]; then
+        publish_to_messagebar "${green}was sent to $email_to_address$email_to_distribution_list${white}"
+    else
+        printf "${green}was sent to $email_to_address$email_to_distribution_list${white}"
+    fi
+    sleep 0.5
 fi
 cd $curr_directory
 
@@ -1657,7 +1662,7 @@ function runsas_error_email(){
         echo "Job:)" >> $EMAIL_BODY_MSG_FILE
         echo "Log: $runsas_logs_root_directory/$runsas_job_log" >> $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
-        send_an_email -v "" "Job $1 (of $2) has failed!" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE $runsas_logs_root_directory $runsas_job_log 
+        send_an_email -s "" "Job $1 (of $2) has failed!" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE $runsas_logs_root_directory $runsas_job_log 
     fi
 }
 #------
@@ -3143,6 +3148,11 @@ function check_if_batch_has_stalled(){
 
     # Stall check
     print2debug jobid "Stall check after full iter=&check_iter. for job [" "] stalled=$batch_is_stalled | rc=$runsas_jobrc | runflag=$runflag | runsas_mode_runflag=$runsas_mode_runflag | runflag=$runflag | error_message_shown_on_job_fail=$error_message_shown_on_job_fail | cyclic_dependency_detected=$cyclic_dependency_detected | count_of_dep_jobs_currently_running=$count_of_dep_jobs_currently_running | count_of_jobs_currently_running=$count_of_jobs_currently_running"
+
+    # Reset the cyclic dependency if the user doesn't want it 
+    if [[ "$RUNSAS_DETECT_CYCLIC_DEPENDENCY" == "Y" ]]; then
+        cyclic_dependency_detected=0 # Reset 
+    fi
 
     # Check if there's a cyclic dependency
     if [[ $cyclic_dependency_detected -eq 1 ]]; then
@@ -4658,6 +4668,8 @@ function runSAS(){
     repeat_job_terminal_messages="Y"
     runsas_job_marked_complete_after_failure=0
     error_message_shown_on_job_fail=""
+    runsas_error_email_sent=""
+    runsas_job_completed_email_sent=""
 
     # If the user has specified a different server context, switch it here
     if [[ "$runsas_opt" == "--server" ]]; then
@@ -4736,6 +4748,9 @@ function runSAS(){
     print2debug runsas_mode_runflag
     print2debug runsas_mode_interactiveflag
     print2debug runsas_job_status_color
+    print2debug error_message_shown_on_job_fail
+    print2debug runsas_error_email_sent
+    print2debug runsas_job_completed_email_sent
 
     # Increment the job counter for terminal display, jobid is unique across the flows
     JOB_COUNTER_FOR_DISPLAY=$runsas_jobid
@@ -5257,7 +5272,10 @@ function runSAS(){
         publish_to_messagebar "${red}(Job #$runsas_jobid failed): $(<$runsas_error_tmp_log_file)${white}" 
 		
 		# Send an error email
-        runsas_error_email $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
+        if [[ "$runsas_error_email_sent" != "Y" ]]; then 
+            runsas_error_email $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
+            update_batch_state runsas_error_email_sent "Y" $runsas_jobid $global_batchid
+        fi
 
         # Log
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
@@ -5323,7 +5341,10 @@ function runSAS(){
         print2debug runsas_jobrc
 
         # Send an email (silently)
-        runsas_job_completed_email $runsas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
+        if [[ "$runsas_job_completed_email_sent" != "Y" ]]; then 
+            runsas_job_completed_email $runsas_job $((end_datetime_of_job-start_datetime_of_job)) $hist_job_runtime_for_current_job $JOB_COUNTER_FOR_DISPLAY $TOTAL_NO_OF_JOBS_COUNTER_CMD
+            update_batch_state runsas_job_completed_email_sent "Y" $runsas_jobid $global_batchid
+        fi
 
         # Stop in case of interactive mode:
         # Job-wise:
@@ -5406,6 +5427,7 @@ RUNSAS_BATCH_COMPLETE_FLAG=0
 SERVER_IFS=$IFS
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
 RUNSAS_SCREEN_LINES_OVERFLOW_BUFFER=5
+RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y
 
 # Graphical defaults
 SINGLE_PARENT_DECORATOR="───"
