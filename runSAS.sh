@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 41.5                                                                                                  #
+#     Version: 50.0                                                                                                  #
 #                                                                                                                    #
-#        Date: 29/07/2020                                                                                            #
+#        Date: 19/08/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -72,9 +72,6 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
 RUNTIME_COMPARISON_FACTOR=30                                            # Default is 30                   ---> Runtime change threshold, increase this to display only higher % difference
 KILL_PROCESS_ON_USER_ABORT=Y                                            # Default is Y                    ---> The rogue processes are automatically killed by the script on user abort.
-ERROR_CHECK_SEARCH_STRING="^ERROR"                                      # Default is "^ERROR"             ---> This is what is grepped in the log
-STEP_CHECK_SEARCH_STRING="Step:"                                        # Default is "Step:"              ---> This is searched for the step in the log
-SASTRACE_SEARCH_STRING="^options sastrace"                              # Default is "^options sastrace"  ---> This is used for searching the sastrace option in SAS log
 ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is Y                    ---> Enables runSAS flow/job runtime history, specify Y/N
 ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
@@ -82,6 +79,9 @@ ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Defaul
 BATCH_HISTORY_PERSISTENCE=ALL                                           # Default is ALL                  ---> Specify a postive number to control the number of batches preserved by runSAS  (e.g. 50 will preserve last 50 runs)
 CONCURRENT_JOBS_LIMIT=ALL                                               # Default is ALL                  ---> Specify the available job slots as a number (e.g. 2), "ALL" will use the CPU count instead (nproc --all) and "MAX" will spawn all jobs
 CONCURRENT_JOBS_LIMIT_MULTIPLIER=1                                      # Default is 1                    ---> Specify a positive number to increase the available job slots (e.g. 1x, 2x, 3x...), will be used a multiplier to the above parameter
+ERROR_CHECK_SEARCH_STRING="^ERROR"                                      # Default is "^ERROR"             ---> This is what is grepped in the log
+STEP_CHECK_SEARCH_STRING="Step:"                                        # Default is "Step:"              ---> This is searched for the step in the log
+SASTRACE_SEARCH_STRING="^options sastrace"                              # Default is "^options sastrace"  ---> This is used for searching the sastrace option in SAS log
 #
 #--------------------------------------DO NOT CHANGE ANYTHING BELOW THIS LINE----------------------------------------#
 #>
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=41.5
+	RUNSAS_CURRENT_VERSION=41.9
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -290,7 +290,7 @@ function show_first_launch_intro_message(){
 function show_the_list(){
     if [[ ${#@} -ne 0 ]] && [[ "${@#"--list"}" = "" ]]; then
         publish_to_messagebar "${yellow}Formatting the job list, please wait...${white}"
-        print_file_content_with_index $JOB_LIST_FILE jobs --prompt --server
+        print_file_content_with_index $JOB_LIST_FILE jobs --prompt --server --skip
         printf "\n"
         exit 0;
     fi;
@@ -401,6 +401,19 @@ function set_colors_codes(){
 #------
 function display_post_banner_messages(){
     printf "${white}The script has many options, ./runSAS.sh --help to see more details.${end}\n"
+}
+#------
+# Name: convert_secs_to_hours_mins_secs()
+# Desc: Show duration in hours, mins and seconds 
+#   In: duration-in-secs,
+#  Out: 
+#------
+function convert_secs_to_hours_mins_secs(){
+    # Input parameters
+    conv_s2h_duration_in_secs=$1
+
+    # Show in hours, mins, seconds.
+    conv_s2h_duration_in_hms=`printf '%dh:%dm:%ds\n' $((conv_s2h_duration_in_secs/3600)) $((conv_s2h_duration_in_secs%3600/60)) $((conv_s2h_duration_in_secs%60))`
 }
 #------
 # Name: check_runsas_linux_program_dependencies()
@@ -725,7 +738,7 @@ function check_if_the_dir_exists(){
     for dir in "$@"
     do
         if [[ ! -d "$dir" ]]; then
-            printf "${red}*** ERROR: Directory ${white}${red_bg}$dir${white}${red} was not found in the server, make sure you have correctly set the script parameters as per the environment *** ${white}"
+            printf "${red}*** ERROR: Directory ${white}${red_bg}$dir${white}${red} was not found in the server, make sure you have correctly set the script parameters as per the environment (PWD: $PWD)*** ${white}"
             clear_session_and_exit
         fi
     done
@@ -769,7 +782,7 @@ function check_if_the_file_exists(){
     for file in "$@"
     do
         if [ ! -f "$file" ] && [ ! "$file" == "noexit" ] ; then
-            printf "\n${red}*** ERROR: File ${black}${red_bg}$file${white}${red} was not found in the server *** ${white}"
+            printf "\n${red}*** ERROR: File ${black}${red_bg}$file${white}${red} was not found in the server (PWD: $PWD) *** ${white}"
 			if [[ $noexit -eq 0 ]]; then
 				clear_session_and_exit
 			fi
@@ -1075,7 +1088,7 @@ function check_for_job_list_override(){
             cp -f ${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_JOBLIST_MODE+1]} $JOB_LIST_FILE
             
             # Fix the job list file if the user has not decided to provide flow details
-            convert_ranges_in_job_dependencies $JOB_LIST_FILE
+            expand_job_deps_in_joblist_file $JOB_LIST_FILE
             refactor_job_list_file $JOB_LIST_FILE
         fi
     fi
@@ -2055,12 +2068,12 @@ function get_running_jobs_count(){
 	done < $getname_file
 }
 #------
-# Name: get_name_from_list()
+# Name: get_name_from_job_file()
 # Desc: Get the name when user inputs a number/index (from the list)
 #   In: id, file, column, delimeter, silent
 #  Out: <NA>
 #------
-function get_name_from_list(){
+function get_name_from_job_file(){
     # Input parameters
     getname_id=$1
     getname_file=$2
@@ -2070,6 +2083,7 @@ function get_name_from_list(){
         
     # Get the job name from the file for a given index
     # job_name_from_the_list=`sed -n "${getname_id}p" $getname_file | awk -v getname_column=$getname_column -F "$getname_delimeter" '{print $getname_column}'`
+    
     getname_job_counter=0
     job_name_from_the_list=""
     flow_name_from_the_list=""
@@ -2084,11 +2098,45 @@ function get_name_from_list(){
 
     # Check if the name has been picked correctly by the above command
     if [[ -z $job_name_from_the_list ]] || [[ "$job_name_from_the_list" == ""  ]]; then
-        printf "${red}*** ERROR: No job was found with jobid $1 in the list above. Please review the specified index and launch the script again ***${white}"
+        printf "${red}*** ERROR: No job was found with jobid $getname_id in the list above. Please review the specified index and launch the script again ***${white}"
         clear_session_and_exit
     else
         if [[ "$getname_silent" == "" ]]; then
             printf "${green}Job ${darkgrey_bg}${job_name_from_the_list}${end}${green} from flow ${darkgrey_bg}$flow_name_from_the_list${end}${green} has been selected from the job list at line ${darkgrey_bg}#$getname_job_counter${end}${green} with jobid ${darkgrey_bg}${getname_id}${end}${green}${white}\n"
+        fi
+    fi
+}
+#------
+# Name: get_name_from_list()
+# Desc: Get the name when user inputs a number/index (from the list)
+#   In: id, file, column, delimter
+#  Out: <NA>
+#------
+function get_name_from_list(){
+    # Input parameters
+    getname_id=$1
+    getname_file=$2
+    getname_column=${3:-4} # 4th column is the default 
+    getname_delimeter="${4}"
+    getname_silent=$5
+
+    # Reset the variable
+    job_name_from_the_list=""
+        
+    # Get the job name from the file for a given index
+    if [[ "$getname_delimeter" == "" ]]; then
+        job_name_from_the_list=`sed -n "${getname_id}p" $getname_file`
+    else
+        job_name_from_the_list=`sed -n "${getname_id}p" $getname_file | awk '{print $1}'`
+    fi
+   
+    # Check if the name has been picked correctly by the above command
+    if [[ -z $job_name_from_the_list ]] || [[ "$job_name_from_the_list" == ""  ]]; then
+        printf "${red}*** ERROR: No job was found at $getname_id in the list above. Please review the specified index and launch the script again ***${white}"
+        clear_session_and_exit
+    else
+        if [[ "$getname_silent" == "" ]]; then
+            printf "${green}Job ${darkgrey_bg}${job_name_from_the_list}${end}${green} has been selected from the list at line at ${darkgrey_bg}${getname_id}${end}${green}${white}\n"
         fi
     fi
 }
@@ -2159,10 +2207,6 @@ function clear_session_and_exit(){
             if [[ ! -z "$runsas_job_pid" && "$runsas_job_pid" != "" && $runsas_job_pid -gt 0 ]]; then
                 running_processes_housekeeping $runsas_job_pid $j
             fi
-        done < $JOB_LIST_FILE
-    done < $JOB_LIST_FILE 
-        done < $JOB_LIST_FILE
-    done < $JOB_LIST_FILE 
         done < $JOB_LIST_FILE
     fi
     
@@ -2925,7 +2969,7 @@ function validate_script_modes(){
             fi
 
             # Show job name for the index
-            get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[p1]} $JOB_LIST_FILE 4
+            get_name_from_job_file ${RUNSAS_PARAMETERS_ARRAY[p1]} $JOB_LIST_FILE 4
 
             # Set the flag
             runsas_job_filter_mode="SF-SINGLE"
@@ -2949,8 +2993,8 @@ function validate_script_modes(){
             fi
 
             # Show job name for the index
-            get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[p1]} $JOB_LIST_FILE 4
-            get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[p2]} $JOB_LIST_FILE 4
+            get_name_from_job_file ${RUNSAS_PARAMETERS_ARRAY[p1]} $JOB_LIST_FILE 4
+            get_name_from_job_file ${RUNSAS_PARAMETERS_ARRAY[p2]} $JOB_LIST_FILE 4
 
             # Set the flag
             runsas_job_filter_mode="SF-DOUBLE"
@@ -3290,6 +3334,9 @@ function refactor_job_list_file(){
     # Parameters
     in_job_list_file=$1
 
+    # Message to the user
+    publish_to_messagebar "${yellow}Refactoring the job list...${white}"
+
     # Output
     out_job_list_file=${1}_with_flows
 
@@ -3309,11 +3356,18 @@ function refactor_job_list_file(){
 
                 # First field i.e. flowid is actually the job name and second is the option
                 if [[ $iter -eq 1 ]]; then
-                    echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
+                    if [[ "$flow" == "--skip" ]]; then
+                        echo "1|Flow|$iter|$flowid|$iter|AND|4|N|$flow" >> $out_job_list_file
+                    else
+                        echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
+                    fi
                 else
-                    echo "1|Flow|$iter|$flowid|$((iter-1))|AND|4|Y|$flow" >> $out_job_list_file
+                    if [[ "$flow" == "--skip" ]]; then
+                        echo "1|Flow|$iter|$flowid|$((iter-1))|AND|4|N|$flow" >> $out_job_list_file
+                    else
+                        echo "1|Flow|$iter|$flowid|$((iter-1))|AND|4|Y|$flow" >> $out_job_list_file
+                    fi
                 fi
-
                 let iter+=1
             fi
         done < $in_job_list_file
@@ -3327,7 +3381,7 @@ function refactor_job_list_file(){
 
     # Update the original file (keep a backup)
     if [ -f "$out_job_list_file" ]; then
-        mv $in_job_list_file $in_job_list_file.backup
+        mv $in_job_list_file $RUNSAS_TMP_DIRECTORY/$in_job_list_file.backup
         mv $out_job_list_file $in_job_list_file
     fi
 }
@@ -3397,6 +3451,13 @@ function validate_job_list(){
 
     # Collect flow and job stats
 	capture_flow_n_job_stats $vld_job_list_file # Generates flow_id_array and job_id_array
+
+    # Show message
+    for (( i=1; i<=${#vjmode_show_wait_submessage}; i++ )); do
+        printf "\b"
+    done
+	vjmode_show_wait_submessage="(validating job list)"  
+	printf "${grey}$vjmode_show_wait_submessage${white}"
 
     # Proceed to validation
 	if [[ $RUNSAS_INVOKED_IN_JOB_MODE -le -1 ]]; then  # Skip the job list validation in -j(run-a-job) mode
@@ -3508,6 +3569,16 @@ function validate_job_list(){
         clear_session_and_exit
     fi
 
+    # Show message
+    for (( i=1; i<=${#vjmode_show_wait_submessage}; i++ )); do
+        printf "\b"
+    done
+	vjmode_show_wait_submessage="(collecting some stats)"  
+	printf "${grey}$vjmode_show_wait_submessage${white}"
+
+    # Sleep 
+    sleep 0.15
+
     # Get the length of the longest job name
     j_len_array_max=${j_len_array[0]}
     for n in "${j_len_array[@]}" ; do
@@ -3520,7 +3591,18 @@ function validate_job_list(){
     RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=$((j_len_array_max+23)) 
     print2debug RUNSAS_RUNNING_MESSAGE_FILLER_END_POS "The value (after adjustment, adding 23 to j_len_array_max=$j_len_array_max) of RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=[" "]"
 
-	# Remove the message, reset the cursor
+    # Show message
+    for (( i=1; i<=${#vjmode_show_wait_submessage}; i++ )); do
+        printf "\b"
+    done
+	vjmode_show_wait_submessage="(all checks complete!)"  
+    vjmode_show_wait_message+=vjmode_show_wait_submessage
+	printf "${grey}$vjmode_show_wait_submessage${white}"
+
+    # Sleep 
+    sleep 0.15
+
+	# Clear the message, good to go!
 	echo -ne "\r"
 	printf "%${#vjmode_show_wait_message}s" " "
 	echo -ne "\r"
@@ -3929,6 +4011,7 @@ function redeploy_sas_jobs(){
 				# Get the job name if it is the index
 				if [[ ${#depjob_from_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 					printf "\n"
+                    
 					get_name_from_list $depjob_from_job $depjob_job_file 1
 					depjob_from_job_index=$depjob_from_job
 					depjob_from_job=${job_name_from_the_list}
@@ -3956,8 +4039,10 @@ function redeploy_sas_jobs(){
 				while [[ $read_depjob_filters_required_parms_array_count -ne 2 ]]; do
 					# Show message
 					depjob_filters_required_message="Press ENTER to redeploy all OR specify a from & to job names filter (e.g. 2 3): "
+                    show_cursor
 					printf "${red}$depjob_filters_required_message${white}"
 					read -ea read_depjob_filters_required_parms_array < /dev/tty
+                    hide_cursor
 					
 					# Continue if enter key was pressed.
 					if [[ "$read_depjob_filters_required_parms_array" == "" ]]; then
@@ -3983,7 +4068,7 @@ function redeploy_sas_jobs(){
 					# Get the job name if it is the index
 					if [[ ${#depjob_from_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
 						printf "\n"
-						get_name_from_list $depjob_from_job $depjob_job_file 1
+						get_name_from_list $depjob_from_job $depjob_job_file 1 ""
 						depjob_from_job_index=$depjob_from_job
 						depjob_from_job=${job_name_from_the_list}
 					else
@@ -3991,7 +4076,7 @@ function redeploy_sas_jobs(){
                         clear_session_and_exit
                     fi
 					if [[ ${#depjob_to_job} -le $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-						get_name_from_list $depjob_to_job $depjob_job_file 1
+						get_name_from_list $depjob_to_job $depjob_job_file 1 ""
 						depjob_to_job_index=$depjob_to_job
 						depjob_to_job=${job_name_from_the_list}
 					else
@@ -4287,12 +4372,103 @@ function add_a_newline_char_to_eof(){
     fi
 }
 #------
-# Name: convert_ranges_in_job_dependencies()
-# Desc: This function will expand the ranges in the file
+# Name: expand_hyphened_numeric_ranges()
+# Desc: This function will expand the ranges based on a lookup array 
+#   In: hyphened-range
+#  Out: expanded-value (retuns a null value if the range if out of bounds)
+#------
+function expand_hyphened_numeric_ranges(){
+    # Input parameters
+    hyphened_values_var=$1
+
+    # Output parameters
+    expanded_values_var=""
+
+    # Validate the inputs
+    if [[ $hyphened_values_var == "" ]] || [[ "${job_id_array[@]}" == "" ]]; then
+        printf "\n${red}*** ERROR: Null input to expand_hyphened_numeric_ranges(), please report this to the developer. ***\n${white}"
+        clear_session_and_exit
+    fi
+
+    # Check if the job deps have the hyphens
+    if [[ $hyphened_values_var == *-* ]]; then
+        # Set a flag
+        hyphened_values_var_flag=1
+
+        # Log
+        print2debug hyphened_values_var "Atempting to expand the hyphenated job dependencies [" "]"
+
+        # Get the from and to jobid
+        hyphened_values_var_from_value=`echo $hyphened_values_var | cut -d'-' -f1`
+        hyphened_values_var_to_value=`echo $hyphened_values_var | cut -d'-' -f2`
+
+        # Expand the range
+        for ((i=$hyphened_values_var_from_value; i<=$hyphened_values_var_to_value; i++)); do
+            if [[ $hyphened_values_var_from_value == $i ]] && [[ " ${job_id_array[@]} " =~ " ${i} " ]]; then
+                expanded_values_var=$i
+            elif [[ " ${job_id_array[@]} " =~ " ${i} " ]]; then
+                expanded_values_var+=",$i"
+            fi
+        done
+
+        # If the job dependency is outside of the range, error out
+        if [[ "$expanded_values_var" == "" ]]; then
+            print2debug hyphened_values_var "*** ERROR: Job $jid in flow $fid has invalid job dependencies: [" "] ***"
+            printf "\n${red}*** ERROR: The job dependencies are out of bounds (dependency: $hyphened_values_var) for job $jid in flow $fid ***\n${white}"
+            clear_session_and_exit
+        else
+            print2debug expanded_values_var "*** NOTE: Successfully expanded job dependency [$hyphened_values_var] to [" "] for job $jid in flow $fid ***"
+        fi
+    else
+        # Set a flag
+        hyphened_values_var_flag=0
+    fi
+}
+#------
+# Name: expand_job_deps_in_joblist_file()
+# Desc: Expand the range job dependencies in the job list file
 #   In: file-name
 #  Out: <NA>
 #------
-function convert_ranges_in_job_dependencies(){
+function expand_job_deps_in_joblist_file(){
+    # Input parameters
+    expand_job_deps_in_file=$1
+
+    # Message to the user
+    publish_to_messagebar "${yellow}Validing the job dependencies in the job list, please wait...${white}"
+
+    # Delete the backup file if it exists
+    delete_a_file ${expand_job_deps_in_file}.jobdepsexpanded silent
+
+    # Backup the joblist file (before inline edit)
+    cp -f ${expand_job_deps_in_file} ${expand_job_deps_in_file}.jobdepsexpanded
+
+    # Get the stats to generate array
+    capture_flow_n_job_stats $expand_job_deps_in_file
+
+    # Expand the joblist file
+    while IFS='|' read -r fid f jid j jdep op jrc runflag o so sappdir bservdir bsh blogdir bjobdir; do
+        for i in $(echo $jdep | sed "s/,/ /g")
+        do
+            if [[ $i == *-* ]]; then
+                expand_hyphened_numeric_ranges $i
+                if [[ $hyphened_values_var_flag -eq 1 ]]; then 
+                    sed -e "s/\b$hyphened_values_var\b/$expanded_values_var/g" -i ${expand_job_deps_in_file}.jobdepsexpanded
+                fi
+            fi
+        done
+	done < $expand_job_deps_in_file
+
+    # Replace the final file
+    mv -f ${expand_job_deps_in_file}.jobdepsexpanded ${expand_job_deps_in_file}
+}
+#------
+# Name: expand_hyphened_continous_numeric_ranges_in_a_file()
+# Desc: This function will expand the ranges in the file (all of the hyphened ranges will be automatically expanded)
+#   In: file-name
+#  Out: <NA>
+#------
+function expand_hyphened_continous_numeric_ranges_in_a_file(){
     # Input parameters
     range_check_in_file=$1
 
@@ -4309,7 +4485,7 @@ function convert_ranges_in_job_dependencies(){
         mv -f ${range_check_in_file}.rangeexpanded ${range_check_in_file}
     else
         printf "\n${red}*** ERROR: The range expansion routine failed (file: ${range_check_in_file}), report this to the developer ***\n${white}"
-        clear_session_and_exit
+        clear_session_and_exit "" "" 1
     fi
 }
 #------
@@ -4338,7 +4514,7 @@ function convert_job_index_to_job_names(){
                 INDEX_MODE_FIRST_JOB_NUMBER=0
                 if [[ ${#RUNSAS_PARAMETERS_ARRAY[first_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
                     printf "\n"
-                    get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} $JOB_LIST_FILE 4
+                    get_name_from_job_file ${RUNSAS_PARAMETERS_ARRAY[first_value_p]} $JOB_LIST_FILE 4
                     INDEX_MODE_FIRST_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[first_value_p]}
                     eval "script_mode_value_$first_value_p='${job_name_from_the_list}'";
                 else
@@ -4352,7 +4528,7 @@ function convert_job_index_to_job_names(){
             if [[ "${RUNSAS_PARAMETERS_ARRAY[second_value_p]}" != "" ]]; then 
                 INDEX_MODE_SECOND_JOB_NUMBER=0
                 if [[ ${#RUNSAS_PARAMETERS_ARRAY[second_value_p]} -lt $JOB_NUMBER_DEFAULT_LENGTH_LIMIT ]]; then
-                    get_name_from_list ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} $JOB_LIST_FILE 4
+                    get_name_from_job_file ${RUNSAS_PARAMETERS_ARRAY[second_value_p]} $JOB_LIST_FILE 4
                     INDEX_MODE_SECOND_JOB_NUMBER=${RUNSAS_PARAMETERS_ARRAY[second_value_p]}
                     eval "script_mode_value_$second_value_p='${job_name_from_the_list}'";
                 else
@@ -5608,10 +5784,10 @@ if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]]; then
 fi
 
 # Create files
-create_a_file_if_not_exists $RUNSAS_DEBUG_FILE $RUNSAS_TMP_DEBUG_FILE $EMAIL_BODY_MSG_FILE
+create_a_file_if_not_exists $RUNSAS_DEBUG_FILE $RUNSAS_TMP_DEBUG_FILE $EMAIL_BODY_MSG_FILE $RUNSAS_SESSION_LOG_FILE
 
 # Expand the ranges in the file
-convert_ranges_in_job_dependencies $JOB_LIST_FILE
+expand_job_deps_in_joblist_file $JOB_LIST_FILE
 
 # Fix the job list file if the user has not decided to provide flow details
 refactor_job_list_file $JOB_LIST_FILE
@@ -5877,7 +6053,8 @@ end_datetime_of_session_timestamp=`date '+%d-%m-%Y-%H:%M:%S'`
 end_datetime_of_session=`date +%s`
 
 # Print a final message on terminal
-printf "\n\n${green}The batch completed on $end_datetime_of_session_timestamp and took a total of $((end_datetime_of_session-start_datetime_of_session)) seconds to complete.${white}"
+convert_secs_to_hours_mins_secs $((end_datetime_of_session-start_datetime_of_session))
+printf "\n\n${green}The batch completed on $end_datetime_of_session_timestamp and took a total of $conv_s2h_duration_in_hms to complete.${white}"
 
 # Log
 print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
@@ -5890,16 +6067,17 @@ print2debug end_datetime_of_session_timestamp "**************** " " took $((end_
 # Send a success email
 runsas_success_email
 
-# Clear the run history 
-if [[ "$ENABLE_RUNSAS_RUN_HISTORY" != "Y" ]]; then 
-    delete_a_file $JOB_STATS_DELTA_FILE silent
-    delete_a_file $FLOW_STATS_DELTA_FILE silent
-fi
-
 # Save debug logs for future reference
 copy_files_to_a_directory "$RUNSAS_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
 copy_files_to_a_directory "$RUNSAS_TMP_DEBUG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid"
 copy_files_to_a_directory "$RUNSAS_SESSION_LOG_FILE" "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid" 
+
+# Clear the run history 
+if [[ "$ENABLE_RUNSAS_RUN_HISTORY" != "Y" ]]; then 
+    delete_a_file $JOB_STATS_DELTA_FILE silent
+    delete_a_file $FLOW_STATS_DELTA_FILE silent
+    delete_a_file $RUNSAS_SESSION_LOG_FILE silent
+fi
 
 # Tidy up!
 delete_a_file "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid/*.err" silent
