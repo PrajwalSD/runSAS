@@ -4326,16 +4326,17 @@ function redeploy_sas_jobs(){
 
             # Total runtime
             depjob_total_runtime=$((end_datetime_of_session-start_datetime_of_session))
+            convert_secs_to_hours_mins_secs $depjob_total_runtime
 
 			# Show messages
             if [[ $depjob_job_not_deployed_counter -gt 0 ]]; then
                 # Error
-                redeploy_detailed_message="*** The redeployment of jobs failed ($depjob_job_deployed_count jobs passed, $depjob_job_not_deployed_counter failed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to run. ***"
+                redeploy_detailed_message="*** The redeployment of jobs failed ($depjob_job_deployed_count jobs passed, $depjob_job_not_deployed_counter failed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds ($conv_s2h_duration_in_hms) to run. ***"
                 redeploy_summary_message="$depjob_job_deployed_count jobs deployed, $depjob_job_not_deployed_counter failed!"
                 printf "\n\n${red}${redeploy_detailed_message}${white}"
             else
                 # Success
-                redeploy_detailed_message="*** The redeployment of jobs completed ($depjob_job_deployed_count of $depjob_job_counter jobs deployed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds to complete. ***"
+                redeploy_detailed_message="*** The redeployment of jobs completed ($depjob_job_deployed_count of $depjob_job_counter jobs deployed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds ($conv_s2h_duration_in_hms) to complete. ***"
                 redeploy_summary_message="All $depjob_job_deployed_count jobs deployed successfully!"
                 printf "\n${green}${redeploy_detailed_message}${white}"
             fi
