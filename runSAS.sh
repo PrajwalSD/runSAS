@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.0                                                                                                  #
+#     Version: 50.1                                                                                                  #
 #                                                                                                                    #
-#        Date: 19/08/2020                                                                                            #
+#        Date: 15/09/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.0
+	RUNSAS_CURRENT_VERSION=50.1
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5271,11 +5271,15 @@ function runSAS(){
             # Show rest of the message for the job
             display_fillers $RUNSAS_RUNNING_MESSAGE_FILLER_END_POS $RUNSAS_FILLER_CHARACTER 1 N 2 $runsas_job_status_color 
             if [[ "$no_slots_available_flag" == "Y" ]]; then
-                printf "${!runsas_job_status_color}no slots available ${running_jobs_current_count}:${sjs_concurrent_job_count_limit} (`echo $depjob_pending_jobs | tr -s " "`) ${white}" 
+                show_job_hist_runtime_stats $runsas_job
+                display_fillers $((RUNSAS_RUNNING_MESSAGE_FILLER_END_POS)) $RUNSAS_FILLER_CHARACTER 0 N 2 $runsas_job_status_color 
+                printf "${!runsas_job_status_color}...no slots available ${running_jobs_current_count}:${sjs_concurrent_job_count_limit} (`echo $depjob_pending_jobs | tr -s " "`) ${white}"
                 clear_the_rest_of_the_line # No residue chars
             else
                 get_remaining_cols_on_terminal 
-                show_waiting_deps_message="waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`"
+                display_fillers $((RUNSAS_RUNNING_MESSAGE_FILLER_END_POS)) $RUNSAS_FILLER_CHARACTER 0 N 2 $runsas_job_status_color 
+                show_job_hist_runtime_stats $runsas_job
+                show_waiting_deps_message="...waiting on dependents (`echo $depjob_pending_jobs | tr -s " "`"
                 if [[ ${#show_waiting_deps_message} -le $((runsas_remaining_cols_in_screen-5)) ]]; then
                     printf "${!runsas_job_status_color}${show_waiting_deps_message})${white}"
                 else
@@ -5540,7 +5544,9 @@ function runSAS(){
         # Success (DONE) message
         printf "\b${white}${green}(DONE rc=$runsas_jobrc, ${start_datetime_of_job_timestamp} to ${end_datetime_of_job_timestamp}, ~"
         printf "%05d" $((end_datetime_of_job-start_datetime_of_job))
-        printf " secs)${job_runtime_diff_pct_string}${white}\n"
+        printf " secs)${job_runtime_diff_pct_string}${white}"
+        clear_the_rest_of_the_line
+        printf "\n"
 
         # Log
         print2log "Job Status: ${green}DONE${white}"
@@ -5774,6 +5780,9 @@ script_mode_value_7="$8"
 
 # Check terminal/screen size and prompt the user to fix it
 check_terminal_size
+
+# Delete the session log file
+delete_a_file $RUNSAS_SESSION_LOG_FILE silent
 
 # Delete files (except in resume mode!)
 if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]]; then
@@ -6077,7 +6086,6 @@ copy_files_to_a_directory "$RUNSAS_SESSION_LOG_FILE" "$RUNSAS_BATCH_STATE_ROOT_D
 if [[ "$ENABLE_RUNSAS_RUN_HISTORY" != "Y" ]]; then 
     delete_a_file $JOB_STATS_DELTA_FILE silent
     delete_a_file $FLOW_STATS_DELTA_FILE silent
-    delete_a_file $RUNSAS_SESSION_LOG_FILE silent
 fi
 
 # Tidy up!
@@ -6087,3 +6095,4 @@ delete_a_file "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid/*.errjob" sile
 
 # END: Clear the session, reset the terminal
 clear_session_and_exit "" "" 0
+
