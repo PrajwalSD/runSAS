@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.1                                                                                                  #
+#     Version: 50.2                                                                                                  #
 #                                                                                                                    #
-#        Date: 15/09/2020                                                                                            #
+#        Date: 08/12/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.1
+	RUNSAS_CURRENT_VERSION=50.2
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -3039,11 +3039,13 @@ function messagebar_controlseq() {
     # Get the value from user via user prompt
     if [[ "$1" == "Y" ]]; then
         # Enable keyboard and user inputs
-        enable_enter_key
+        if [[ "$3" == "" ]]; then
+            enable_enter_key
+        fi
         enable_keyboard_inputs
     
-        # Show the prompt
-        read ${2} < /dev/tty
+        # Show the prompt (add single character input overrides)
+        read ${3} ${2} < /dev/tty
 
         # Print two lines after the last job
         get_keyval_from_batch_state runsas_job_cursor_row_pos first_job_cursor_row_pos 1 $stallcheck_batchid
@@ -3267,7 +3269,7 @@ function check_if_batch_has_stalled(){
             fi
 
             # Ask the user for options
-            publish_to_messagebar "${blink}${red_bg}${black}$stall_user_msg${white} " Y stalled_msg_input
+            publish_to_messagebar "${blink}${red_bg}${black}$stall_user_msg${white} " Y stalled_msg_input -n1
         done
 
         # Disable user inputs
@@ -6095,4 +6097,3 @@ delete_a_file "$RUNSAS_BATCH_STATE_ROOT_DIRECTORY/$global_batchid/*.errjob" sile
 
 # END: Clear the session, reset the terminal
 clear_session_and_exit "" "" 0
-
