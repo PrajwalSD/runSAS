@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.2                                                                                                  #
+#     Version: 50.3                                                                                                  #
 #                                                                                                                    #
-#        Date: 08/12/2020                                                                                            #
+#        Date: 09/12/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.2
+	RUNSAS_CURRENT_VERSION=50.3
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -3268,7 +3268,8 @@ function check_if_batch_has_stalled(){
                 stall_user_msg=$stall_user_msg" (notified via email)"
             fi
 
-            # Ask the user for options
+            # Ask the user for options, disable the entery key input to start with to avoid the misalignment of the job status lines
+	    disable_enter_key
             publish_to_messagebar "${blink}${red_bg}${black}$stall_user_msg${white} " Y stalled_msg_input -n1
         done
 
