@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.3                                                                                                  #
+#     Version: 50.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 09/12/2020                                                                                            #
+#        Date: 15/12/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -72,7 +72,7 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
 RUNTIME_COMPARISON_FACTOR=30                                            # Default is 30                   ---> Runtime change threshold, increase this to display only higher % difference
 KILL_PROCESS_ON_USER_ABORT=Y                                            # Default is Y                    ---> The rogue processes are automatically killed by the script on user abort.
-ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is Y                    ---> Enables runSAS flow/job runtime history, specify Y/N
+ENABLE_RUNSAS_RUN_HISTORY=N                                             # Default is Y                    ---> Enables runSAS flow/job runtime history, specify Y/N
 ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.3
+	RUNSAS_CURRENT_VERSION=50.4
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -3357,18 +3357,29 @@ function refactor_job_list_file(){
                 # Show a message to user
                 publish_to_messagebar "${green}NOTE: runSAS is automatically constructing a flow for the specified jobs, please wait...${white}"
 
-                # First field i.e. flowid is actually the job name and second is the option
+                # Check for flow settings
+                if [[ "$GENERATE_SINGLE_FLOW_FOR_ALL_JOBS" == "Y" ]]; then
+                    flowid_default=1
+                    flowname_default=Flow
+                    jobdep_default=$((iter-1))
+                else
+                    flowid_default=$iter
+                    flowname_default=Flow_$iter
+                    jobdep_default=$iter
+                fi
+
+                # First field i.e. flowid is actually the job name and second is the option (NOTE: flowid is jobid here)
                 if [[ $iter -eq 1 ]]; then
                     if [[ "$flow" == "--skip" ]]; then
-                        echo "1|Flow|$iter|$flowid|$iter|AND|4|N|$flow" >> $out_job_list_file
+                        echo "$flowid_default|$flowname_default|$iter|$flowid|$iter|AND|4|N|$flow" >> $out_job_list_file
                     else
-                        echo "1|Flow|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
+                        echo "$flowid_default|$flowname_default|$iter|$flowid|$iter|AND|4|Y|$flow" >> $out_job_list_file
                     fi
                 else
                     if [[ "$flow" == "--skip" ]]; then
-                        echo "1|Flow|$iter|$flowid|$((iter-1))|AND|4|N|$flow" >> $out_job_list_file
+                        echo "$flowid_default|$flowname_default|$iter|$flowid|$jobdep_default|AND|4|N|$flow" >> $out_job_list_file
                     else
-                        echo "1|Flow|$iter|$flowid|$((iter-1))|AND|4|Y|$flow" >> $out_job_list_file
+                        echo "$flowid_default|$flowname_default|$iter|$flowid|$jobdep_default|AND|4|Y|$flow" >> $out_job_list_file
                     fi
                 fi
                 let iter+=1
@@ -5649,6 +5660,7 @@ SERVER_IFS=$IFS
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
 RUNSAS_SCREEN_LINES_OVERFLOW_BUFFER=5
 RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y
+GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=Y
 
 # Graphical defaults
 SINGLE_PARENT_DECORATOR="───"
