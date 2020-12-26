@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.4                                                                                                  #
+#     Version: 50.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 15/12/2020                                                                                            #
+#        Date: 26/12/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.4
+	RUNSAS_CURRENT_VERSION=50.5
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5151,7 +5151,7 @@ function runSAS(){
                                                                             -batch \
                                                                             -noterminal \
                                                                             -logparm "rollover=session" \
-                                                                            -sysin $runsas_deployed_jobs_root_directory/$runsas_job.sas & > $RUNSAS_SAS_SH_TRACE_FILE
+                                                                            -sysin $runsas_deployed_jobs_root_directory/$runsas_job.sas > $RUNSAS_SAS_SH_TRACE_FILE 2>&1 &
                 
                 # Get the PID details
                 if [[ -z "$runsas_job_pid" ]] || [[ "$runsas_job_pid" == "" ]] || [[ $runsas_job_pid -eq 0 ]]; then
