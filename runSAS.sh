@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.5                                                                                                  #
+#     Version: 50.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 26/12/2020                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.5
+	RUNSAS_CURRENT_VERSION=50.6
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1983,11 +1983,21 @@ function write_job_details_on_terminal(){
     # Show job stuff
     if [[ "$repeat_job_terminal_messages" == "Y" ]]; then
         if [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
-            printf "${!wjd_begin_color}${SPACE_DECORATOR}${CHILD_DECORATOR}Job #"
+            if [[ "$RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS" == "Y" ]]; then
+                printf "${!wjd_begin_color}Job #"
+            else
+                printf "${!wjd_begin_color}${SPACE_DECORATOR}${CHILD_DECORATOR}Job #"
+            fi
             printf "%03d" $runsas_jobid
         else
+            if [[ "$RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS" == "Y" ]]; then
+                printf "${!wjd_begin_color}Job #" 
+            else
+                printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
            printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
-           printf "%03d" $runsas_jobid
+                printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
+            fi
+            printf "%03d" $runsas_jobid
         fi
 
         # Additional info
@@ -3337,6 +3347,9 @@ function refactor_job_list_file(){
     # Parameters
     in_job_list_file=$1
 
+    # Initialization
+    RUNSAS_RUNNING_IN_NO_FLOW_MODE=N
+
     # Message to the user
     publish_to_messagebar "${yellow}Refactoring the job list...${white}"
 
@@ -3354,6 +3367,9 @@ function refactor_job_list_file(){
     if [[ $pipe_char_in_file_count -eq 0 ]];then
         while IFS=' ' read -r flowid flow jobid job jobdep logicop jobrc runflag opt subopt sappdir bservdir bsh blogdir bjobdir; do
             if [[ "$jobid" == "" ]]; then
+                # Set a flag to indicate that the user has not provided flow details
+                RUNSAS_RUNNING_IN_NO_FLOW_MODE=Y
+
                 # Show a message to user
                 publish_to_messagebar "${green}NOTE: runSAS is automatically constructing a flow for the specified jobs, please wait...${white}"
 
@@ -3364,7 +3380,7 @@ function refactor_job_list_file(){
                     jobdep_default=$((iter-1))
                 else
                     flowid_default=$iter
-                    flowname_default=Flow_$iter
+                    flowname_default=Flow_`printf %04d $iter`
                     jobdep_default=$iter
                 fi
 
@@ -3389,6 +3405,9 @@ function refactor_job_list_file(){
     else
         print2debug pipe_char_in_file_count "*** Refactoring job list routine skipped as " " *** "
     fi
+
+    # Run mode 
+    print2debug RUNSAS_RUNNING_IN_NO_FLOW_MODE "No flow mode: " " "
 
     # Done
     publish_to_messagebar ""
@@ -4608,6 +4627,22 @@ function show_additional_batch_mode_messages(){
     fi
 }
 #------
+# Name: check_for_minimal_flow_n_job_decorators()
+# Desc: Checks if the user has requested for a single flow per job (when flow details are not provided), will switch to minimal decorators to keep the console clean. Does not apply to --batch mode
+#   In: <NA>
+#  Out: <NA>
+#------
+function check_for_minimal_flow_n_job_decorators(){
+    # If there is no flow in the job list and the choice is to run one flow per job, avoid new lines to keep it clean
+    if [[ "$GENERATE_SINGLE_FLOW_FOR_ALL_JOBS" == "N" && "$RUNSAS_RUNNING_IN_NO_FLOW_MODE" == "Y" && $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then 
+        RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS=Y
+        RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=$((RUNSAS_RUNNING_MESSAGE_FILLER_END_POS+10))
+        RUNSAS_DISPLAY_FILLER_COL_END_POS=$((RUNSAS_DISPLAY_FILLER_COL_END_POS+10))
+    else
+        RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS=N
+    fi
+}
+#------
 # Name: update_job_status_color_palette()
 # Desc: This function will update the color variables based on the current state of the jobs (must be called within runSAS function)
 #   In: file-name (multiple files can be provided)
@@ -5630,7 +5665,7 @@ RUNSAS_EMAIL_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.email
 RUNSAS_BATCH_STATE_ROOT_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.batch
 RUNSAS_SPLIT_FLOWS_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.flows
 
-# System defaults 
+# System defaults (may get overriden later on depending on other settings, do not change this unless you know exactly what you're doing)
 RUNSAS_PARAMETERS_COUNT=$#
 RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
@@ -5660,9 +5695,12 @@ SERVER_IFS=$IFS
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
 RUNSAS_SCREEN_LINES_OVERFLOW_BUFFER=5
 RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y
-GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=Y
+RUNSAS_RUNNING_IN_NO_FLOW_MODE=N
+RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS=N
+GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N
 
-# Graphical defaults
+# Decorators (do not change this)
+SINGLE_PARENT_MINIMAL_DECORATOR="──"
 SINGLE_PARENT_DECORATOR="───"
 PARENT_DECORATOR="┎──"
 BRANCH_DECORATOR="┠──"
@@ -5961,6 +5999,9 @@ add_more_info_to_log_in_batch_mode
 # Clear the screen to reclaim the screen space!
 batch_mode_pre_process
 
+# Check if decorators needs be minimal
+check_for_minimal_flow_n_job_decorators
+
 # Core (this is where it all comes together)
 for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     # Disable keyboard inputs
@@ -5970,6 +6011,7 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     # Get flow name & id
     flow_file_flow_name=`basename $flow_file_name .flow`
     flow_file_flow_id=`echo $flow_file_flow_name | cut -d'-' -f 1`
+    flow_file_flow_name_trimmed=`echo $flow_file_flow_name | cut -d'-' -f 2`
 
     # Capture flow runtimes
     start_datetime_of_flow_timestamp=`date '+%d-%m-%Y-%H:%M:%S'`
@@ -6016,21 +6058,41 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
 
     # Flow message
     get_keyval total_flows_in_current_batch
-    if [[ $flow_file_flow_id -eq 1 && $total_flows_in_current_batch -eq 1 ]]; then
-        printf "${white}   \n${white}"
-        printf "${white}${SINGLE_PARENT_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}\n"
-    elif [[ $flow_file_flow_id -eq 1 ]]; then
-        printf "${white}   \n${white}"
-        printf "${white}${PARENT_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}\n"
-    elif [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
-        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
-        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
-        printf "${white}${CHILD_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}\n"
-    else
-        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
-        printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
-        printf "${white}${BRANCH_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}\n" 
-    fi 
+
+    # Flow (with or without decorators), all vars are set in check_for_minimal_flow_n_job_decorators()
+    if [[ "$RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS" == "Y" ]]; then 
+        # No decorators 
+        if [[ $flow_file_flow_id -eq 1 && $total_flows_in_current_batch -eq 1 ]]; then
+            printf "${white}   \n\n${white}"
+            printf "${white}${SINGLE_PARENT_DECORATOR}${green}$flow_file_flow_name_trimmed${white}${SINGLE_PARENT_MINIMAL_DECORATOR}${white}"
+        elif [[ $flow_file_flow_id -eq 1 ]]; then
+            printf "${white}   \n\n${white}"
+            printf "${white}${PARENT_DECORATOR}${green}$flow_file_flow_name_trimmed${white}${SINGLE_PARENT_MINIMAL_DECORATOR}${white}"
+        elif [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
+            printf "${white}${CHILD_DECORATOR}${green}$flow_file_flow_name_trimmed${white}${SINGLE_PARENT_MINIMAL_DECORATOR}${white}"
+        else
+            printf "${white}${BRANCH_DECORATOR}${green}$flow_file_flow_name_trimmed${white}${SINGLE_PARENT_MINIMAL_DECORATOR}${white}"
+        fi 
+    else 
+        # Decorators
+        if [[ $flow_file_flow_id -eq 1 && $total_flows_in_current_batch -eq 1 ]]; then
+            printf "${white}   \n${white}"
+            printf "${white}${SINGLE_PARENT_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}"
+            printf "\n"
+        elif [[ $flow_file_flow_id -eq 1 ]]; then
+            printf "${white}   \n${white}"
+            printf "${white}${PARENT_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}"
+            printf "\n"
+        elif [[ $flow_file_flow_id -ge $total_flows_in_current_batch ]]; then
+            printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
+            printf "${white}${CHILD_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}"
+            printf "\n"
+        else
+            printf "${white}${NO_BRANCH_DECORATOR}\n${white}"
+            printf "${white}${BRANCH_DECORATOR}${green}$flow_file_flow_name [$current_flow_job_count]: ${grey}$flow_stats_message${white}"
+            printf "\n"
+        fi 
+    fi   
 
     # Override the jobs counter command (used in many places...)
     TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat $flow_file_name | wc -l`
