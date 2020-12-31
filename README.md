@@ -1,9 +1,9 @@
-# runSAS
-The script allows you to execute SAS programs (or SAS Data Integration Studio deployed jobs) concurrently as flows with support for many interactive and non-interactive modes.
+# Introduction
+runSAS is essentially a bash shell script desigined to execute SAS programs or SAS Data Integration Studio jobs. It's feature rich with support for concurrency (as _flows_), job fail recovery options, email notifications, log monitoring, and has many useful interactive and non-interactive modes.
 
-Whilst it doesn't claim to be fully implemented SAS job scheduler like LSF or Control-M it does provide a lot of core scheduler features. The motivation behind this side project was to provide existing SAS 9.x environments with a simple CLI tool to manage jobs/flows with no additional third-party softwares/programs.
+The primary motivation behind this side project was to provide existing SAS 9.x environments with a simple CLI-based tool to manage SAS programs/jobs without the need for an additional third-party softwares/programs. 
 
-There's everything in this guide for you to get started with runSAS.
+This is useful for SAS sites where a third-party SAS job schedulers like LSF or Control-M is not installed, the projects can extend runSAS as per their needs preferrably contribute back to this.
 
 # Screenshots
 Flows:
@@ -14,7 +14,9 @@ Error handling:
 ![runSAS on error](https://i.imgur.com/OFbN6S6.png)
 
 # Prerequisites
-SAS 9.x environment (Linux) with SAS BatchServer component is essential for the runSAS to execute or any equivalent would work (i.e. `sas.sh`, `sasbatch.sh` etc.). All other script dependencies are checked at every launch of the script automatically.
+SAS 9.x environment (Linux) with SAS BatchServer component is essential for the runSAS to execute or any equivalent would work(i.e. `sas.sh`, `sasbatch.sh` etc.). This is typically present in every SAS 9.x installation.
+
+All other script dependencies are checked at every launch of the script automatically.
 
 # Get started?
   * Download `runSAS.sh` and transfer it to a SAS compute server (Linux based)
@@ -80,6 +82,16 @@ runSAS has 4 user parameter sections within the script:
     * `ENABLE_RUNSAS_DEPENDENCY_CHECK=Y`          
     * `BATCH_HISTORY_PERSISTENCE=ALL`             
     * `CONCURRENT_JOBS_LIMIT=ALL`       
+    
+# Additional Script Parameters
+There are additional set of script behavior control parameters (it's usually kept in the bottom third of the script), typically they don't require changing. An inline explanation for each parameter is provided in the script.
+    * `EMAIL_USER_MESSAGE=`
+    * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N` 
+    * `EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000`
+    * `SERVER_PACKAGE_INSTALLER_PROGRAM=yum`
+    * `RUNSAS_LOG_SEARCH_FUNCTION=egrep`
+    * `RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y`
+    * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N`
 
 # Is there a help menu?
  `./runSAS.sh --help`
