@@ -73,18 +73,20 @@ runSAS has 4 user parameter sections within the script:
     * `ENABLE_DEBUG_MODE=N`                       
     * `RUNTIME_COMPARISON_FACTOR=30`              
     * `KILL_PROCESS_ON_USER_ABORT=Y`              
-    * `ERROR_CHECK_SEARCH_STRING="^ERROR"`        
-    * `STEP_CHECK_SEARCH_STRING="Step:"`          
-    * `SASTRACE_SEARCH_STRING="^options sastrace"`
-    * `ENABLE_RUNSAS_RUN_HISTORY=Y`               
+    * `ENABLE_RUNSAS_RUN_HISTORY=N`               
     * `ABORT_ON_ERROR=N`                          
     * `ENABLE_SASTRACE_IN_JOB_CHECK=Y`           
     * `ENABLE_RUNSAS_DEPENDENCY_CHECK=Y`          
     * `BATCH_HISTORY_PERSISTENCE=ALL`             
-    * `CONCURRENT_JOBS_LIMIT=ALL`       
+    * `CONCURRENT_JOBS_LIMIT=ALL`
+    * `CONCURRENT_JOBS_LIMIT_MULTIPLIER=1`
+    * `ERROR_CHECK_SEARCH_STRING="^ERROR"`        
+    * `STEP_CHECK_SEARCH_STRING="Step:"`          
+    * `SASTRACE_SEARCH_STRING="^options sastrace"`
     
 # Additional Script Parameters
 There are additional set of script behavior control parameters (it's usually kept in the bottom third of the script), typically they don't require changing. An inline explanation for each parameter is provided in the script.
+  * ### Parameters
     * `EMAIL_USER_MESSAGE=`
     * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N` 
     * `EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000`
