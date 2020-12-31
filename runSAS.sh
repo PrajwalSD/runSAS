@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.6                                                                                                  #
+#     Version: 50.7                                                                                                  #
 #                                                                                                                    #
-#        Date: 26/12/2020                                                                                            #
+#        Date: 31/12/2020                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.6
+	RUNSAS_CURRENT_VERSION=50.7
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -303,9 +303,9 @@ function show_the_list(){
 #------
 function override_terminal_message_line_wrappers(){
     if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]] || [[ -z $RUNSAS_INVOKED_IN_BATCH_MODE ]]; then
-        TERMINAL_MESSAGE_LINE_WRAPPERS=-----
+        LINE_SEPARATOR_DECORATOR=-----
     else
-        TERMINAL_MESSAGE_LINE_WRAPPERS=*****
+        LINE_SEPARATOR_DECORATOR=*****
     fi
 }
 #------
@@ -927,7 +927,7 @@ function print_file_content_with_index(){
     printf "\n${white}There are $total_lines_in_the_file $2 in the list:${white}\n"
 
     # Wrappers
-    printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n" 
+    printf "${white}$LINE_SEPARATOR_DECORATOR${white}\n" 
 
     # Show the list (highlight keywords, ignore the first two parameters)
     for (( p=2; p<$printfile_parameters_array_element_count; p++ )); do
@@ -941,7 +941,7 @@ function print_file_content_with_index(){
     awk '{printf("%02d) %s\n", NR, $0)}' $printfile
 
     # Wrappers
-    printf "${white}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
+    printf "${white}$LINE_SEPARATOR_DECORATOR${white}\n"
 }
 #------
 # Name: check_if_logged_in_user_is_root()
@@ -1104,7 +1104,7 @@ function kill_a_pid(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
         pkill -TERM -P $1
         printf "${red}\nTerminating the running job (pid $1 and the descendants), please wait...${white}"
-        sleep 7
+        sleep $PID_KILL_INITIAL_SLEEP_IN_SECS
         if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
             printf "${green}(DONE)${white}\n\n${white}"
         else
@@ -1112,7 +1112,7 @@ function kill_a_pid(){
             printf "${red}taking a bit more time than usual, hold on...${white}"
 			kill -9 `ps -p $1 -o comm=` 2>/dev/null
 			kill -9 $1 2>/dev/null
-            sleep 10
+            sleep $PID_KILL_RETRY_SLEEP_IN_SECS
             if [[ -z `ps -p $1 -o comm=` ]] && [[ -z `pgrep -P $1` ]]; then
                 printf "${green}(DONE)${white}\n\n${white}"
             else
@@ -1135,9 +1135,9 @@ function kill_a_pid(){
 #------
 function show_pid_details(){
     if [[ ! -z `ps -p $1 -o comm=` ]]; then
-        printf "${darkgrey_bg}${red}$TERMINAL_MESSAGE_LINE_WRAPPERS\n"
+        printf "${darkgrey_bg}${red}$LINE_SEPARATOR_DECORATOR\n"
         ps $1 # Show process details
-        printf "${darkgrey_bg}${red}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
+        printf "${darkgrey_bg}${red}$LINE_SEPARATOR_DECORATOR\n${white}"
     fi
 }
 #------
@@ -1150,7 +1150,7 @@ function show_child_pid_details(){
     if [[ ! -z `pgrep -P $1` ]]; then
         printf "${darkgrey_bg}${red}Child Process(es):\n"
         pgrep -P $1 # Show child process details
-        printf "${darkgrey_bg}${red}$TERMINAL_MESSAGE_LINE_WRAPPERS\n${white}"
+        printf "${darkgrey_bg}${red}$LINE_SEPARATOR_DECORATOR\n${white}"
     fi
 }
 #------
@@ -1223,7 +1223,7 @@ function check_if_there_are_any_rogue_runsas_processes(){
 #------
 function show_runsas_parameters(){
     if [[ "$1" == "--parms" ]] || [[ "$1" == "--parameters" ]]; then
-        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS (SAS) $TERMINAL_MESSAGE_LINE_WRAPPERS ${white}"  
+        printf "\n${red}$LINE_SEPARATOR_DECORATOR (SAS) $LINE_SEPARATOR_DECORATOR ${white}"  
         printf "\n${white}SAS_INSTALLATION_ROOT_DIRECTORY: ${green}$SAS_INSTALLATION_ROOT_DIRECTORY ${white}"
         printf "\n${white}SAS_APP_SERVER_NAME: ${green}$SAS_APP_SERVER_NAME ${white}"
         printf "\n${white}SAS_LEV: ${green}$SAS_LEV ${white}"
@@ -1233,7 +1233,7 @@ function show_runsas_parameters(){
         printf "\n${white}SAS_LOGS_ROOT_DIRECTORY: ${green}$SAS_LOGS_ROOT_DIRECTORY ${white}"
         printf "\n${white}SAS_DEPLOYED_JOBS_ROOT_DIRECTORY: ${green}$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY ${white}"
 
-        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS (Script) $TERMINAL_MESSAGE_LINE_WRAPPERS ${white}" 
+        printf "\n${red}$LINE_SEPARATOR_DECORATOR (Script) $LINE_SEPARATOR_DECORATOR ${white}" 
         printf "\n${white}ENABLE_DEBUG_MODE: ${green}$ENABLE_DEBUG_MODE ${white}"                       
         printf "\n${white}RUNTIME_COMPARISON_FACTOR: ${green}$RUNTIME_COMPARISON_FACTOR ${white}"                                                                        
         printf "\n${white}KILL_PROCESS_ON_USER_ABORT: ${green}$KILL_PROCESS_ON_USER_ABORT ${white}"                                          
@@ -1245,7 +1245,7 @@ function show_runsas_parameters(){
         printf "\n${white}ENABLE_SASTRACE_IN_JOB_CHECK: ${green}$ENABLE_SASTRACE_IN_JOB_CHECK ${white}"                                         
         printf "\n${white}ENABLE_RUNSAS_DEPENDENCY_CHECK: ${green}$ENABLE_RUNSAS_DEPENDENCY_CHECK ${white}"   
 
-        printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS (Email) $TERMINAL_MESSAGE_LINE_WRAPPERS ${white}"
+        printf "\n${red}$LINE_SEPARATOR_DECORATOR (Email) $LINE_SEPARATOR_DECORATOR ${white}"
         printf "\n${white}ENABLE_EMAIL_ALERTS: ${green}$ENABLE_EMAIL_ALERTS ${white}"                                  	                
         printf "\n${white}EMAIL_ALERT_TO_ADDRESS: ${green}$EMAIL_ALERT_TO_ADDRESS ${white}"                                              
         printf "\n${white}EMAIL_ALERT_USER_NAME: ${green}$EMAIL_ALERT_USER_NAME ${white}"  
@@ -1667,7 +1667,7 @@ function runsas_job_completed_email(){
 function runsas_error_email(){
     if [[ "$ENABLE_EMAIL_ALERTS" == "Y" ]] || [[ "${ENABLE_EMAIL_ALERTS:2:1}" == "Y" ]]; then
         printf "\n\n"
-        echo "$TERMINAL_MESSAGE_LINE_WRAPPERS" > $EMAIL_BODY_MSG_FILE
+        echo "$LINE_SEPARATOR_DECORATOR" > $EMAIL_BODY_MSG_FILE
         # See if the steps are displayed
         if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
             cat $runsas_error_w_steps_tmp_log_file | awk '{print $0}' >> $EMAIL_BODY_MSG_FILE
@@ -1675,7 +1675,7 @@ function runsas_error_email(){
             cat $runsas_error_tmp_log_file | awk '{print $0}' >> $EMAIL_BODY_MSG_FILE
         fi
         # Send email
-        echo "$TERMINAL_MESSAGE_LINE_WRAPPERS" >> $EMAIL_BODY_MSG_FILE
+        echo "$LINE_SEPARATOR_DECORATOR" >> $EMAIL_BODY_MSG_FILE
         echo "Job:)" >> $EMAIL_BODY_MSG_FILE
         echo "Log: $runsas_logs_root_directory/$runsas_job_log" >> $EMAIL_BODY_MSG_FILE
         add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
@@ -1994,8 +1994,6 @@ function write_job_details_on_terminal(){
                 printf "${!wjd_begin_color}Job #" 
             else
                 printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
-           printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
-                printf "${!wjd_begin_color}${NO_BRANCH_DECORATOR}${CHILD_DECORATOR}Job #" 
             fi
             printf "%03d" $runsas_jobid
         fi
@@ -2202,8 +2200,8 @@ function clear_session_and_exit(){
         fi
     fi
 
-    publish_to_messagebar "${green}*** runSAS is exiting now ($clear_session_and_exit_rc) ***${white}"
-    print2debug global_batchid "*** runSAS is exiting now ($clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
+    publish_to_messagebar "${green}*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) ***${white}"
+    print2debug global_batchid "*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
 
     if [[ $clear_session_and_exit_dont_check_files_n_processes == "" ]]; then
         # Save debug logs for future reference
@@ -2221,7 +2219,7 @@ function clear_session_and_exit(){
     fi
     
     # Goodbye!
-    publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now ($clear_session_and_exit_rc) ***${white}"
+    publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) ***${white}"
     sleep 0.3
     publish_to_messagebar "${white} ${white}"
 
@@ -4182,7 +4180,7 @@ function redeploy_sas_jobs(){
 			printf "\n${green}Redeployment process started at $start_datetime_of_session_timestamp, it may take a while, so grab a cup of coffee or tea.${white}\n\n"
 
             # Add to audit log
-            print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+            print2log $LINE_SEPARATOR_DECORATOR
             print2log "Redeployment start timestamp: $start_datetime_of_session_timestamp"
             print2log "DepJobs SAS 9.x utility directory: $depjobs_scripts_root_directory"
 			print2log "Metadata server: $depjob_host"
@@ -4655,7 +4653,7 @@ function update_job_status_color_palette(){
         assign_and_preserve runsas_job_status_bg_color grey_bg
         assign_and_preserve runsas_job_status_progressbar_color orange_bg 
 
-        print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+        print2log $LINE_SEPARATOR_DECORATOR
         print2log "Job No.: $JOB_COUNTER_FOR_DISPLAY"
         print2log "Job: $runsas_job"
         print2log "Opt: $runsas_opt"
@@ -5500,7 +5498,7 @@ function runSAS(){
         # Display error messsage 
         if [[ "$JOB_ERROR_DISPLAY" == "Y" ]]; then
             # Wrappers
-            printf "${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
+            printf "${red}$LINE_SEPARATOR_DECORATOR${white}\n"
 
             # Show job steps or just the error message
             if [[ "$JOB_ERROR_DISPLAY_STEPS" == "Y" ]]; then
@@ -5514,7 +5512,7 @@ function runSAS(){
             fi
 
             # Line separator
-            printf "\n${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
+            printf "\n${red}$LINE_SEPARATOR_DECORATOR${white}\n"
 
             # Print last job
             printf "${red}Job: ${red}"
@@ -5530,7 +5528,7 @@ function runSAS(){
             print2log "${white}Log: ${red}$runsas_logs_root_directory/$runsas_job_log${white}"  
 
             # Line separator
-            printf "${red}$TERMINAL_MESSAGE_LINE_WRAPPERS${white}\n"
+            printf "${red}$LINE_SEPARATOR_DECORATOR${white}\n"
         fi
 
         # Publish error message to the message bar
@@ -5647,7 +5645,7 @@ show_the_script_version_number $1
 show_the_update_compatible_script_version_number $1
 
 # Welcome message
-publish_to_messagebar "Getting things ready and clearing screen, please wait..."
+publish_to_messagebar "Getting things ready and clearing the screen, please wait..."
 
 # The script execution begins from here, with a clear screen command
 clear
@@ -5665,7 +5663,15 @@ RUNSAS_EMAIL_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.email
 RUNSAS_BATCH_STATE_ROOT_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.batch
 RUNSAS_SPLIT_FLOWS_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.flows
 
-# System defaults (may get overriden later on depending on other settings, do not change this unless you know exactly what you're doing)
+# Additional script behaviour parameters (change is as per the need, defaults will work just fine most of the times)
+EMAIL_USER_MESSAGE=""                           # Deault is "", This will be appended to email subject
+EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000    # Default is 8000000, This is the log file size limit (sent as email attachment)
+SERVER_PACKAGE_INSTALLER_PROGRAM=yum            # Default is yum, Package installer is used by runSAS for auto-installation of depdendencies
+RUNSAS_LOG_SEARCH_FUNCTION=egrep                # Default is egrep, runSAS uses this as search util to detect errors in job logs
+RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y               # Default is Y, If set to N runSAS will NOT detect cyclic dependencies in job flows before the batch run
+GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N             # Default is N, If set to Y runSAS will create a single flow for all jobs instead of one flow per job 
+
+# System parameters (do not change this)
 RUNSAS_PARAMETERS_COUNT=$#
 RUNSAS_PARAMETERS_ARRAY=("$@")
 RUNSAS_MAX_PARAMETERS_COUNT=8
@@ -5675,31 +5681,27 @@ DEBUG_MODE_TERMINAL_COLOR=white
 RUNSAS_RUNNING_MESSAGE_FILLER_END_POS=83
 RUNSAS_DISPLAY_FILLER_COL_END_POS=$((RUNSAS_RUNNING_MESSAGE_FILLER_END_POS+34))
 RUNSAS_FILLER_CHARACTER=.
-TERMINAL_MESSAGE_LINE_WRAPPERS=-----
 JOB_NUMBER_DEFAULT_LENGTH_LIMIT=3
 JOB_COUNTER_FOR_DISPLAY=0
 LONG_RUNNING_JOB_MSG_SHOWN=0
 TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat .job.list | wc -l`
 INDEX_MODE_FIRST_JOB_NUMBER=-1
 INDEX_MODE_SECOND_JOB_NUMBER=-1
-EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000
 DEFAULT_PROGRESS_BAR_COLOR="green_bg"
-SERVER_PACKAGE_INSTALLER_PROGRAM=yum
-RUNSAS_LOG_SEARCH_FUNCTION=egrep
-EMAIL_USER_MESSAGE=""
 EMAIL_FLAGS_DEFAULT_SETTING=YNYY
 EMAIL_WAIT_NOTIF_TIMEOUT_IN_SECS=10
 RUNSAS_JOBLIST_FILE_DEFAULT_DELIMETER="|"
 RUNSAS_BATCH_COMPLETE_FLAG=0
 SERVER_IFS=$IFS
-RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
 RUNSAS_SCREEN_LINES_OVERFLOW_BUFFER=5
-RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y
-RUNSAS_RUNNING_IN_NO_FLOW_MODE=N
 RUNSAS_MINIMAL_FLOW_N_JOB_DECORATORS=N
-GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N
+RUNSAS_RUNNING_IN_NO_FLOW_MODE=N
+RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
+PID_KILL_INITIAL_SLEEP_IN_SECS=7
+PID_KILL_RETRY_SLEEP_IN_SECS=10
 
 # Decorators (do not change this)
+LINE_SEPARATOR_DECORATOR=-----
 SINGLE_PARENT_MINIMAL_DECORATOR="──"
 SINGLE_PARENT_DECORATOR="───"
 PARENT_DECORATOR="┎──"
@@ -5708,7 +5710,7 @@ CHILD_DECORATOR="┖──"
 NO_BRANCH_DECORATOR="┃  "
 SPACE_DECORATOR="   "
 
-# Terminal size requirements for runSAS (change this as required)
+# Terminal size requirements for runSAS (do not change this)
 RUNSAS_REQUIRED_TERMINAL_ROWS=50  # Default is 65
 RUNSAS_REQUIRED_TERMINAL_COLS=165 # Default is 165
 
@@ -5869,7 +5871,7 @@ print2log "================ *** runSAS launched on $start_datetime_of_session_ti
 print_unix_user_session_variables file $RUNSAS_SESSION_LOG_FILE
 
 # Log
-print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+print2log $LINE_SEPARATOR_DECORATOR
 print2log "Host: $HOSTNAME"
 print2log "PID: $$"
 print2log "User: ${SUDO_USER:-$USER}"
@@ -6144,7 +6146,7 @@ convert_secs_to_hours_mins_secs $((end_datetime_of_session-start_datetime_of_ses
 printf "\n\n${green}The batch completed on $end_datetime_of_session_timestamp and took a total of $conv_s2h_duration_in_hms to complete.${white}"
 
 # Log
-print2log $TERMINAL_MESSAGE_LINE_WRAPPERS
+print2log $LINE_SEPARATOR_DECORATOR
 print2log "Batch end: $end_datetime_of_session_timestamp"
 print2log "Total batch runtime: $((end_datetime_of_session-start_datetime_of_session)) seconds"
 
