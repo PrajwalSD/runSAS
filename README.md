@@ -84,8 +84,8 @@ runSAS has 4 user parameter sections within the script:
     * `STEP_CHECK_SEARCH_STRING="Step:"`          
     * `SASTRACE_SEARCH_STRING="^options sastrace"`
     
-# Additional Script Parameters
-There are additional set of script behavior control parameters (it's usually kept in the bottom third of the script), typically they don't require changing. An inline explanation for each parameter is provided in the script.
+# Additional "Hidden" Script Parameters
+There are additional set of script behavior control parameters, it's kept hidden away deep in the code in the bottom third of the script intentionally, typically they don't require changing and defaults should just work fine. An inline explanation for each parameter is provided in the script for reference.
   * ### Parameters
     * `EMAIL_USER_MESSAGE=`
     * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N` 
