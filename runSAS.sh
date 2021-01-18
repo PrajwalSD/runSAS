@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.7                                                                                                  #
+#     Version: 50.8                                                                                                  #
 #                                                                                                                    #
-#        Date: 31/12/2020                                                                                            #
+#        Date: 18/01/2021                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.7
+	RUNSAS_CURRENT_VERSION=50.8
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5112,6 +5112,10 @@ function runSAS(){
     if [[ "$runsas_opt" == "--prompt" ]] && [[ "$run_job_with_prompt" == "" ]] && [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
 		# Disable enter key
 		disable_enter_key
+
+        # Get the current cursor position
+        get_current_terminal_cursor_position
+        before_prompt_row_pos_output_var=$row_pos_output_var
 		
 		# Ask user
         run_or_skip_message="Do you want to run? (y/n): "		
@@ -5156,10 +5160,21 @@ function runSAS(){
 		# Act on the user request
         assign_and_preserve run_job_with_prompt $run_job_with_prompt
         if [[ $run_job_with_prompt != Y ]] && [[ $run_job_with_prompt != y ]]; then
-			# Remove the message, reset the cursor
-			echo -ne "\r"
-			printf "%174s" " "
-			echo -ne "\r"
+			# Remove the message, reset the cursor 
+			# echo -ne "\r"
+			# printf "%174s" " "
+			# echo -ne "\r"
+            
+            # Calculate the cursor positions to remove the prompt message
+            get_current_terminal_cursor_position
+            after_prompt_row_pos_output_var=$row_pos_output_var
+
+            # Clear, and reset the cursor 
+            prompt_message_space=$((after_prompt_row_pos_output_var-before_prompt_row_pos_output_var))
+			for (( i=1; i<=$prompt_message_space; i++ )); do
+				printf "\b"
+			done
+
             printf "${white}"
             write_job_details_on_terminal $runsas_job "(SKIPPED)"
             assign_and_preserve run_job_with_prompt "n"
