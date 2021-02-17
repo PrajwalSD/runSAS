@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 50.8                                                                                                  #
+#     Version: 50.9                                                                                                  #
 #                                                                                                                    #
-#        Date: 18/01/2021                                                                                            #
+#        Date: 17/02/2021                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -76,7 +76,7 @@ ENABLE_RUNSAS_RUN_HISTORY=N                                             # Defaul
 ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
-BATCH_HISTORY_PERSISTENCE=ALL                                           # Default is ALL                  ---> Specify a postive number to control the number of batches preserved by runSAS  (e.g. 50 will preserve last 50 runs)
+BATCH_HISTORY_PERSISTENCE=10                                            # Default is 10                   ---> Specify a postive number to control the number of batches preserved by runSAS  (e.g. 50 will preserve last 50 runs), "ALL" will keep everything
 CONCURRENT_JOBS_LIMIT=ALL                                               # Default is ALL                  ---> Specify the available job slots as a number (e.g. 2), "ALL" will use the CPU count instead (nproc --all) and "MAX" will spawn all jobs
 CONCURRENT_JOBS_LIMIT_MULTIPLIER=1                                      # Default is 1                    ---> Specify a positive number to increase the available job slots (e.g. 1x, 2x, 3x...), will be used a multiplier to the above parameter
 ERROR_CHECK_SEARCH_STRING="^ERROR"                                      # Default is "^ERROR"             ---> This is what is grepped in the log
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=50.8
+	RUNSAS_CURRENT_VERSION=50.9
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
