@@ -189,11 +189,10 @@ The script can send email alerts on different scenarios, to enable it set `EMAIL
 _Tip: To disable email alerts temporarily for a run, just append `--noemail` during the launch i.e. `./runSAS.sh --noemail`, this will not send any emails for that specific run. If you want to send an email for a specific batch append `--mail <email-address>` at the end_
 
 # Can I delay the execution?
-Yes, runSAS supports a simple time based delay. just add `--delay <time-in-seconds>` during the launch i.e. `./runSAS.sh --delay 3600` to delay a batch run by 1 hour.
+Yes, runSAS supports a simple time based delay. just add `--delay <time-in-seconds>` during the launch. As an example `./runSAS.sh --delay 3600` to delay a batch run by 1 hour.
 
 # How to schedule runSAS batch?
-runSAS supports batch (non-interactive) mode for scheduling purposes, simply append `--batch --nocolors` to the launch command. If you're intending to use it within a wrapper script then use the typical `$?` to capture the exit return code from runSAS.sh script, success=0 and error=1
-  e.g. `nohup ./runSAS.sh -fu 2 3 --batch --nocolors &`
+runSAS supports batch (non-interactive) mode for scheduling purposes, simply append `--batch --nocolors` to the launch command. If you're intending to use it within a wrapper script then use the typical `$?` to capture the exit return code from runSAS.sh script (success=0 and error=1). Example: `nohup ./runSAS.sh -fu 2 3 --batch --nocolors &`
 
 # How's job/flow failure managed?
 runSAS will detect job failures and notify the user via email with error info and logs, the failed batch can be resumed via `--resume <batchid>` option e.g. `./runSAS.sh --resume 420`
@@ -211,7 +210,7 @@ Yes, you can forward the console output to [seashells.io](https://seashells.io/)
 * To reset runSAS script, use `./runSAS.sh --reset` (restore it to first time use state, will clear all temporary files etc.)
 * To stop email alerts (temporarily, instead of disabling it) for a run, append `--noemail` to the launch e.g.: `./runSAS.sh --noemail`
 * To enable email alerts just for a batch append `--mail <email-address>`
-* To add messages/tags to a batch use `--message <your-message-goes-here>` e.g. `./runSAS.sh -u 2 --message "Second Incremental"
+* To add messages/tags to a batch use `--message <your-message-goes-here>` e.g. `./runSAS.sh -u 2 --message "Second Incremental"`
 * To override the default server parameters by job, add `--server` option followed by the server parameters: `<jobname> --server <sas-server-name> <sasapp-dir> <batch-server-dir> <sas-sh> <logs-dir> <deployed-jobs-dir>`
 * runSAS stores temporary files under `.tmp/` folder in script root directory.
 * If runSAS run history is enabled (i.e. `ENABLE_RUNSAS_RUN_HISTORY=Y`) you can view the historical run stats files in the `.tmp/` folder.
