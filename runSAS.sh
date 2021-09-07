@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.1                                                                                                  #
+#     Version: 60.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/09/2021                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.1
+	RUNSAS_CURRENT_VERSION=60.2
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5523,7 +5523,7 @@ function runSAS(){
                 start_datetime_of_job_timestamp_for_updsas="`date '+%d%b%Y:%H:%M:%S'`"
 
                 # Add an entry to the SAS batch status dataset
-                update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Triggered||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Triggered||.||.||$start_datetime_of_job_timestamp_for_updsas||.||PID:$runsas_job_pid|RC:$runsas_jobrc"
+                update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Triggered||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Triggered||.||.||$start_datetime_of_job_timestamp_for_updsas||.||PID:$runsas_job_pid RC:$runsas_jobrc"
 
                 # Print to debug file
                 print2debug runsas_job "Job launched (SUCCESS) >>> "  
@@ -5869,7 +5869,7 @@ function runSAS(){
         fi 
 
         # Update batch status to SAS dataset
-        update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Failed||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Failed||${job_err_message//,/}||$runsas_job_log||$start_datetime_of_job_timestamp_for_updsas||$end_datetime_of_job_timestamp_for_updsas||PID:$runsas_job_pid|RC:$runsas_jobrc" 
+        update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Failed||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Failed||${job_err_message//,/}||$runsas_job_log||$start_datetime_of_job_timestamp_for_updsas||$end_datetime_of_job_timestamp_for_updsas||PID:$runsas_job_pid RC:$runsas_jobrc" 
 
         # Log
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
@@ -5945,7 +5945,7 @@ function runSAS(){
         fi
 
         # Update batch status to SAS dataset
-        update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Complete||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Complete||.||$runsas_job_log||$start_datetime_of_job_timestamp_for_updsas||${end_datetime_of_job_timestamp_for_updsas:-"."}||PID:$runsas_job_pid|RC:$runsas_jobrc|TotalTimeInSecs:$((end_datetime_of_job-start_datetime_of_job))"
+        update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Complete||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Complete||.||$runsas_job_log||$start_datetime_of_job_timestamp_for_updsas||${end_datetime_of_job_timestamp_for_updsas:-"."}||PID:$runsas_job_pid RC:$runsas_jobrc TotalTimeInSecs:$((end_datetime_of_job-start_datetime_of_job))"
 
         # Stop in case of interactive mode:
         # Job-wise:
@@ -6486,7 +6486,7 @@ for flow_file_name in `ls $RUNSAS_SPLIT_FLOWS_DIRECTORY/*.* | sort -V`; do
     store_flow_runtime_stats $flow_file_flow_name $((end_datetime_of_flow-start_datetime_of_flow)) 0 $start_datetime_of_job_timestamp $end_datetime_of_job_timestamp
 
     # Update the batch status to SAS dataset
-    update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Complete||$start_datetime_of_flow_timestamp_for_updsas||$end_datetime_of_flow_timestamp_for_updsas||.||.||.||.||.||.||.||PID:$runsas_job_pid|RC:$runsas_jobrc"
+    update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Complete||$start_datetime_of_flow_timestamp_for_updsas||$end_datetime_of_flow_timestamp_for_updsas||.||.||.||.||.||.||.||PID:$runsas_job_pid RC:$runsas_jobrc"
 
 done
 
