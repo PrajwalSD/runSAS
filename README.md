@@ -97,6 +97,11 @@ There are additional set of script behavior control parameters, it's kept hidden
 
 # Can I save batch status info to a SAS environment (as a dataset or into a database table)?
 Yes, runSAS can save batch run related info in real-time to a SAS dataset or to a database table. To enable this feature, set the following parameters (these parameters can be found in the "Hidden" script parameters section). An inline explanation for each parameter is provided in the script for reference.
+
+runSAS essentially creates a new SAS program file by using the parameters below. This program is designed to take in the batch run details and update in real-time into a specified table/dataset, runSAS calls and executes this program at regular checkpoints to keep the batch status up to date. 
+
+This is very useful if you need reporting/tracking from a SAS environment. Please note that the table is not used to control the behaviour of runSAS' flow. 
+
   * `UPDATE_BATCH_STATUS_TO_SAS_DATASET_FLAG=Y`                                                
   * `UPDATE_BATCH_STATUS_SAS_DATASET_PATH=$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY`                   
   * `UPDATE_BATCH_STATUS_SAS_DATASET_LIBREF=runsas`                                            
