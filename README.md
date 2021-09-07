@@ -95,6 +95,15 @@ There are additional set of script behavior control parameters, it's kept hidden
     * `RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y`
     * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N`
 
+# Can I save batch status info to a SAS environment (as a dataset or into a database table)?
+Yes, runSAS can save batch run related info in real-time to a SAS dataset or to a database table. To enable this feature, set the following parameters (these parameters can be found in the "Hidden" script parameters section). An inline explanation for each parameter is provided in the script for reference.
+  * `UPDATE_BATCH_STATUS_TO_SAS_DATASET_FLAG=Y`                                                
+  * `UPDATE_BATCH_STATUS_SAS_DATASET_PATH=$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY`                   
+  * `UPDATE_BATCH_STATUS_SAS_DATASET_LIBREF=runsas`                                            
+  * `UPDATE_BATCH_STATUS_SAS_DATASET_NAME=RUNSAS_BATCH_STATUS`                                 
+  * `UPDATE_BATCH_STATUS_SAS_PROGRAM_FILE_NAME=runsas_update_batch_status.sas`                 
+  * `UPDATE_BATCH_STATUS_SAS_PROGRAM_FILE_DEPLOYED_DIRECTORY=$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY`
+
 # Is there a help menu?
  `./runSAS.sh --help`
 
