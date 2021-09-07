@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.3                                                                                                  #
+#     Version: 60.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 02/09/2021                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.3
+	RUNSAS_CURRENT_VERSION=60.2
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -2218,9 +2218,6 @@ function clear_session_and_exit(){
         done < $JOB_LIST_FILE
     fi
     
-    # Make sure the batch status captures the abort by user scenario 
-    update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Triggered||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Killed||.||.||$start_datetime_of_job_timestamp_for_updsas||.||PID:$runsas_job_pid RC:$runsas_jobrc"
-
     # Goodbye!
     publish_to_messagebar "${green_bg}${black}*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) ***${white}"
     sleep 0.3
