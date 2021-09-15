@@ -19,7 +19,7 @@ SAS 9.x environment (Linux) with SAS BatchServer component is essential for the 
 All other script dependencies are checked at every launch of the script automatically.
 
 # Get started?
-  * Download `runSAS.sh` and transfer it to a SAS compute server (Linux based)
+  * Download `runSAS.sh` (or clone the repo) and transfer it to a SAS compute server (Linux based)
   * Open `runSAS.sh` in edit mode and:
     * Set the user parameters in the header section as per your SAS environment configuration
     * Specify the list of the job(s)/program(s) you want to run with dependencies
