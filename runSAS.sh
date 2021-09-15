@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.3                                                                                                  #
+#     Version: 60.4                                                                                                  #
 #                                                                                                                    #
-#        Date: 02/09/2021                                                                                            #
+#        Date: 15/09/2021                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.3
+	RUNSAS_CURRENT_VERSION=60.4
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -6049,7 +6049,7 @@ PID_KILL_INITIAL_SLEEP_IN_SECS=7
 PID_KILL_RETRY_SLEEP_IN_SECS=10
 
 # Batch status update routine parameters 
-UPDATE_BATCH_STATUS_TO_SAS_DATASET_FLAG=Y                                                           # If set to Y, runSAS will update batch status info to a specified dataset or table in SAS environment
+UPDATE_BATCH_STATUS_TO_SAS_DATASET_FLAG=N                                                           # If set to Y, runSAS will update batch status info to a specified dataset or table in SAS environment
 UPDATE_BATCH_STATUS_SAS_DATASET_PATH=$SAS_DEPLOYED_JOBS_ROOT_DIRECTORY                              # Specify the library path (if you want the batch status info to be held in a SAS dataset), leave it empty if it's a DB table
 UPDATE_BATCH_STATUS_SAS_DATASET_LIBREF=runsas                                                       # Specify the libref, default is "runsas". If you're specifying any other libref here it must be pre-assigned for it to be available in the SAS session
 UPDATE_BATCH_STATUS_SAS_DATASET_NAME=RUNSAS_BATCH_STATUS                                            # Specify the table/dataset name to store the batch status info (runSAS will automatically create a new table if it doesn't exist already)
