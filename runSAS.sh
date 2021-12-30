@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.4                                                                                                  #
+#     Version: 60.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 15/09/2021                                                                                            #
+#        Date: 31/12/2021                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.4
+	RUNSAS_CURRENT_VERSION=60.5
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -179,6 +179,7 @@ function print_the_help_menu(){
         printf "\n       --resume   <batchid>               runSAS can resume a failed batch using this option, state of the batch will automatically be restored (e.g. ./runSAS.sh --resume <batchid>"
         printf "\n       --batch                            runSAS can be launched in batch mode (i.e. non-interactive mode) for easy scheduling, just append --batch to the launch command (e.g. ./runSAS.sh -fu 2 3 --batch)"
         printf "\n       --help                             Display this help and exit"
+        printf "\n       --test                             runSAS will be launched in a test mode"
         printf "\n"
         printf "\n       Tip #1: You can add --prompt option against job(s) when you provide a list, this will halt the script during runtime for the user confirmation."
         printf "\n       Tip #2: You can add --noemail option during the launch to override the email setting during runtime (useful for one time runs etc.)"        
@@ -215,6 +216,7 @@ function validate_parameters_passed_to_script(){
     do
         case "$1" in
         --help) ;;
+        --test) ;;
      --version) ;;
        --delay) ;;
      --noemail) ;;
@@ -2800,6 +2802,9 @@ function set_script_mode_flags(){
             --help)
                 RUNSAS_INVOKED_IN_HELP_MODE=$p
                 ;;
+            --test)
+                RUNSAS_INVOKED_IN_TEST_MODE=$p
+                ;;
             --version)
                 RUNSAS_INVOKED_IN_VERSION_MODE=$p
                 ;;
@@ -2868,6 +2873,7 @@ function set_script_mode_flags(){
                 RUNSAS_INVOKED_IN_NOEMAIL_MODE -eq -1 && \
                 RUNSAS_INVOKED_IN_UPDATE_MODE -eq -1 && \
                 RUNSAS_INVOKED_IN_HELP_MODE -eq -1 && \
+                RUNSAS_INVOKED_IN_TEST_MODE -eq -1 && \
                 RUNSAS_INVOKED_IN_VERSION_MODE -eq -1 && \
                 RUNSAS_INVOKED_IN_PARAMETERS_MODE -eq -1 && \
                 RUNSAS_INVOKED_IN_LOG_MODE -eq -1 && \
@@ -2919,6 +2925,7 @@ function set_script_mode_flags(){
     print2debug RUNSAS_INVOKED_IN_NOEMAIL_MODE
     print2debug RUNSAS_INVOKED_IN_UPDATE_MODE
     print2debug RUNSAS_INVOKED_IN_HELP_MODE
+    print2debug RUNSAS_INVOKED_IN_TEST_MODE
     print2debug RUNSAS_INVOKED_IN_VERSION_MODE
     print2debug RUNSAS_INVOKED_IN_PARAMETERS_MODE
     print2debug RUNSAS_INVOKED_IN_LOG_MODE
@@ -3416,6 +3423,65 @@ function refactor_job_list_file(){
         mv $out_job_list_file $in_job_list_file
     fi
 }
+
+#------
+# Name: create_a_dummy_sas_file_with_sleep_routine()
+# Desc: This function creates a dummy sas file with random sleep routine data step
+#   In: absolute-file-name-path
+#  Out: <NA>
+#------
+function create_a_dummy_sas_file_with_sleep_routine(){
+    # Input parameters
+    dummy_sas_file_root_directory="$(dirname ${1})"
+    dummy_sas_file_name="$(basename -- $1)"
+
+    # Create dummy file
+    create_a_new_directory --silent $dummy_sas_file_root_directory 
+
+    # Create a SAS program file 
+    echo "/****************************************************************************"                                                     > $dummy_sas_file_root_directory/$dummy_sas_file_name                            
+    echo " * Job:             ${dummy_sas_file_name}                XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Description:     A dummy SAS file auto-generated by runSAS for \"--test\"*"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " *                  mode, contains two datasteps with sleep routine         *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Metadata Server: XXXXXXXX                                                *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Port:            0000                                                    *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Location:        ${dummy_sas_file_root_directory}                        *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " *                                                                          *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Server:          XXXXXX                                XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " *                                                                          *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Generated on:    '+%d-%m-%Y-%H:%M:%S'                                    *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Generated by:    ${SUDO_USER:-$USER}                                     *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " ****************************************************************************/"                                                   >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " "                                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "/*==========================================================================*"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Step:            Random Sleep 1                        XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Transform:       Data Step                                               *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Description:                                                             *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Source Table:    No Table -                            XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Target Table:    No Table -                            XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " *==========================================================================*/"                                                   >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " "                                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "/* Sleep Step 1 */"                                                                                                               >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "data _null_;"                                                                                                                     >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "t1 = 60 * rand(\"Uniform\");"                                                                                                     >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "call sleep(t, 1);"                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "run;"                                                                                                                             >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " "                                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "/*==========================================================================*"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Step:            Random Sleep 2                        XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Transform:       Data Step                                               *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Description:                                                             *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Source Table:    No Table -                            XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " * Target Table:    No Table -                            XXXXXXXX.XXXXXXXX *"                                                    >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " *==========================================================================*/"                                                   >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " "                                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "/* Sleep Step 2 */"                                                                                                               >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "data _null_;"                                                                                                                     >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "t1 = 60 * rand(\"Uniform\");"                                                                                                     >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "call sleep(t, 1);"                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo "run;"                                                                                                                             >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+    echo " "                                                                                                                                >> $dummy_sas_file_root_directory/$dummy_sas_file_name
+}
 #------
 # Name: capture_flow_n_job_stats()
 # Desc: This function creates flow and job arrays
@@ -3579,6 +3645,11 @@ function validate_job_list(){
                 else
                     printf "${yellow}WARNING: $so was specified for $j in the list without the server context name, defaulting to $SAS_APP_SERVER_NAME${white}"
                 fi
+            fi
+
+            # Create a dummy SAS file, if running in "--test" mode to ensure the validation goes through
+            if [[ $RUNSAS_INVOKED_IN_TEST_MODE -ne -1 ]]; then
+                create_a_dummy_sas_file_with_sleep_routine "$vjmode_sas_deployed_jobs_root_directory/$j"
             fi
 
 			# Check if the deployed job file exists
@@ -3821,7 +3892,7 @@ function update_batch_state(){
     bs_current_batchid_file=$bs_current_batchid_directory/$bs_batchid.batch
     bs_current_batchid_jobid_file=$bs_current_batchid_job_directory/$bs_jobid.job
 
-    # Create required directories to preserve the state of the batch (direcoty)
+    # Create required directories for runSAS for batch state preservation
     # Directory tree:
     #   .batch
     #   ├──<batchid>
@@ -4831,7 +4902,8 @@ function update_batch_status_to_sas_dataset(){
 
     # Update the current status
     if [[ "$UPDATE_BATCH_STATUS_TO_SAS_DATASET_FLAG" == "Y" ]]; then
-        nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${UPDATE_BATCH_STATUS_SAS_PROGRAM_FILE_NAME}_#Y.#m.#d_#H.#M.#s.log \
+        nice -n $RUNSAS_NICE_PARAMETER $runsas_batch_server_root_directory/$runsas_sh \
+                                                                    -log $runsas_logs_root_directory/${UPDATE_BATCH_STATUS_SAS_PROGRAM_FILE_NAME}_#Y.#m.#d_#H.#M.#s.log \
                                                                     -batch \
                                                                     -noterminal \
                                                                     -logparm "rollover=session" \
@@ -5515,7 +5587,9 @@ function runSAS(){
 
             # Check if the job slots are full!
             if [[ $running_jobs_current_count -lt $sjs_concurrent_job_count_limit ]]; then
-                nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
+                # Launch the job!
+                nice -n $RUNSAS_NICE_PARAMETER $runsas_batch_server_root_directory/$runsas_sh \
+                                                                            -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
                                                                             -batch \
                                                                             -noterminal \
                                                                             -logparm "rollover=session" \
@@ -6047,6 +6121,7 @@ RUNSAS_RUNNING_IN_NO_FLOW_MODE=N
 RUNSAS_FAIL_RECOVER_SLEEP_IN_SECS=2
 PID_KILL_INITIAL_SLEEP_IN_SECS=7
 PID_KILL_RETRY_SLEEP_IN_SECS=10
+RUNSAS_NICE_PARAMETER=20
 
 # Batch status update routine parameters 
 UPDATE_BATCH_STATUS_TO_SAS_DATASET_FLAG=N                                                           # If set to Y, runSAS will update batch status info to a specified dataset or table in SAS environment
@@ -6101,7 +6176,7 @@ RC_JOB_ABNORMAL_TERMINATION=99
 SHORTFORM_MODE_NO_PARMS=( " -i " " -v " )
 SHORTFORM_MODE_SINGLE_PARM=( " -f " " -u " " -o " " -j " )
 SHORTFORM_MODE_DOUBLE_PARMS=( " -fu " " -fui " " -fuis " " -s " )
-LONGFORM_MODE_NO_PARMS=( " --noemail " " --nomail " " --update " " --help " " --version " " --reset " " --parms " " --parameters " " --update-c " " --list " " --log " " --last " " --byflow " " --batch " "--nocolors" )
+LONGFORM_MODE_NO_PARMS=( " --noemail " " --nomail " " --update " " --help " " --test " " --version " " --reset " " --parms " " --parameters " " --update-c " " --list " " --log " " --last " " --byflow " " --batch " "--nocolors" )
 LONGFORM_MODE_SINGLE_PARM=( " --delay " " --message " " --email " " --joblist " " --resume " )
 LONGFORM_MODE_MULTI_PARMS=(  "--redeploy " )
 
@@ -6123,6 +6198,7 @@ RUNSAS_INVOKED_IN_SKIP_MODE=-1
 RUNSAS_INVOKED_IN_NOEMAIL_MODE=-1
 RUNSAS_INVOKED_IN_UPDATE_MODE=-1
 RUNSAS_INVOKED_IN_HELP_MODE=-1
+RUNSAS_INVOKED_IN_TEST_MODE=-1
 RUNSAS_INVOKED_IN_VERSION_MODE=-1
 RUNSAS_INVOKED_IN_PARAMETERS_MODE=-1
 RUNSAS_INVOKED_IN_LOG_MODE=-1
