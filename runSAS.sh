@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 70.1                                                                                                  #
+#     Version: 70.2                                                                                                  #
 #                                                                                                                    #
 #        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=70.1
+	RUNSAS_CURRENT_VERSION=70.2
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -6198,7 +6198,15 @@ script_mode_value_7="$8"
 check_terminal_size
 
 # Delete the session log file
-delete_a_file $RUNSAS_SESSION_LOG_FILE silent
+if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_UPDATE_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_UPDATE_COMPATIBILITY_CHECK_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_LIST_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_JOBLIST_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_REDEPLOY_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_LOG_MODE -le -1 ]]; then
+    delete_a_file $RUNSAS_SESSION_LOG_FILE silent
+fi
 
 # Delete files (except in resume mode!)
 if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]]; then
