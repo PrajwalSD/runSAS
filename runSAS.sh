@@ -5889,7 +5889,7 @@ function runSAS(){
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Print to debug file
-        print2debug runsas_job_pid ">>> Inside ERROR/FAIL " " >>> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_job_pid ">>> Inside ERROR/FAIL " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
         print2debug runsas_jobid "*** ERROR: Job $runsas_job [" "] has errored/failed with runsas_jobrc=[$runsas_jobrc]***"
         print2debug runsas_jobid "*** ERROR: Error message for the job [" "]: $job_err_message "
         print2debug runsas_jobid "*** ERROR: Log for job [" "] $runsas_logs_root_directory/$runsas_job_log"
@@ -5951,7 +5951,7 @@ function runSAS(){
         print2log "Diff: $job_runtime_diff_pct"
 
         # Print to debug file
-        print2debug runsas_job_pid ">>> Inside DONE (SUCCESS) " " >>> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_job_pid ">>> Inside DONE (SUCCESS) " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
 
         # Send an email (silently)
         if [[ "$runsas_job_completed_email_sent" != "Y" ]]; then 
@@ -5980,7 +5980,7 @@ function runSAS(){
             printf "\n"
         fi
         # Print to debug file
-        print2debug runsas_job_pid ">>> Inside ELSE section (WARNING: empty section) " " >>> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_job_pid ">>> Inside ELSE section (WARNING: empty section) " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
     fi
 
     # Do not repeat the messages in batch mode
