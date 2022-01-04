@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.8                                                                                                  #
+#     Version: 60.9                                                                                                  #
 #                                                                                                                    #
 #        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.8
+	RUNSAS_CURRENT_VERSION=60.9
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -2449,7 +2449,7 @@ function restore_terminal_screen_cursor_positions(){
         get_current_terminal_cursor_position
 
         # Print to debug file
-        print2debug current_cursor_row_pos "--- Cursor positions (before offset) " " ---"
+        print2debug current_cursor_row_pos "*** Cursor positions (before offset) " " ---"
         print2debug runsas_job_cursor_row_pos "    [" "]"
 
         # If the current row position is equal (or greater than) to the max no of rows on the terminal, the terminal will scroll so make the cursor position relative than absolute
@@ -2460,7 +2460,8 @@ function restore_terminal_screen_cursor_positions(){
         fi
 
         # Print to debug file
-        print2debug term_total_no_of_rows "    [" "] term_row_offset=$term_row_offset"
+        print2debug term_total_no_of_rows "    [" "]"
+        print2debug term_row_offset "    [" "]"
 
         # Get the row position from the first job
         get_keyval_from_batch_state runsas_job_cursor_row_pos first_runsas_job_cursor_row_pos 1
@@ -2488,7 +2489,7 @@ function restore_terminal_screen_cursor_positions(){
         fi
 
         # Print to debug file
-        print2debug job_row_offset "${CHILD_DECORATOR} Job offset[" "] runsas_job_cursor_row_pos=[$runsas_job_cursor_row_pos] and runsas_job_cursor_col_pos=[$runsas_job_cursor_col_pos]"
+        print2debug job_row_offset "Job offset[" "] runsas_job_cursor_row_pos=[$runsas_job_cursor_row_pos] and runsas_job_cursor_col_pos=[$runsas_job_cursor_col_pos]"
 
         # Finally place the cursor
         move_cursor $runsas_job_cursor_row_pos $runsas_job_cursor_col_pos
@@ -3015,7 +3016,7 @@ function validate_script_modes(){
     done
 
     # Print parameters to debug
-    print2debug RUNSAS_PARAMETERS_ARRAY[@] "--- Script parameters [" "] ---"
+    print2debug RUNSAS_PARAMETERS_ARRAY[@] "*** Script parameters [" "] ***"
     print2debug runsas_job_filter_mode "Job filters applied: [" "]"
 
     # Print a message
@@ -3440,8 +3441,8 @@ function capture_flow_n_job_stats(){
     done < $flowstats_input_job_list_file
 
     # Debug
-    print2debug flow_id_array[@] "--- Flow ID array [" "] ---"
-    print2debug job_id_array[@] "--- Job ID array [" "] ---"
+    print2debug flow_id_array[@] "*** Flow ID array [" "] ***"
+    print2debug job_id_array[@] "*** Job ID array [" "] ***"
 }
 #------
 # Name: validate_job_list()
@@ -3871,7 +3872,7 @@ function inject_batch_state(){
     # Inject the job state (always in the context of the flow)
     if [ -f $inj_current_batchid_jobid_file ]; then
         . $inj_current_batchid_jobid_file
-        print2debug inj_current_batchid_jobid_file "---> Injecting the batch state from a file: [" "] for [inj_batchid=$inj_batchid | inj_jobid=$inj_jobid | inj_opt=$inj_opt] <---"
+        print2debug inj_current_batchid_jobid_file "*** Injecting the batch state from a file: [" "] for [inj_batchid=$inj_batchid | inj_jobid=$inj_jobid | inj_opt=$inj_opt] ***"
         if [[ "$opt" == "message" ]]; then
             printf "${green}NOTE: Job state has been restored successfully! (Batch ID: $inj_batchid Job ID: $inj_jobid) ${white}"
         fi
@@ -5301,7 +5302,7 @@ function runSAS(){
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -gt -1 ]]; then
         if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
             # Update the flags, update the batch state and re-inject the state
-            print2debug runsas_jobid "Resetting the flags in --resume mode for a previously failed job [" "] ---> [runsas_jobrc=$runsas_jobrc | runsas_job_pid=$runsas_job_pid | global_batchid=$global_batchid]"
+            print2debug runsas_jobid "Resetting the flags in --resume mode for a previously failed job [" "] >>> [runsas_jobrc=$runsas_jobrc | runsas_job_pid=$runsas_job_pid | global_batchid=$global_batchid]"
             update_batch_state runsas_job_pid 0 $runsas_jobid $global_batchid
             update_batch_state runsas_jobrc $RC_JOB_PENDING $runsas_jobid $global_batchid
             inject_batch_state $global_batchid $runsas_jobid
@@ -5402,7 +5403,7 @@ function runSAS(){
     print2debug RUNSAS_BATCH_COMPLETE_FLAG "    [" "]"
 
     # Print to debug file
-    print2debug runsas_jobs_run_array[@] "--- Jobs that have run already: [" "] ---"
+    print2debug runsas_jobs_run_array[@] "*** Jobs that have run already: [" "] ***"
  
     # Skip the finished jobs (failed ones will continue to refresh and skipped a bit later)
     if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
@@ -5539,7 +5540,7 @@ function runSAS(){
                     update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Triggered||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Triggered||.||.||$start_datetime_of_job_timestamp_for_updsas||.||PID:$runsas_job_pid RC:$runsas_jobrc"
 
                     # Print to debug file
-                    print2debug runsas_job "--->>> Triggered runsas_jobid=$runsas_jobid [" "] job SUCCESSFULLY [runsas_job_pid=${runsas_job_pid} | runsas_jobrc=${runsas_jobrc} | runsas_job_status_color=${runsas_job_status_color}] <<<---"  
+                    print2debug runsas_job ">>> Triggered runsas_jobid=$runsas_jobid [" "] job SUCCESSFULLY [runsas_job_pid=${runsas_job_pid} | runsas_jobrc=${runsas_jobrc} | runsas_job_status_color=${runsas_job_status_color}] <<<"  
                 else
                     no_slots_available_flag="Y"
                     print2debug runsas_job "*** WARNING: Cannot trigger the job [" "] as the job slots are currently full! [runsas_jobid=$runsas_jobid | sjs_concurrent_job_count_limit=$sjs_concurrent_job_count_limit | running_jobs_current_count=$running_jobs_current_count] ***"
@@ -5571,7 +5572,7 @@ function runSAS(){
             runsas_jobdep_i="${runsas_jobdep_array[i]}"
     
             # Print to debug file
-            print2debug i "---> Inside the job dependency loop now [" "] with runsas_jobdep_i=[${runsas_jobdep_i}] <---"
+            print2debug i ">>> Inside the job dependency loop now [" "] with runsas_jobdep_i=[${runsas_jobdep_i}] <<<"
 
             # Get dependent job's return code
             if [[ $runsas_jobdep_i -eq $runsas_jobid ]]; then
@@ -5888,7 +5889,7 @@ function runSAS(){
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Print to debug file
-        print2debug runsas_job_pid "---> Inside ERROR/FAIL " " ---> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_job_pid ">>> Inside ERROR/FAIL " " >>> runsas_jobrc=${runsas_jobrc} <---" 
 
     elif [[ $runsas_jobrc -ge 0 ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
 
@@ -5947,7 +5948,7 @@ function runSAS(){
         print2log "Diff: $job_runtime_diff_pct"
 
         # Print to debug file
-        print2debug runsas_job_pid "---> Inside DONE (SUCCESS) " " ---> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_job_pid ">>> Inside DONE (SUCCESS) " " >>> runsas_jobrc=${runsas_jobrc} <---" 
 
         # Send an email (silently)
         if [[ "$runsas_job_completed_email_sent" != "Y" ]]; then 
@@ -5976,7 +5977,7 @@ function runSAS(){
             printf "\n"
         fi
         # Print to debug file
-        print2debug runsas_job_pid "---> Inside ELSE section (WARNING: empty section) " " ---> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_job_pid ">>> Inside ELSE section (WARNING: empty section) " " >>> runsas_jobrc=${runsas_jobrc} <---" 
     fi
 
     # Do not repeat the messages in batch mode
