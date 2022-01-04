@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.7                                                                                                  #
+#     Version: 60.8                                                                                                  #
 #                                                                                                                    #
 #        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.7
+	RUNSAS_CURRENT_VERSION=60.8
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -2025,7 +2025,11 @@ function print2debug(){
 
     # Print to the file
     if [[ "$RUNSAS_PRINT2DEBUG_LOGGING" == "Y" ]]; then
-        printf "\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+        if [[ $debug_prefix == "===>"* ]] || [[ $debug_prefix == "---"* ]]; then
+            printf "\n\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+        else
+            printf "\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+        fi
     fi
 }
 #------
@@ -2446,7 +2450,7 @@ function restore_terminal_screen_cursor_positions(){
 
         # Print to debug file
         print2debug current_cursor_row_pos "--- Cursor positions (before offset) " " ---"
-        print2debug runsas_job_cursor_row_pos "${CHILD_DECORATOR}[" "]"
+        print2debug runsas_job_cursor_row_pos "    [" "]"
 
         # If the current row position is equal (or greater than) to the max no of rows on the terminal, the terminal will scroll so make the cursor position relative than absolute
         if [[ $current_cursor_row_pos -ne $(tput lines) ]]; then # If the cursor returned from message bar then do not apply offset.
@@ -2456,7 +2460,7 @@ function restore_terminal_screen_cursor_positions(){
         fi
 
         # Print to debug file
-        print2debug term_total_no_of_rows "${CHILD_DECORATOR}[" "] term_row_offset=$term_row_offset"
+        print2debug term_total_no_of_rows "    [" "] term_row_offset=$term_row_offset"
 
         # Get the row position from the first job
         get_keyval_from_batch_state runsas_job_cursor_row_pos first_runsas_job_cursor_row_pos 1
@@ -2907,34 +2911,34 @@ function set_script_mode_flags(){
 
     # Print flags to debug
     print2debug "*** Validation of modes" " ***"
-    print2debug RUNSAS_INVOKED_IN_INTERACTIVE_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_VERSION_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_FROM_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_UNTIL_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_ONLY_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_JOB_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_SKIP_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_SKIP_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_NOEMAIL_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_UPDATE_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_HELP_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_VERSION_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_PARAMETERS_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_LOG_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_UPDATE_COMPATIBILITY_CHECK_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_LIST_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_BYFLOW_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_RESUME_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_DELAY_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_BATCH_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_NOCOLOR_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_MESSAGE_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_EMAIL_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_JOBLIST_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_REDEPLOY_MODE "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_INVOKED_IN_NON_RUNSAS_MODE "${CHILD_DECORATOR}[" "]"
+    print2debug RUNSAS_INVOKED_IN_INTERACTIVE_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_VERSION_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_UNTIL_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_ONLY_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_JOB_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_SKIP_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_SKIP_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_NOEMAIL_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_UPDATE_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_HELP_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_VERSION_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_PARAMETERS_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_LOG_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_UPDATE_COMPATIBILITY_CHECK_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_LIST_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_BYFLOW_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_RESUME_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_DELAY_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_BATCH_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_NOCOLOR_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_MESSAGE_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_EMAIL_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_JOBLIST_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_REDEPLOY_MODE "    [" "]"
+    print2debug RUNSAS_INVOKED_IN_NON_RUNSAS_MODE "    [" "]"
 }
 #------
 # Name: validate_script_modes()
@@ -2945,11 +2949,11 @@ function set_script_mode_flags(){
 function validate_script_modes(){
     # Print to debug file
     print2debug SHORTFORM_MODE_NO_PARMS[@] "*** Mode validation parameters [" "] ***" 
-    print2debug SHORTFORM_MODE_SINGLE_PARM[@] "${CHILD_DECORATOR}[" "]"
-    print2debug SHORTFORM_MODE_DOUBLE_PARMS[@] "${CHILD_DECORATOR}[" "]"
-    print2debug LONGFORM_MODE_NO_PARMS[@] "${CHILD_DECORATOR}[" "]"
-    print2debug LONGFORM_MODE_SINGLE_PARM[@] "${CHILD_DECORATOR}[" "]"
-    print2debug LONGFORM_MODE_MULTI_PARMS[@] "${CHILD_DECORATOR}[" "]"
+    print2debug SHORTFORM_MODE_SINGLE_PARM[@] "    [" "]"
+    print2debug SHORTFORM_MODE_DOUBLE_PARMS[@] "    [" "]"
+    print2debug LONGFORM_MODE_NO_PARMS[@] "    [" "]"
+    print2debug LONGFORM_MODE_SINGLE_PARM[@] "    [" "]"
+    print2debug LONGFORM_MODE_MULTI_PARMS[@] "    [" "]"
 
     # Refresh the counter
     TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat .job.list | wc -l`
@@ -5307,29 +5311,29 @@ function runSAS(){
     # Store the jobrc (max)
     assign_and_preserve runsas_max_jobrc $runsas_max_jobrc
 
-    print2debug runsas_jobid "─── Post Injection (before run/interactive mode flag checks) for [" "] ───"
-    print2debug runsas_job "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_flow "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_flowid "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_jobdep "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_logic_op "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_max_jobrc "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_opt "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_subopt "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_app_root_directory "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_batch_server_root_directory "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_sh "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_logs_root_directory "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_deployed_jobs_root_directory "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_job_pid "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_jobrc "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_runflag "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_mode_runflag "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_mode_interactiveflag "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_job_status_color "${CHILD_DECORATOR}[" "]"
-    print2debug error_message_shown_on_job_fail "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_error_email_sent "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_job_completed_email_sent "${CHILD_DECORATOR}[" "]"
+    print2debug runsas_jobid "*** Post Injection (before run/interactive mode flag checks) for [" "] ***"
+    print2debug runsas_job "    [" "]"
+    print2debug runsas_flow "    [" "]"
+    print2debug runsas_flowid "    [" "]"
+    print2debug runsas_jobdep "    [" "]"
+    print2debug runsas_logic_op "    [" "]"
+    print2debug runsas_max_jobrc "    [" "]"
+    print2debug runsas_opt "    [" "]"
+    print2debug runsas_subopt "    [" "]"
+    print2debug runsas_app_root_directory "    [" "]"
+    print2debug runsas_batch_server_root_directory "    [" "]"
+    print2debug runsas_sh "    [" "]"
+    print2debug runsas_logs_root_directory "    [" "]"
+    print2debug runsas_deployed_jobs_root_directory "    [" "]"
+    print2debug runsas_job_pid "    [" "]"
+    print2debug runsas_jobrc "    [" "]"
+    print2debug runsas_runflag "    [" "]"
+    print2debug runsas_mode_runflag "    [" "]"
+    print2debug runsas_mode_interactiveflag "    [" "]"
+    print2debug runsas_job_status_color "    [" "]"
+    print2debug error_message_shown_on_job_fail "    [" "]"
+    print2debug runsas_error_email_sent "    [" "]"
+    print2debug runsas_job_completed_email_sent "    [" "]"
 
     # Increment the job counter for terminal display, jobid is unique across the flows
     JOB_COUNTER_FOR_DISPLAY=$runsas_jobid
@@ -5358,13 +5362,13 @@ function runSAS(){
     fi	
 
     # Print to debug file
-    print2debug runsas_jobid "─── Post interactive mode and run flag checks for [" "] ───"
-    print2debug runsas_job "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_flow "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_flowid "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_jobdep "${CHILD_DECORATOR}[" "]"
-    print2debug interactive_mode_at_flow_level_applied "${CHILD_DECORATOR}[" "]"
-    print2debug interactive_mode_at_job_level_applied "${CHILD_DECORATOR}[" "]"
+    print2debug runsas_jobid "*** Post interactive mode and run flag checks for [" "] ***"
+    print2debug runsas_job "    [" "]"
+    print2debug runsas_flow "    [" "]"
+    print2debug runsas_flowid "    [" "]"
+    print2debug runsas_jobdep "    [" "]"
+    print2debug interactive_mode_at_flow_level_applied "    [" "]"
+    print2debug interactive_mode_at_job_level_applied "    [" "]"
 
     # Place the cursor (relative to the first job cursor)
     if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
@@ -5391,11 +5395,11 @@ function runSAS(){
     check_if_the_batch_is_complete
 
     # Print to debug file 
-    print2debug runsas_jobid "─── Post job rc checks for [" "] ───"
-    print2debug runsas_jobrc "${CHILD_DECORATOR}[" "] (post checks)"
-    print2debug runsas_mode_interactiveflag "${CHILD_DECORATOR}[" "]"
-    print2debug runsas_runflag "${CHILD_DECORATOR}[" "]"
-    print2debug RUNSAS_BATCH_COMPLETE_FLAG "${CHILD_DECORATOR}[" "]"
+    print2debug runsas_jobid "*** Post job rc checks for [" "] ***"
+    print2debug runsas_jobrc "    [" "] (post checks)"
+    print2debug runsas_mode_interactiveflag "    [" "]"
+    print2debug runsas_runflag "    [" "]"
+    print2debug RUNSAS_BATCH_COMPLETE_FLAG "    [" "]"
 
     # Print to debug file
     print2debug runsas_jobs_run_array[@] "--- Jobs that have run already: [" "] ---"
@@ -5602,15 +5606,15 @@ function runSAS(){
             fi
 
             # Print to debug file
-            print2debug runsas_jobid "─── Post dependency checks " " ───" 
-            print2debug runsas_jobrc "${CHILD_DECORATOR}[" "]" 
-            print2debug runsas_job_pid "${CHILD_DECORATOR}[" "]" 
-            print2debug runsas_jobdep_i_jobrc "${CHILD_DECORATOR}[" "]" 
-            print2debug runsas_logic_op "${CHILD_DECORATOR}[" "]" 
-            print2debug runsas_max_jobrc "${CHILD_DECORATOR}[" "]"
-            print2debug count_of_dep_jobs_that_has_run "${CHILD_DECORATOR}[" "]"
-            print2debug OR_check_passed "${CHILD_DECORATOR}[" "]" 
-            print2debug AND_check_passed "${CHILD_DECORATOR}[" "]" 
+            print2debug runsas_jobid "*** Post dependency checks " " ***" 
+            print2debug runsas_jobrc "    [" "]" 
+            print2debug runsas_job_pid "    [" "]" 
+            print2debug runsas_jobdep_i_jobrc "    [" "]" 
+            print2debug runsas_logic_op "    [" "]" 
+            print2debug runsas_max_jobrc "    [" "]"
+            print2debug count_of_dep_jobs_that_has_run "    [" "]"
+            print2debug OR_check_passed "    [" "]" 
+            print2debug AND_check_passed "    [" "]" 
 
             # Finally, evaluate the dependency:
             # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user) and this is the default if nothing has been specified
@@ -6238,15 +6242,15 @@ print2log "Script Mode Value 7: $script_mode_value_7"
 
 # Print to debug file
 print2debug start_datetime_of_session_timestamp "*** runSAS has been triggered " " ***" 
-print2debug HOSTNAME "${CHILD_DECORATOR}[" "]"
-print2debug script_mode "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_1 "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_2 "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_3 "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_4 "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_5 "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_6 "${CHILD_DECORATOR}[" "]"
-print2debug script_mode_value_7 "${CHILD_DECORATOR}[" "]"
+print2debug HOSTNAME "    [" "]"
+print2debug script_mode "    [" "]"
+print2debug script_mode_value_1 "    [" "]"
+print2debug script_mode_value_2 "    [" "]"
+print2debug script_mode_value_3 "    [" "]"
+print2debug script_mode_value_4 "    [" "]"
+print2debug script_mode_value_5 "    [" "]"
+print2debug script_mode_value_6 "    [" "]"
+print2debug script_mode_value_7 "    [" "]"
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
