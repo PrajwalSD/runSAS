@@ -5888,9 +5888,8 @@ function runSAS(){
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Print to debug file
-        print2debug runsas_job_pid "*** Inside ERROR/FAIL routine [" "] with runsas_jobrc=${runsas_jobrc} ***" 
-        print2debug runsas_jobid "*** ERROR: $runsas_job [" "] in flow [$runsas_flow](runsas_flowid=$runsas_flowid) failed with runsas_jobrc=[$runsas_jobrc] ***"
-        print2debug runsas_jobid "*** ERROR: [" "]: ${job_err_message}...(Log: $runsas_logs_root_directory/$runsas_job_log)"
+        print2debug runsas_jobid "*** Job $runsas_job [" "] has ERRORED/FAILED, runsas_jobrc=$runsas_jobrc | runsas_jobrc=$runsas_jobrc | runsas_job_pid=$runsas_job_pid | runsas_flow=$runsas_flow | runsas_flowid=$runsas_flowid ***" 
+        print2debug runsas_jobid "*** ERROR: The job has errored due to \"$job_err_message\" [" "]...(log: $runsas_logs_root_directory/$runsas_job_log)"
 
     elif [[ $runsas_jobrc -ge 0 ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
@@ -5948,7 +5947,7 @@ function runSAS(){
         print2log "Diff: $job_runtime_diff_pct"
 
         # Print to debug file
-        print2debug runsas_job_pid "*** Inside DONE/SUCCESS routine [" "] with runsas_jobrc=${runsas_jobrc} ***" 
+        print2debug runsas_jobid "*** Job $runsas_job [" "] has COMPLETED SUCCESSFULLY, runsas_jobrc=$runsas_jobrc | runsas_jobrc=$runsas_jobrc | runsas_job_pid=$runsas_job_pid | runsas_flow=$runsas_flow | runsas_flowid=$runsas_flowid ***"
 
         # Send an email (silently)
         if [[ "$runsas_job_completed_email_sent" != "Y" ]]; then 
@@ -5977,7 +5976,7 @@ function runSAS(){
             printf "\n"
         fi
         # Print to debug file
-        print2debug runsas_job_pid "*** Inside ELSE routine (the job is still running...) [" "] with runsas_jobrc=${runsas_jobrc} ***" 
+        print2debug runsas_jobid "*** Job $runsas_job [" "] is perhaps STILL RUNNING (ELSE section), runsas_jobrc=$runsas_jobrc | runsas_jobrc=$runsas_jobrc | runsas_job_pid=$runsas_job_pid | runsas_flow=$runsas_flow | runsas_flowid=$runsas_flowid ***" 
     fi
 
     # Do not repeat the messages in batch mode
