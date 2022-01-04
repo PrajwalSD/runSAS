@@ -6207,6 +6207,9 @@ fi
 # Create files
 create_a_file_if_not_exists $RUNSAS_DEBUG_FILE $RUNSAS_TMP_DEBUG_FILE $EMAIL_BODY_MSG_FILE $RUNSAS_SESSION_LOG_FILE
 
+# Add a new entry to debug file
+print2debug start_datetime_of_session_timestamp "===============================> runSAS script has been launched on [" "] by ${SUDO_USER:-$USER} <===============================" 
+
 # Expand the ranges in the file
 expand_job_deps_in_joblist_file $JOB_LIST_FILE
 
