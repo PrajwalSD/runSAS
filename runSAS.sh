@@ -477,7 +477,7 @@ function archive_runsas_batch_history(){
 
             # Debug
             print2debug no_of_batches_to_be_preserved "*** Archival strategy has kicked in: " " runs will be preserved ***"
-            print2debug last_batchid
+            print2debug last_batchid "*** [" "] "
 
             # Only preserve a given number of batches (going backwards...)
             if [[ $last_batchid -gt $no_of_batches_to_be_preserved ]]; then
@@ -2010,7 +2010,7 @@ function write_job_details_on_terminal(){
 }
 #------
 # Name: print2debug()
-# Desc: Debug code
+# Desc: Debug code  
 #   In: variable, description, prefix, postfix, debug-file (optional)
 #  Out: <NA>
 #------
@@ -2022,10 +2022,12 @@ function print2debug(){
     debug_file="${4:-$RUNSAS_DEBUG_FILE}"
 
     # Timestamp
-    debug_curr_timestamp=$(date -u)
+    debug_curr_timestamp=`date "+%Y-%m-%d %H:%M:%S"`
 
     # Print to the file
-    printf "\n[${debug_curr_timestamp}: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+    if [[ "$RUNSAS_PRINT2DEBUG_LOGGING" == "Y" ]]; then
+        printf "\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+    fi
 }
 #------
 # Name: add_more_info_to_log_in_batch_mode()
@@ -2445,7 +2447,7 @@ function restore_terminal_screen_cursor_positions(){
 
         # Print to debug file
         print2debug current_cursor_row_pos "--- Cursor positions (before offset) " " ---"
-        print2debug runsas_job_cursor_row_pos
+        print2debug runsas_job_cursor_row_pos "--- [" "]"
 
         # If the current row position is equal (or greater than) to the max no of rows on the terminal, the terminal will scroll so make the cursor position relative than absolute
         if [[ $current_cursor_row_pos -ne $(tput lines) ]]; then # If the cursor returned from message bar then do not apply offset.
@@ -2455,8 +2457,8 @@ function restore_terminal_screen_cursor_positions(){
         fi
 
         # Print to debug file
-        print2debug term_total_no_of_rows
-        print2debug term_row_offset
+        print2debug term_total_no_of_rows "--- [" "]"
+        print2debug term_row_offset "--- [" "]"
 
         # Get the row position from the first job
         get_keyval_from_batch_state runsas_job_cursor_row_pos first_runsas_job_cursor_row_pos 1
@@ -2484,9 +2486,9 @@ function restore_terminal_screen_cursor_positions(){
         fi
 
         # Print to debug file
-        print2debug job_row_offset ">> Job offset "
-        print2debug runsas_job_cursor_row_pos
-        print2debug runsas_job_cursor_col_pos
+        print2debug job_row_offset ">>> Job offset "
+        print2debug runsas_job_cursor_row_pos ">>> [" "]"
+        print2debug runsas_job_cursor_col_pos ">>> [" "]"
 
         # Finally place the cursor
         move_cursor $runsas_job_cursor_row_pos $runsas_job_cursor_col_pos
@@ -2909,34 +2911,34 @@ function set_script_mode_flags(){
 
     # Print flags to debug
     print2debug "*** Validation of modes" " ***"
-    print2debug RUNSAS_INVOKED_IN_INTERACTIVE_MODE 
-    print2debug RUNSAS_INVOKED_IN_VERSION_MODE
-    print2debug RUNSAS_INVOKED_IN_FROM_MODE
-    print2debug RUNSAS_INVOKED_IN_UNTIL_MODE
-    print2debug RUNSAS_INVOKED_IN_ONLY_MODE
-    print2debug RUNSAS_INVOKED_IN_JOB_MODE
-    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_MODE
-    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_MODE
-    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_SKIP_MODE
-    print2debug RUNSAS_INVOKED_IN_SKIP_MODE
-    print2debug RUNSAS_INVOKED_IN_NOEMAIL_MODE
-    print2debug RUNSAS_INVOKED_IN_UPDATE_MODE
-    print2debug RUNSAS_INVOKED_IN_HELP_MODE
-    print2debug RUNSAS_INVOKED_IN_VERSION_MODE
-    print2debug RUNSAS_INVOKED_IN_PARAMETERS_MODE
-    print2debug RUNSAS_INVOKED_IN_LOG_MODE
-    print2debug RUNSAS_INVOKED_IN_UPDATE_COMPATIBILITY_CHECK_MODE
-    print2debug RUNSAS_INVOKED_IN_LIST_MODE
-    print2debug RUNSAS_INVOKED_IN_BYFLOW_MODE
-    print2debug RUNSAS_INVOKED_IN_RESUME_MODE
-    print2debug RUNSAS_INVOKED_IN_DELAY_MODE
-    print2debug RUNSAS_INVOKED_IN_BATCH_MODE
-    print2debug RUNSAS_INVOKED_IN_NOCOLOR_MODE
-    print2debug RUNSAS_INVOKED_IN_MESSAGE_MODE
-    print2debug RUNSAS_INVOKED_IN_EMAIL_MODE
-    print2debug RUNSAS_INVOKED_IN_JOBLIST_MODE
-    print2debug RUNSAS_INVOKED_IN_REDEPLOY_MODE
-    print2debug RUNSAS_INVOKED_IN_NON_RUNSAS_MODE
+    print2debug RUNSAS_INVOKED_IN_INTERACTIVE_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_VERSION_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_UNTIL_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_ONLY_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_JOB_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_FROM_UNTIL_INTERACTIVE_SKIP_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_SKIP_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_NOEMAIL_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_UPDATE_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_HELP_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_VERSION_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_PARAMETERS_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_LOG_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_UPDATE_COMPATIBILITY_CHECK_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_LIST_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_BYFLOW_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_RESUME_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_DELAY_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_BATCH_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_NOCOLOR_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_MESSAGE_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_EMAIL_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_JOBLIST_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_REDEPLOY_MODE  "*** [" "]"
+    print2debug RUNSAS_INVOKED_IN_NON_RUNSAS_MODE  "*** [" "]"
 }
 #------
 # Name: validate_script_modes()
@@ -2947,11 +2949,11 @@ function set_script_mode_flags(){
 function validate_script_modes(){
     # Print to debug file
     print2debug SHORTFORM_MODE_NO_PARMS[@] "--- Mode validation parameters --- [" "]---" 
-    print2debug SHORTFORM_MODE_SINGLE_PARM[@] 
-    print2debug SHORTFORM_MODE_DOUBLE_PARMS[@] 
-    print2debug LONGFORM_MODE_NO_PARMS[@] 
-    print2debug LONGFORM_MODE_SINGLE_PARM[@] 
-    print2debug LONGFORM_MODE_MULTI_PARMS[@] 
+    print2debug SHORTFORM_MODE_SINGLE_PARM[@] "--- [" "]"
+    print2debug SHORTFORM_MODE_DOUBLE_PARMS[@] "--- [" "]"
+    print2debug LONGFORM_MODE_NO_PARMS[@] "--- [" "]"
+    print2debug LONGFORM_MODE_SINGLE_PARM[@] "--- [" "]"
+    print2debug LONGFORM_MODE_MULTI_PARMS[@] "--- [" "]"
 
     # Refresh the counter
     TOTAL_NO_OF_JOBS_COUNTER_CMD=`cat .job.list | wc -l`
@@ -3013,13 +3015,13 @@ function validate_script_modes(){
     done
 
     # Print parameters to debug
-    print2debug RUNSAS_PARAMETERS_ARRAY[@] "---Script parameters [" "]---"
+    print2debug RUNSAS_PARAMETERS_ARRAY[@] "--- Script parameters [" "]---"
 
     # Print a message
     publish_to_messagebar ""
     
     # Filter mode to debug 
-    print2debug runsas_job_filter_mode
+    print2debug runsas_job_filter_mode "--- [" "]"
     
 }
 #------
@@ -3140,7 +3142,7 @@ function check_if_batch_has_stalled(){
         get_keyval_from_batch_state runsas_jobrc runsas_jobrc $jobid $stallcheck_batchid
 
         # Debug
-        print2debug jobid "\n*** Stall check for [" "] ***"
+        print2debug jobid "*** Stall check for [" "] ***"
 
         # Check if the batch is stalled
         if [[ $runsas_mode_runflag -eq 1 ]] && [[ "$runflag" == "Y" ]]; then
@@ -3787,7 +3789,7 @@ function generate_a_new_batchid(){
         batchid_gen_message="Batch ID: $global_batchid"
     else
         batchid_gen_message="Batch ID: $global_batchid (resuming an old batch)"
-        print2debug $global_batchid "\n\n------>>>>>>>>>>> Resuming an old failed/stalled batch, batchid: [" "] <<<<<<<<<<<------"
+        print2debug $global_batchid "------>>>>>>>>>>> Resuming an old failed/stalled batch, batchid: [" "] <<<<<<<<<<<------"
     fi
 
     # Show the current batch id
@@ -3799,7 +3801,7 @@ function generate_a_new_batchid(){
     # Terminate if the batch id is missing!
     if [[ "$global_batchid" == "" || $global_batchid -lt 0 ]]; then
         printf "${red}*** ERROR: runSAS could not generate a new batchid for this run due to internal error ***${white}\n"
-        print2debug $global_batchid "\n\nERROR: NULL value error as runSAS could not generate a new batchid for this run [" "] prev_global_batchid=[${prev_global_batchid}]|bid_new_batchid=[$bid_new_batchid]"
+        print2debug $global_batchid "ERROR: NULL value error as runSAS could not generate a new batchid for this run [" "] prev_global_batchid=[${prev_global_batchid}]|bid_new_batchid=[$bid_new_batchid]"
         clear_session_and_exit "Internal error with batchid generation" "ERROR: runSAS could not generate a new batchid for this run due to an internal error"
     fi
 }
@@ -5293,7 +5295,7 @@ function runSAS(){
     assign_and_preserve init 0
     
     # Print to debug file
-    print2debug runsas_job "\n=======[ Looping " " with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]===== "
+    print2debug runsas_job "=======[ Looping " " with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]======="
 
     # Inject job state for a batch (all job specific variables for a batch is restored here to support parallel processing of jobs)
     inject_batch_state $global_batchid $runsas_jobid # The batch id requested as part of "--resume" option is handled by the generate_a_new_batchid() function 
@@ -5302,7 +5304,7 @@ function runSAS(){
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -gt -1 ]]; then
         if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
             # Update the flags, update the batch state and re-inject the state
-            print2debug runsas_jobid "\nResetting flags in --resume mode for a failed job - " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|global_batchid=$global_batchid]"
+            print2debug runsas_jobid "Resetting flags in --resume mode for a failed job - " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|global_batchid=$global_batchid]"
             update_batch_state runsas_job_pid 0 $runsas_jobid $global_batchid
             update_batch_state runsas_jobrc $RC_JOB_PENDING $runsas_jobid $global_batchid
             inject_batch_state $global_batchid $runsas_jobid
@@ -5313,28 +5315,28 @@ function runSAS(){
     assign_and_preserve runsas_max_jobrc $runsas_max_jobrc
 
     print2debug runsas_jobid "--- Post Injection (before mode flags) " " ---"
-    print2debug runsas_job
-    print2debug runsas_flow 
-    print2debug runsas_flowid
-    print2debug runsas_jobdep
-    print2debug runsas_logic_op
-    print2debug runsas_max_jobrc
-    print2debug runsas_opt
-    print2debug runsas_subopt
-    print2debug runsas_app_root_directory
-    print2debug runsas_batch_server_root_directory
-    print2debug runsas_sh
-    print2debug runsas_logs_root_directory
-    print2debug runsas_deployed_jobs_root_directory
-    print2debug runsas_job_pid
-    print2debug runsas_jobrc 
-    print2debug runsas_runflag
-    print2debug runsas_mode_runflag
-    print2debug runsas_mode_interactiveflag
-    print2debug runsas_job_status_color
-    print2debug error_message_shown_on_job_fail
-    print2debug runsas_error_email_sent
-    print2debug runsas_job_completed_email_sent
+    print2debug runsas_job "--- [" "] "
+    print2debug runsas_flow "--- [" "] "
+    print2debug runsas_flowid "--- [" "] "
+    print2debug runsas_jobdep "--- [" "] "
+    print2debug runsas_logic_op "--- [" "] "
+    print2debug runsas_max_jobrc "--- [" "] "
+    print2debug runsas_opt "--- [" "] "
+    print2debug runsas_subopt "--- [" "] "
+    print2debug runsas_app_root_directory "--- [" "] "
+    print2debug runsas_batch_server_root_directory "--- [" "] "
+    print2debug runsas_sh "--- [" "] "
+    print2debug runsas_logs_root_directory "--- [" "] "
+    print2debug runsas_deployed_jobs_root_directory "--- [" "] "
+    print2debug runsas_job_pid "--- [" "] "
+    print2debug runsas_jobrc "--- [" "] "
+    print2debug runsas_runflag "--- [" "] "
+    print2debug runsas_mode_runflag "--- [" "] "
+    print2debug runsas_mode_interactiveflag "--- [" "] "
+    print2debug runsas_job_status_color "--- [" "] "
+    print2debug error_message_shown_on_job_fail "--- [" "] "
+    print2debug runsas_error_email_sent "--- [" "] "
+    print2debug runsas_job_completed_email_sent "--- [" "] "
 
     # Increment the job counter for terminal display, jobid is unique across the flows
     JOB_COUNTER_FOR_DISPLAY=$runsas_jobid
@@ -5364,10 +5366,10 @@ function runSAS(){
 
     # Print to debug file
     print2debug runsas_jobid "--- Post interactive mode checks and after flag updates " " ---"
-    print2debug runsas_job
-    print2debug runsas_flow 
-    print2debug runsas_flowid
-    print2debug runsas_jobdep
+    print2debug runsas_job "--- [" "] "
+    print2debug runsas_flow "--- [" "] "
+    print2debug runsas_flowid "--- [" "] "
+    print2debug runsas_jobdep "--- [" "] "
 
     # Place the cursor (relative to the first job cursor)
     if [[ $RUNSAS_INVOKED_IN_BATCH_MODE -le -1 ]]; then
@@ -5376,8 +5378,8 @@ function runSAS(){
 
     # Print to debug file 
     print2debug runsas_mode_runflag "--- After flag updates " " ---"
-    print2debug runsas_mode_interactiveflag
-    print2debug runsas_runflag
+    print2debug runsas_mode_interactiveflag "--- [" "] "
+    print2debug runsas_runflag "--- [" "] "
 
     # Process the mode "runflag"
     if [[ $runsas_mode_runflag -ne 1 ]] || [[ "$run_job_with_prompt" == "n" ]]; then
@@ -5400,7 +5402,7 @@ function runSAS(){
 
     # Print to debug file
     print2debug runsas_jobs_run_array[@] "--- Jobs that have run already: [" "]---"
-    print2debug RUNSAS_BATCH_COMPLETE_FLAG
+    print2debug RUNSAS_BATCH_COMPLETE_FLAG "--- [" "] "
  
     # Skip the finished jobs (failed ones will continue to refresh and skipped a bit later)
     if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
@@ -5541,7 +5543,7 @@ function runSAS(){
                 else
                     no_slots_available_flag="Y"
                     print2debug sjs_concurrent_job_count_limit "(Skipping the trigger as the slots are full!) "  
-                    print2debug running_jobs_current_count
+                    print2debug running_jobs_current_count "--- (" ") "
                 fi
             else
                 print2debug runsas_job "*** WARNING: Detected re-triggering event for [" "] job at $start_datetime_of_job_timestamp [runsas_jobid=${runsas_jobid}|runsas_job_pid=${runsas_job_pid}|runsas_jobrc=${runsas_jobrc}] (skipped re-triggering)***"  
@@ -5572,7 +5574,7 @@ function runSAS(){
     
             # Print to debug file
             print2debug i "--- Inside the dependency loop now " " ---"
-            print2debug runsas_jobdep_i
+            print2debug runsas_jobdep_i "--- [" "] "
 
             # Get dependent job's return code
             if [[ $runsas_jobdep_i -eq $runsas_jobid ]]; then
@@ -5608,13 +5610,13 @@ function runSAS(){
 
             # Print to debug file
             print2debug runsas_jobrc "--- Post dependency checks " " ---" 
-            print2debug runsas_job_pid 
-            print2debug runsas_jobdep_i_jobrc 
-            print2debug runsas_logic_op 
-            print2debug runsas_max_jobrc
-            print2debug count_of_dep_jobs_that_has_run
-            print2debug OR_check_passed 
-            print2debug AND_check_passed 
+            print2debug runsas_job_pid "--- [" "] " 
+            print2debug runsas_jobdep_i_jobrc "--- [" "] " 
+            print2debug runsas_logic_op "--- [" "] " 
+            print2debug runsas_max_jobrc "--- [" "] "
+            print2debug count_of_dep_jobs_that_has_run "--- [" "] "
+            print2debug OR_check_passed "--- [" "] " 
+            print2debug AND_check_passed "--- [" "] " 
 
             # Finally, evaluate the dependency:
             # (1) AND: All jobs have completed successfully (or within the limits of specified return code by user) and this is the default if nothing has been specified
@@ -5785,7 +5787,7 @@ function runSAS(){
 
     # Print to debug file
     print2debug runsas_job_pid "--- Just before final job status checks " " ---" 
-    print2debug runsas_jobrc
+    print2debug runsas_jobrc "--- [" "] "
 
     # Set the "RUNSAS_BATCH_COMPLETE_FLAG" (to exit the master loop) based on how many has completed it's run (any state DONE/FAIL)
     check_if_the_batch_is_complete
@@ -5888,7 +5890,7 @@ function runSAS(){
 
         # Print to debug file
         print2debug runsas_job_pid "--- Inside ERROR/FAIL " " ---" 
-        print2debug runsas_jobrc
+        print2debug runsas_jobrc "--- [" "] "
 
     elif [[ $runsas_jobrc -ge 0 ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
 
@@ -5948,7 +5950,7 @@ function runSAS(){
 
         # Print to debug file
         print2debug runsas_job_pid "--- Inside DONE (SUCCESS) " " ---" 
-        print2debug runsas_jobrc
+        print2debug runsas_jobrc "--- [" "] "
 
         # Send an email (silently)
         if [[ "$runsas_job_completed_email_sent" != "Y" ]]; then 
@@ -5978,7 +5980,7 @@ function runSAS(){
         fi
         # Print to debug file
         print2debug runsas_job_pid "--- Inside ELSE section (WARNING: empty section) " " ---"
-        print2debug runsas_jobrc
+        print2debug runsas_jobrc "--- [" "] "
     fi
 
     # Do not repeat the messages in batch mode
@@ -6018,6 +6020,7 @@ SERVER_PACKAGE_INSTALLER_PROGRAM=yum            # Default is yum, Package instal
 RUNSAS_LOG_SEARCH_FUNCTION=egrep                # Default is egrep, runSAS uses this as search util to detect errors in job logs
 RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y               # Default is Y, If set to N runSAS will NOT detect cyclic dependencies in job flows before the batch run
 GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N             # Default is N, If set to Y runSAS will create a single flow for all jobs instead of one flow per job 
+RUNSAS_PRINT2DEBUG_LOGGING=Y                    # Default is Y, This outputs a useful essential batch run related info to .tmp/.runsas.debug file
 
 # System parameters (do not change this)
 RUNSAS_PARAMETERS_COUNT=$#
@@ -6243,15 +6246,15 @@ print2log "Script Mode Value 7: $script_mode_value_7"
 
 # Print to debug file
 print2debug start_datetime_of_session_timestamp "****** runSAS has been triggered " " ******" 
-print2debug HOSTNAME
-print2debug script_mode
-print2debug script_mode_value_1
-print2debug script_mode_value_2
-print2debug script_mode_value_3
-print2debug script_mode_value_4
-print2debug script_mode_value_5
-print2debug script_mode_value_6
-print2debug script_mode_value_7
+print2debug HOSTNAME "****** [" "] "
+print2debug script_mode "****** [" "] "
+print2debug script_mode_value_1 "****** [" "] "
+print2debug script_mode_value_2 "****** [" "] "
+print2debug script_mode_value_3 "****** [" "] "
+print2debug script_mode_value_4 "****** [" "] "
+print2debug script_mode_value_5 "****** [" "] "
+print2debug script_mode_value_6 "****** [" "] "
+print2debug script_mode_value_7 "****** [" "] "
 
 # Idiomatic parameter handling is done here
 validate_parameters_passed_to_script $1
