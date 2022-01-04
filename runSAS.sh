@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 70.0                                                                                                  #
+#     Version: 70.1                                                                                                  #
 #                                                                                                                    #
 #        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
@@ -72,7 +72,7 @@ EMAIL_ALERT_USER_NAME="runSAS"                                          # Defaul
 ENABLE_DEBUG_MODE=N                                                     # Default is N                    ---> Enables the debug mode, specifiy Y/N
 RUNTIME_COMPARISON_FACTOR=30                                            # Default is 30                   ---> Runtime change threshold, increase this to display only higher % difference
 KILL_PROCESS_ON_USER_ABORT=Y                                            # Default is Y                    ---> The rogue processes are automatically killed by the script on user abort.
-ENABLE_RUNSAS_RUN_HISTORY=N                                             # Default is Y                    ---> Enables runSAS flow/job runtime history, specify Y/N
+ENABLE_RUNSAS_RUN_HISTORY=Y                                             # Default is Y                    ---> Enables runSAS flow/job runtime history, specify Y/N
 ABORT_ON_ERROR=N                                                        # Default is N                    ---> Set to Y to abort as soon as runSAS sees an ERROR in the log file (i.e don't wait for the job to complete)
 ENABLE_SASTRACE_IN_JOB_CHECK=Y                                          # Default is Y                    ---> Set to N to turn off the warnings on sastrace
 ENABLE_RUNSAS_DEPENDENCY_CHECK=Y                                        # Default is Y                    ---> Set to N to turn off the script dependency checks 
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=70.0
+	RUNSAS_CURRENT_VERSION=70.1
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -1945,10 +1945,16 @@ function show_time_remaining_stats(){
 #------
 function show_last_run_summary(){
     if [[ "$1" == "--log" ]] || [[ "$1" == "--last" ]]; then
-        if [ ! -f "$RUNSAS_SESSION_LOG_FILE" ]; then
-            printf "${red}\n*** ERROR: History file is empty (possibly due to reset?) ***${white}"
+        # User must enable this feature to see the run history
+        if [[ ! "$ENABLE_RUNSAS_RUN_HISTORY" == "Y" ]]; then
+            printf "${yellow}\n*** WARNING: ENABLE_RUNSAS_RUN_HISTORY=N, history data may not be available or up-to-date ***${white}"
+        fi
+
+        if [ ! -f "$RUNSAS_SESSION_LOG_FILE" ] || [ ! -s "$RUNSAS_SESSION_LOG_FILE" ]; then
+            printf "${red}\n*** ERROR: History file is not found or is empty (if you have performed a \"--reset\" recently, it is likely this file has been deleted too) ***${white}"
             clear_session_and_exit
         else
+            printf "${green}\nBatch run history: \n${white}"
             print_file_to_terminal $RUNSAS_SESSION_LOG_FILE
             clear_session_and_exit "" "" 0
         fi
@@ -5186,10 +5192,10 @@ function display_progressbar_with_offset(){
 #       (02) Flow name                      (e.g.: MarketingFlow)
 #       (03) Job identifier                 (e.g.: 1)
 #       (04) SAS deployed job name          (e.g.: 99_Run_Marketing_Jobs)
-#       (05) Dependency                     (e.g.: 1,2)
+#       (05) Dependency                     (e.g.: 1,2 or 1-2)
 #       (06) Logical operation              (e.g.: AND or OR)
-#       (07) Return code (max allowed)      (e.g.: 4)
-#       (08) runSAS job option              (e.g.: --server)
+#       (07) Return code (max allowed)      (e.g.: 0 or 4)
+#       (08) runSAS job option              (e.g.: --prompt, --skip, --server)
 #       (09) runSAS job sub-option          (e.g.: SASAppX)
 #       (10) SASApp root directory 		    (e.g.: /SASInside/SAS/Lev1/SASApp)
 #       (11) SAS BatchServer directory name (e.g.: /SASInside/SAS/Lev1/SASApp/BatchServer)
@@ -6010,7 +6016,7 @@ RUNSAS_BATCH_STATE_ROOT_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.batch
 RUNSAS_SPLIT_FLOWS_DIRECTORY=$RUNSAS_TMP_DIRECTORY/.flows
 
 # Additional script behaviour parameters (change is as per the need, defaults will work just fine most of the times)
-EMAIL_USER_MESSAGE=""                           # Deault is "", This will be appended to email subject
+EMAIL_USER_MESSAGE=""                           # Default is "", This will be appended to email subject
 EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000    # Default is 8000000, This is the log file size limit (sent as email attachment)
 SERVER_PACKAGE_INSTALLER_PROGRAM=yum            # Default is yum, Package installer is used by runSAS for auto-installation of depdendencies
 RUNSAS_LOG_SEARCH_FUNCTION=egrep                # Default is egrep, runSAS uses this as search util to detect errors in job logs

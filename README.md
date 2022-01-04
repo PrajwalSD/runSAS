@@ -30,75 +30,91 @@ All other script dependencies are checked at every launch of the script automati
 # Configuring Parameters
 runSAS has 4 user parameter sections within the script:
   * ### SAS 9.4 parameters – Provide SAS environment details
-    * `SAS_HOME_DIRECTORY`
-    * `SAS_INSTALLATION_ROOT_DIRECTORY` 
-    * `SAS_APP_SERVER_NAME` 
-    * `SAS_LEV`
-    * `SAS_DEFAULT_SH`
-    * `SAS_APP_ROOT_DIRECTORY`
-    * `SAS_BATCH_SERVER_ROOT_DIRECTORY`
-    * `SAS_LOGS_ROOT_DIRECTORY`
-    * `SAS_DEPLOYED_JOBS_ROOT_DIRECTORY`
+    * `SAS_HOME_DIRECTORY`: AS Home directory (e.g.: `/SASInside/SASHome`)
+    * `SAS_INSTALLATION_ROOT_DIRECTORY`: SAS installation root directory (e.g.: `/SASInside/SAS`)
+    * `SAS_APP_SERVER_NAME`: Name of the SAS Application Server Context (e.g.: `SASApp`)
+    * `SAS_LEV`: SAS level (e.g.: `Lev1` or `Lev2` `...`)
+    * `SAS_DEFAULT_SH`: SAS shell script name that executes the SAS program/job (e.g.: `sasbatch.sh`)
+    * `SAS_APP_ROOT_DIRECTORY`: Path for the SAS Application Server Context directory (e.g.: `SASInside/SAS/Lev1/SASApp`)
+    * `SAS_BATCH_SERVER_ROOT_DIRECTORY`: Path for the SAS Batch Server directory (e.g.: `/SASInside/SAS/Lev1/SASApp/BatchServer`)
+    * `SAS_LOGS_ROOT_DIRECTORY`: Path for the logs directory (e.g.: `/SASInside/SAS/Lev1/SASApp/BatchServer/Logs`)
+    * `SAS_DEPLOYED_JOBS_ROOT_DIRECTORY`: Path for the deployed jobs directory (e.g.: `/SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs`)
     
   * ### Job/flow list – Provide a list of jobs/flows to run (append the optional parameters to the mandatory parameters with no whitespaces)
-    * Mandatory: 
-      `flow-id|flow-nm|job-id|job-nm|dependent-job-id(delimted by comma)|dependency-type(AND/OR)|job-rc-max|job-run-flag|`
-    * Optional: 
-      `options(--prompt/--server)|sub-options|sasapp-dir|batchserver-dir|sas-sh|log-dir|job-dir|`
+    * Syntax: 
+      `flow-id|flow-nm|job-id|job-nm|dependent-job-id|dependency-type|job-rc-max|job-run-flag|options|sub-options|sasapp-dir|batchserver-dir|sas-sh|log-dir|job-dir|`
+
+    * Details:
+      * `flow-id`: Flow identifer (has to be a number)
+      * `flow-nm`: Flow name (no spaces allowed in the name)
+      * `job-id`: Job identifer (has to be a number)
+      * `job-nm`: Job name (typically a deployed job file name, no spaces allowed in the name)
+      * `dependent-job-id`: Job ID of a dependent(s), specify them as a comma-delimited list (e.g.: `1,2,3`) or with hyphen (e.g.: `1-3`) if there are more than one dependent jobs
+      * `dependency-type`- Possible values here are `AND` (i.e., run after all of it's dependents have completed) and `OR` (i.e., run if at least one of the dependents has completed) 
+      * `job-rc-max`: Specify the limit (e.g., 0 or 4), return codes above this will halt the run
+      * `job-run-flag`: `Y/N` to indicate if you want to deactivate this job in the flow
+      * `options`(optional): Possible values here are `--prompt` (user will be prompted to continue), `--server` (speficic SAS server related options can be provided for a job to overrides the global option)
+      * `sub-options`(optional, if `options` is not `--server`): Name of the SAS Application Server Context (e.g.: `SASApp`)
+      * `sasapp-dir`(optional, if `options` is not `--server`): Path for the SAS Application Server Context directory (e.g.: `SASInside/SAS/Lev1/SASApp`)
+      * `batchserver-dir`(optional, if `options` is not `--server`): Path for the SAS Batch Server directory (e.g.: `/SASInside/SAS/Lev1/SASApp/BatchServer`)
+      * `sas-sh`(optional, if `options` is not `--server`): SAS shell script name that executes the SAS program/job (e.g.: `sasbatch.sh`)
+      * `log-dir`(optional, if `options` is not `--server`): Path for the logs directory (e.g.: `/SASInside/SAS/Lev1/SASApp/BatchServer/Logs`)
+      * `job-dir`(optional, if `options` is not `--server`): Path for the deployed jobs directory (e.g.: `/SASInside/SAS/Lev1/SASApp/SASEnvironment/SASCode/Jobs`)
       
-    Flow Example:
+    Example (specifying a flow with jobs):
     ```
     1|Flow_A|1|Job_1|1|AND|4|Y|
-    1|Flow_A|2|Job_2|2|AND|0|Y|
+    1|Flow_A|2|Job_2|2|AND|0|Y|--prompt
     1|Flow_A|3|Job_3|3|AND|4|Y|
     2|Flow_B|4|Job_4|1,2,3|AND|4|Y|
     2|Flow_B|5|Job_5|5|AND|4|Y|
     ```
-    _Tip: You can simply provide a list of jobs without any other parameters if you're not using the flows, runSAS will automatically create one flow with all jobs in it_
+    _Tip: You can simply provide a list of jobs without anything else if you're not using the flows, runSAS will automatically create one flow (OR multiple flows depending on the `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS` parameter) with all jobs in it_
     
-    Jobs Example:
+    Example (specifying just jobs):
     ```
     Job_1
-    Job_2
+    Job_2,--skip
     Job_3
     Job_4
     Job_5
     ```
   * ### Email settings – Configure the email parameters (script has an inline explanation for each parameter)
-    * `ENABLE_EMAIL_ALERTS`  
-    * `EMAIL_ALERT_TO_ADDRESS`  
-    * `EMAIL_ALERT_USER_NAME`
+    * `ENABLE_EMAIL_ALERTS`: `Y` to enable all 4 alert types (`YYYY` is the extended format, `<trigger-alert><job-alert><error-alert><completion-alert>`)
+    * `EMAIL_ALERT_TO_ADDRESS`: Provide email addresses separated by a semi-colon  
+    * `EMAIL_ALERT_USER_NAME`: This is used as FROM address for the email alerts
   
   * ### runSAS script overrides – A collection of script behavior control parameters (script has an inline explanation for each parameter, keep the defaults if you're unsure)
-    * `ENABLE_DEBUG_MODE=N`                       
-    * `RUNTIME_COMPARISON_FACTOR=30`              
-    * `KILL_PROCESS_ON_USER_ABORT=Y`              
-    * `ENABLE_RUNSAS_RUN_HISTORY=N`               
-    * `ABORT_ON_ERROR=N`                          
-    * `ENABLE_SASTRACE_IN_JOB_CHECK=Y`           
-    * `ENABLE_RUNSAS_DEPENDENCY_CHECK=Y`          
-    * `BATCH_HISTORY_PERSISTENCE=ALL`             
-    * `CONCURRENT_JOBS_LIMIT=ALL`
-    * `CONCURRENT_JOBS_LIMIT_MULTIPLIER=1`
-    * `ERROR_CHECK_SEARCH_STRING="^ERROR"`        
-    * `STEP_CHECK_SEARCH_STRING="Step:"`          
-    * `SASTRACE_SEARCH_STRING="^options sastrace"`
+    * `ENABLE_DEBUG_MODE=N`: Enables the debug mode, specifiy `Y/N`                       
+    * `RUNTIME_COMPARISON_FACTOR=30`: Runtime change threshold, increase this to display only higher `%` difference              
+    * `KILL_PROCESS_ON_USER_ABORT=Y`: The rogue processes are automatically killed by the script on user abort            
+    * `ENABLE_RUNSAS_RUN_HISTORY=N`: Enables runSAS flow/job runtime history, specify `Y/N`             
+    * `ABORT_ON_ERROR=N`: Set to `Y` to abort as soon as runSAS sees an `ERROR` in the log file (i.e don't wait for the job to complete)                          
+    * `ENABLE_SASTRACE_IN_JOB_CHECK=Y`: Set to `N` to turn off the warnings on sastrace           
+    * `ENABLE_RUNSAS_DEPENDENCY_CHECK=Y`: Set to `N` to turn off the script dependency checks           
+    * `BATCH_HISTORY_PERSISTENCE=ALL`: Specify a postive number to control the number of batches preserved by runSAS  (e.g. `50` will preserve last 50 runs), `ALL` will keep everything              
+    * `CONCURRENT_JOBS_LIMIT=ALL`: Specify the available job slots as a number (e.g. `2`), `ALL` will use the CPU count instead (`nproc --all`) and `MAX` will spawn all jobs
+    * `CONCURRENT_JOBS_LIMIT_MULTIPLIER=1`: Specify a positive number to increase the available job slots (e.g. `1x`, `2x`, `3x``...`), will be used a multiplier to the above parameter
+    * `ERROR_CHECK_SEARCH_STRING="^ERROR"`: This is what is `grep`ped in the log        
+    * `STEP_CHECK_SEARCH_STRING="Step:"`: This is searched for the SAS Step in the log          
+    * `SASTRACE_SEARCH_STRING="^options sastrace"`: This is used for searching the `options sastrace ...` option in SAS log
     
 # Additional "Hidden" Script Parameters
 There are additional set of script behavior control parameters, it's kept hidden away deep in the code in the bottom third of the script intentionally, typically they don't require changing and defaults should just work fine. An inline explanation for each parameter is provided in the script for reference.
   * ### Parameters
-    * `EMAIL_USER_MESSAGE=`
-    * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N` 
-    * `EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000`
-    * `SERVER_PACKAGE_INSTALLER_PROGRAM=yum`
-    * `RUNSAS_LOG_SEARCH_FUNCTION=egrep`
-    * `RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y`
-    * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N`
+    * `EMAIL_USER_MESSAGE=`: This will be appended to email subject
+    * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N`: If set to `Y` runSAS will create a single flow for all jobs instead of one flow per job 
+    * `EMAIL_ATTACHMENT_SIZE_LIMIT_IN_BYTES=8000000`: This is the log file size limit (sent as email attachment)
+    * `SERVER_PACKAGE_INSTALLER_PROGRAM=yum`: Package installer is used by runSAS for auto-installation of depdendencies
+    * `RUNSAS_LOG_SEARCH_FUNCTION=egrep`: runSAS uses this as search util to detect errors in job logs
+    * `RUNSAS_DETECT_CYCLIC_DEPENDENCY=Y`: If set to `N` runSAS will NOT detect cyclic dependencies in job flows before the batch run
+    * `GENERATE_SINGLE_FLOW_FOR_ALL_JOBS=N`: If set to `Y` runSAS will create a single flow for all jobs instead of one flow per job  
+    * `RUNSAS_PRINT2DEBUG_LOGGING=Y`: This outputs a useful essential batch run related info to `.tmp/.runsas.debug` file
 
 # Can I save batch status info to a SAS environment (as a dataset or into a database table)?
-Yes, runSAS can save batch run related info in real-time to a SAS dataset or to a database table. To enable this feature, set the following parameters (these parameters can be found in the "Hidden" script parameters section). An inline explanation for each parameter is provided in the script for reference.
+Yes, runSAS can save batch run related info in real-time to a SAS dataset or to a database table of your choice. To enable this feature, set the following parameters (these parameters can be found in the "Hidden" script parameters section). An inline explanation for each parameter is provided in the script for reference.
 
-runSAS essentially creates a new SAS program file by using the parameters below. This program is designed to take in the batch run details and update in real-time into a specified table/dataset, runSAS calls and executes this program at regular checkpoints to keep the batch status up to date. 
+In nutshell, runSAS generates a new SAS program file by using the parameters. This SAS program is designed to take in the batch run details and update in real-time into a specified table/dataset, runSAS calls and executes this program (just like other SAS programs/jobs) at regular checkpoints to keep the batch status up-to-date
 
 This is very useful if you need reporting/tracking from a SAS environment. Please note that the table is not used to control the behaviour of runSAS' flow. 
 
@@ -220,12 +236,13 @@ Yes, you can forward the console output to [seashells.io](https://seashells.io/)
 # Tips
 * To preview the job list use `./runSAS.sh --jobs`
 * To see the last run details use `./runSAS.sh --last`
-* To skip a job from the list during the run, add `--skip` in front of the job name in the list
-* To reset runSAS script, use `./runSAS.sh --reset` (restore it to first time use state, will clear all temporary files etc.)
+* To skip a job from the list during the run, add `--skip` in front of the job name in the job list
+* To reset runSAS script, use `./runSAS.sh --reset` (you can restore the script state to the initial state, user is presented with choices on what to delete)
 * To stop email alerts (temporarily, instead of disabling it) for a run, append `--noemail` to the launch e.g.: `./runSAS.sh --noemail`
 * To enable email alerts just for a batch append `--mail <email-address>`
 * To add messages/tags to a batch use `--message <your-message-goes-here>` e.g. `./runSAS.sh -u 2 --message "Second Incremental"`
 * To override the default server parameters by job, add `--server` option followed by the server parameters: `<jobname> --server <sas-server-name> <sasapp-dir> <batch-server-dir> <sas-sh> <logs-dir> <deployed-jobs-dir>`
-* runSAS stores temporary files under `.tmp/` folder in script root directory.
+* runSAS stores temporary "hidden" files under `.tmp/` folder in script root directory which contains useful batch run related info for debugging or for tracing the runs. 
 * If runSAS run history is enabled (i.e. `ENABLE_RUNSAS_RUN_HISTORY=Y`) you can view the historical run stats files in the `.tmp/` folder.
 * Progress bar goes red when an error is detected in log, runSAS waits for SAS to complete the run until it shows the error on console, to change this behaviour set `ABORT_ON_ERROR=Y`
+* runSAS by default has a minimum debugging enabled (i.e. `RUNSAS_PRINT2DEBUG_LOGGING=Y`), detailed script log useful for debugging the script is stored in `.tmp/.runsas.debug` file.
