@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.9                                                                                                  #
+#     Version: 70.0                                                                                                  #
 #                                                                                                                    #
 #        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.9
+	RUNSAS_CURRENT_VERSION=70.0
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -468,7 +468,7 @@ function archive_runsas_batch_history(){
     # Archive
     if [[ "$no_of_batches_to_be_preserved" == "ALL" ]] || [[ "$no_of_batches_to_be_preserved" == "" ]]; then
         # There's no need for archiving, everything is preserved for reference
-        print2debug "*** NOTE: Skipping the archival process (ALL is preserved) ***"
+        print2debug "Skipping the archival process (ALL is preserved)"
     else 
         # Check if the user has specified a valid number 
         if [[ $no_of_batches_to_be_preserved =~ $RUNSAS_REGEX_NUMBER ]]; then
@@ -476,7 +476,7 @@ function archive_runsas_batch_history(){
             get_keyval global_batchid "" "" last_batchid
 
             # Debug
-            print2debug no_of_batches_to_be_preserved "*** NOTE: Archival strategy has kicked in: " " runs will be preserved [last_batchid=$last_batchid]***"
+            print2debug no_of_batches_to_be_preserved "Archival strategy has kicked in: " " runs will be preserved [last_batchid=$last_batchid]"
 
             # Only preserve a given number of batches (going backwards...)
             if [[ $last_batchid -gt $no_of_batches_to_be_preserved ]]; then
@@ -487,7 +487,7 @@ function archive_runsas_batch_history(){
                 done
                 publish_to_messagebar "${green}NOTE: runSAS has automatically archived old batches (last $no_of_batches_to_be_preserved runs has been preserved)${white}"
             else
-                print2debug "*** NOTE: Skipping the archival process as the current batchid is less than the specified max limit... ***"
+                print2debug "Skipping the archival process as the current batchid is less than the specified max limit..."
             fi
         else
             printf "${red}*** ERROR: BATCH_HISTORY_PERSISTENCE parameter (in the header section inside script) must be a positive integer, ${red_bg}${black}$BATCH_HISTORY_PERSISTENCE${white}${red} is invalid, please fix this and restart.\n${white}"
@@ -753,7 +753,7 @@ function create_a_file_if_not_exists(){
     do
         if [[ ! -f $fil ]]; then
             touch $fil
-            print2debug fil "*** NOTE: Creating a new file [" "] ***" 
+            print2debug fil "Creating a new file [" "]" 
             # Check if the file was created successfully
             if [[ ! -f $fil ]]; then
                 printf "${red}*** ERROR: ${white}${red_bg}$fil${white}${red} could not be created, check the permissions *** ${white}\n"
@@ -1741,7 +1741,7 @@ function set_concurrency_parameters(){
     fi
 
     # Debug
-    print2debug sjs_concurrent_job_count_limit "*** NOTE: Concurrency has been set to [" "], detected $sjs_cpu_count cores via 'nproc' with CONCURRENT_JOBS_LIMIT=$CONCURRENT_JOBS_LIMIT and CONCURRENT_JOBS_LIMIT_MULTIPLIER=$CONCURRENT_JOBS_LIMIT_MULTIPLIER ***"
+    print2debug sjs_concurrent_job_count_limit "Concurrency has been set to [" "], detected $sjs_cpu_count cores via 'nproc' with CONCURRENT_JOBS_LIMIT=$CONCURRENT_JOBS_LIMIT and CONCURRENT_JOBS_LIMIT_MULTIPLIER=$CONCURRENT_JOBS_LIMIT_MULTIPLIER"
 }
 #------
 # Name: store_flow_runtime_stats()
@@ -2026,7 +2026,7 @@ function print2debug(){
     # Print to the file
     if [[ "$RUNSAS_PRINT2DEBUG_LOGGING" == "Y" ]]; then
         if [[ $debug_prefix == "===>"* ]] || [[ $debug_prefix == "---"* ]]; then
-            printf "\n[${debug_curr_timestamp}]:-------------------------------------------------------------------------------------------------" >> $debug_file
+            printf "\n[${debug_curr_timestamp}]: -------------------------------------------------------------------------------------------------" >> $debug_file
         fi
         printf "\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
     fi
@@ -2203,12 +2203,12 @@ function clear_session_and_exit(){
             echo "$clear_session_and_exit_email_long_message" > $EMAIL_BODY_MSG_FILE
             add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
             send_an_email -v "" "clear_session_and_exit_email_short_message" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
-            print2debug clear_session_and_exit_email_short_message "*** NOTE: Email was sent [" "]"
+            print2debug clear_session_and_exit_email_short_message "*** Email was sent [" "] to [$EMAIL_ALERT_TO_ADDRESS] ***"
         fi
     fi
 
     publish_to_messagebar "${green}*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) ***${white}"
-    print2debug global_batchid "*** NOTE: runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
+    print2debug global_batchid "*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) for [" "] (${clear_session_and_exit_email_short_message:-"no error messages"}) ***"
 
     if [[ $clear_session_and_exit_dont_check_files_n_processes == "" ]]; then
         # Save debug logs for future reference
@@ -2694,7 +2694,7 @@ function update_job_mode_flags(){
         in_byflow_mode=0
         if [[ $RUNSAS_INVOKED_IN_BYFLOW_MODE -gt -1 ]]; then
             in_byflow_mode=1
-            print2debug in_byflow_mode "*** NOTE: --byflow override specified for the interactive mode, the batch will run in flow wise sequential mode " " ***"
+            print2debug in_byflow_mode "*** NOTE: --byflow override specified for the interactive mode, the batch will run in flow wise sequential mode [" "] ***"
         fi
     fi 
 
@@ -4452,7 +4452,7 @@ function expand_hyphened_numeric_ranges(){
             printf "\n${red}*** ERROR: The job dependencies are out of bounds (dependency: $hyphened_values_var) for job $jid in flow $fid ***\n${white}"
             clear_session_and_exit
         else
-            print2debug expanded_values_var "*** NOTE: Successfully expanded job dependency [$hyphened_values_var] to [" "] for job $jid in flow $fid ***"
+            print2debug expanded_values_var "Successfully expanded job dependency [$hyphened_values_var] to [" "] for job $jid in flow $fid"
         fi
     else
         # Set a flag
@@ -5416,7 +5416,7 @@ function runSAS(){
             write_job_details_on_terminal $runsas_job ".(FAIL rc=9, Job was marked as complete by user to recover the batch)" "green" "white"
         fi
 
-        print2debug runsas_jobid "*** NOTE: Skipping the loop as the job has finished running... [" "] RUNSAS_INVOKED_IN_RESUME_MODE=[$RUNSAS_INVOKED_IN_RESUME_MODE] | runsas_jobrc=[$runsas_jobrc] | runsas_job_marked_complete_after_failure=[$runsas_job_marked_complete_after_failure] ***"
+        print2debug runsas_jobid "Skipping the loop as the job has finished running... [" "] RUNSAS_INVOKED_IN_RESUME_MODE=[$RUNSAS_INVOKED_IN_RESUME_MODE] | runsas_jobrc=[$runsas_jobrc] | runsas_job_marked_complete_after_failure=[$runsas_job_marked_complete_after_failure]"
 
         # Skip the loop!
         continue
@@ -5888,7 +5888,7 @@ function runSAS(){
         print2log "${white}End: $end_datetime_of_job_timestamp${white}"
 
         # Print to debug file
-        print2debug runsas_job_pid ">>> Inside ERROR/FAIL " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
+        print2debug runsas_job_pid "*** Inside ERROR/FAIL routine [" "] with runsas_jobrc=${runsas_jobrc} ***" 
         print2debug runsas_jobid "*** ERROR: $runsas_job [" "] in flow [$runsas_flow](runsas_flowid=$runsas_flowid) failed with runsas_jobrc=[$runsas_jobrc] ***"
         print2debug runsas_jobid "*** ERROR: [" "]: ${job_err_message}...(Log: $runsas_logs_root_directory/$runsas_job_log)"
 
@@ -5948,7 +5948,7 @@ function runSAS(){
         print2log "Diff: $job_runtime_diff_pct"
 
         # Print to debug file
-        print2debug runsas_job_pid ">>> Inside DONE (SUCCESS) " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
+        print2debug runsas_job_pid "*** Inside DONE/SUCCESS routine [" "] with runsas_jobrc=${runsas_jobrc} ***" 
 
         # Send an email (silently)
         if [[ "$runsas_job_completed_email_sent" != "Y" ]]; then 
@@ -5977,7 +5977,7 @@ function runSAS(){
             printf "\n"
         fi
         # Print to debug file
-        print2debug runsas_job_pid ">>> Inside ELSE section (WARNING: empty section) " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
+        print2debug runsas_job_pid "*** Inside ELSE routine (the job is still running...) [" "] with runsas_jobrc=${runsas_jobrc} ***" 
     fi
 
     # Do not repeat the messages in batch mode
