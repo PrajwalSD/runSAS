@@ -468,7 +468,7 @@ function archive_runsas_batch_history(){
     # Archive
     if [[ "$no_of_batches_to_be_preserved" == "ALL" ]] || [[ "$no_of_batches_to_be_preserved" == "" ]]; then
         # There's no need for archiving, everything is preserved for reference
-        print2debug "*** Skipping the archival process (ALL is preserved) ***"
+        print2debug "*** NOTE: Skipping the archival process (ALL is preserved) ***"
     else 
         # Check if the user has specified a valid number 
         if [[ $no_of_batches_to_be_preserved =~ $RUNSAS_REGEX_NUMBER ]]; then
@@ -476,7 +476,7 @@ function archive_runsas_batch_history(){
             get_keyval global_batchid "" "" last_batchid
 
             # Debug
-            print2debug no_of_batches_to_be_preserved "*** Archival strategy has kicked in: " " runs will be preserved [last_batchid=$last_batchid]***"
+            print2debug no_of_batches_to_be_preserved "*** NOTE: Archival strategy has kicked in: " " runs will be preserved [last_batchid=$last_batchid]***"
 
             # Only preserve a given number of batches (going backwards...)
             if [[ $last_batchid -gt $no_of_batches_to_be_preserved ]]; then
@@ -487,7 +487,7 @@ function archive_runsas_batch_history(){
                 done
                 publish_to_messagebar "${green}NOTE: runSAS has automatically archived old batches (last $no_of_batches_to_be_preserved runs has been preserved)${white}"
             else
-                print2debug "*** Skipping the archival process as the current batchid is less than the specified max limit... ***"
+                print2debug "*** NOTE: Skipping the archival process as the current batchid is less than the specified max limit... ***"
             fi
         else
             printf "${red}*** ERROR: BATCH_HISTORY_PERSISTENCE parameter (in the header section inside script) must be a positive integer, ${red_bg}${black}$BATCH_HISTORY_PERSISTENCE${white}${red} is invalid, please fix this and restart.\n${white}"
@@ -753,7 +753,7 @@ function create_a_file_if_not_exists(){
     do
         if [[ ! -f $fil ]]; then
             touch $fil
-            print2debug fil "*** Creating a new file [" "] ***" 
+            print2debug fil "*** NOTE: Creating a new file [" "] ***" 
             # Check if the file was created successfully
             if [[ ! -f $fil ]]; then
                 printf "${red}*** ERROR: ${white}${red_bg}$fil${white}${red} could not be created, check the permissions *** ${white}\n"
@@ -1741,7 +1741,7 @@ function set_concurrency_parameters(){
     fi
 
     # Debug
-    print2debug sjs_concurrent_job_count_limit "*** Concurrency has been set to [" "], detected $sjs_cpu_count cores via 'nproc' with CONCURRENT_JOBS_LIMIT=$CONCURRENT_JOBS_LIMIT and CONCURRENT_JOBS_LIMIT_MULTIPLIER=$CONCURRENT_JOBS_LIMIT_MULTIPLIER ***"
+    print2debug sjs_concurrent_job_count_limit "*** NOTE: Concurrency has been set to [" "], detected $sjs_cpu_count cores via 'nproc' with CONCURRENT_JOBS_LIMIT=$CONCURRENT_JOBS_LIMIT and CONCURRENT_JOBS_LIMIT_MULTIPLIER=$CONCURRENT_JOBS_LIMIT_MULTIPLIER ***"
 }
 #------
 # Name: store_flow_runtime_stats()
@@ -2026,10 +2026,9 @@ function print2debug(){
     # Print to the file
     if [[ "$RUNSAS_PRINT2DEBUG_LOGGING" == "Y" ]]; then
         if [[ $debug_prefix == "===>"* ]] || [[ $debug_prefix == "---"* ]]; then
-            printf "\n\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
-        else
-            printf "\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+            printf "\n[${debug_curr_timestamp}]:-------------------------------------------------------------------------------------------------" >> $debug_file
         fi
+        printf "\n[${debug_curr_timestamp}]: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
     fi
 }
 #------
@@ -2204,12 +2203,12 @@ function clear_session_and_exit(){
             echo "$clear_session_and_exit_email_long_message" > $EMAIL_BODY_MSG_FILE
             add_html_color_tags_for_keywords $EMAIL_BODY_MSG_FILE
             send_an_email -v "" "clear_session_and_exit_email_short_message" $EMAIL_ALERT_TO_ADDRESS $EMAIL_BODY_MSG_FILE
-            print2debug clear_session_and_exit_email_short_message "*** Email was sent [" "]"
+            print2debug clear_session_and_exit_email_short_message "*** NOTE: Email was sent [" "]"
         fi
     fi
 
     publish_to_messagebar "${green}*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) ***${white}"
-    print2debug global_batchid "*** runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
+    print2debug global_batchid "*** NOTE: runSAS is exiting now, please wait...(rc=$clear_session_and_exit_rc) for batchid:" " (${clear_session_and_exit_email_short_message:-"no error messages"})***"
 
     if [[ $clear_session_and_exit_dont_check_files_n_processes == "" ]]; then
         # Save debug logs for future reference
@@ -2449,7 +2448,7 @@ function restore_terminal_screen_cursor_positions(){
         get_current_terminal_cursor_position
 
         # Print to debug file
-        print2debug current_cursor_row_pos "*** Cursor positions (before offset) " " ---"
+        print2debug current_cursor_row_pos "*** Cursor positions (before offset) [" "] ***"
         print2debug runsas_job_cursor_row_pos "    [" "]"
 
         # If the current row position is equal (or greater than) to the max no of rows on the terminal, the terminal will scroll so make the cursor position relative than absolute
@@ -3016,7 +3015,7 @@ function validate_script_modes(){
     done
 
     # Print parameters to debug
-    print2debug RUNSAS_PARAMETERS_ARRAY[@] "*** Script parameters [" "] ***"
+    print2debug RUNSAS_PARAMETERS_ARRAY[@] "Script parameters [" "]"
     print2debug runsas_job_filter_mode "Job filters applied: [" "]"
 
     # Print a message
@@ -3140,7 +3139,7 @@ function check_if_batch_has_stalled(){
         get_keyval_from_batch_state runsas_jobrc runsas_jobrc $jobid $stallcheck_batchid
 
         # Debug
-        print2debug jobid "*** Stall check for [" "] ***"
+        print2debug jobid "Stall check for [" "]"
 
         # Check if the batch is stalled
         if [[ $runsas_mode_runflag -eq 1 ]] && [[ "$runflag" == "Y" ]]; then
@@ -3235,7 +3234,7 @@ function check_if_batch_has_stalled(){
     fi
 
     # Print to debug file
-    print2debug batch_is_stalled "*** Stall check final state [" "] and cyclic_dependency_detected=$cyclic_dependency_detected ***" 
+    print2debug batch_is_stalled "Stall check summary: [" "] and cyclic_dependency_detected=$cyclic_dependency_detected" 
 
     # Ask the user on way forward
     if [[ $batch_is_stalled -ge 1 ]]; then
@@ -3402,9 +3401,9 @@ function refactor_job_list_file(){
                 let iter+=1
             fi
         done < $in_job_list_file
-        print2debug pipe_char_in_file_count "*** Refactored the job list file as [" "] *** "
+        print2debug pipe_char_in_file_count "Refactored the job list file as [" "]"
     else
-        print2debug pipe_char_in_file_count "*** Refactoring job list routine skipped as [" "] *** "
+        print2debug pipe_char_in_file_count "Refactoring job list routine skipped as [" "]"
     fi
 
     # Run mode 
@@ -3441,8 +3440,8 @@ function capture_flow_n_job_stats(){
     done < $flowstats_input_job_list_file
 
     # Debug
-    print2debug flow_id_array[@] "*** Flow ID array [" "] ***"
-    print2debug job_id_array[@] "*** Job ID array [" "] ***"
+    print2debug flow_id_array[@] "Flow ID array [" "]"
+    print2debug job_id_array[@] "Job ID array [" "]"
 }
 #------
 # Name: validate_job_list()
@@ -3872,7 +3871,7 @@ function inject_batch_state(){
     # Inject the job state (always in the context of the flow)
     if [ -f $inj_current_batchid_jobid_file ]; then
         . $inj_current_batchid_jobid_file
-        print2debug inj_current_batchid_jobid_file "*** Injecting the batch state from a file: [" "] for [inj_batchid=$inj_batchid | inj_jobid=$inj_jobid | inj_opt=$inj_opt] ***"
+        print2debug inj_current_batchid_jobid_file "Injecting the batch state from a file: [" "] for [inj_batchid=$inj_batchid | inj_jobid=$inj_jobid | inj_opt=$inj_opt]"
         if [[ "$opt" == "message" ]]; then
             printf "${green}NOTE: Job state has been restored successfully! (Batch ID: $inj_batchid Job ID: $inj_jobid) ${white}"
         fi
@@ -4366,12 +4365,12 @@ function redeploy_sas_jobs(){
 			# Show messages
             if [[ $depjob_job_not_deployed_counter -gt 0 ]]; then
                 # Error
-                redeploy_detailed_message="*** The redeployment of jobs failed ($depjob_job_deployed_count jobs passed, $depjob_job_not_deployed_counter failed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds ($conv_s2h_duration_in_hms) to run. ***"
+                redeploy_detailed_message="The redeployment of jobs failed ($depjob_job_deployed_count jobs passed, $depjob_job_not_deployed_counter failed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds ($conv_s2h_duration_in_hms) to run."
                 redeploy_summary_message="$depjob_job_deployed_count jobs deployed, $depjob_job_not_deployed_counter failed!"
                 printf "\n\n${red}${redeploy_detailed_message}${white}"
             else
                 # Success
-                redeploy_detailed_message="*** The redeployment of jobs completed ($depjob_job_deployed_count of $depjob_job_counter jobs deployed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds ($conv_s2h_duration_in_hms) to complete. ***"
+                redeploy_detailed_message="The redeployment of jobs completed ($depjob_job_deployed_count of $depjob_job_counter jobs deployed) on $end_datetime_of_session_timestamp and took a total of $depjob_total_runtime seconds ($conv_s2h_duration_in_hms) to complete."
                 redeploy_summary_message="All $depjob_job_deployed_count jobs deployed successfully!"
                 printf "\n${green}${redeploy_detailed_message}${white}"
             fi
@@ -4432,7 +4431,7 @@ function expand_hyphened_numeric_ranges(){
         hyphened_values_var_flag=1
 
         # Log
-        print2debug hyphened_values_var "*** Attempting to expand the hyphenated job dependencies [" "] ***"
+        print2debug hyphened_values_var "Attempting to expand the hyphenated job dependencies [" "]"
 
         # Get the from and to jobid
         hyphened_values_var_from_value=`echo $hyphened_values_var | cut -d'-' -f1`
@@ -5403,7 +5402,7 @@ function runSAS(){
     print2debug RUNSAS_BATCH_COMPLETE_FLAG "    [" "]"
 
     # Print to debug file
-    print2debug runsas_jobs_run_array[@] "*** Jobs that have run already: [" "] ***"
+    print2debug runsas_jobs_run_array[@] "Jobs that have run already: [" "]"
  
     # Skip the finished jobs (failed ones will continue to refresh and skipped a bit later)
     if [[ $runsas_jobrc -gt $RC_JOB_TRIGGERED ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
@@ -5417,7 +5416,7 @@ function runSAS(){
             write_job_details_on_terminal $runsas_job ".(FAIL rc=9, Job was marked as complete by user to recover the batch)" "green" "white"
         fi
 
-        print2debug runsas_jobid "*** Skipping the loop as the job has finished running... [" "] RUNSAS_INVOKED_IN_RESUME_MODE=[$RUNSAS_INVOKED_IN_RESUME_MODE] | runsas_jobrc=[$runsas_jobrc] | runsas_job_marked_complete_after_failure=[$runsas_job_marked_complete_after_failure] ***"
+        print2debug runsas_jobid "*** NOTE: Skipping the loop as the job has finished running... [" "] RUNSAS_INVOKED_IN_RESUME_MODE=[$RUNSAS_INVOKED_IN_RESUME_MODE] | runsas_jobrc=[$runsas_jobrc] | runsas_job_marked_complete_after_failure=[$runsas_job_marked_complete_after_failure] ***"
 
         # Skip the loop!
         continue
@@ -5513,7 +5512,7 @@ function runSAS(){
             if [[ $runsas_job_pid -eq 0 ]]; then # This attempts to avoid re-triggering the job with same jobid (i.e., no pid assigned for the jobid)
                 # Get the count of running jobs
                 get_running_jobs_count $flow_file_name
-                print2debug running_jobs_current_count "*** There are [" "] jobs running currently with sjs_concurrent_job_count_limit=[$sjs_concurrent_job_count_limit] ***"
+                print2debug running_jobs_current_count "There are [" "] jobs running currently with sjs_concurrent_job_count_limit=[$sjs_concurrent_job_count_limit]"
 
                 # Check if the job slots are full!
                 if [[ $running_jobs_current_count -lt $sjs_concurrent_job_count_limit ]]; then
@@ -5787,7 +5786,7 @@ function runSAS(){
     fi 
 
     # Print to debug file
-    print2debug runsas_job_pid "*** Just before final job status checks [" "] runsas_jobrc=[${runsas_jobrc}] ***" 
+    print2debug runsas_job_pid "Just before final job status checks [" "] runsas_jobrc=[$runsas_jobrc] for runsas_jobid=[$runsas_jobid]" 
 
     # Set the "RUNSAS_BATCH_COMPLETE_FLAG" (to exit the master loop) based on how many has completed it's run (any state DONE/FAIL)
     check_if_the_batch_is_complete
@@ -5890,12 +5889,10 @@ function runSAS(){
 
         # Print to debug file
         print2debug runsas_job_pid ">>> Inside ERROR/FAIL " " >>> runsas_jobrc=${runsas_jobrc} <<<" 
-        print2debug runsas_jobid "*** ERROR: Job $runsas_job [" "] has errored/failed with runsas_jobrc=[$runsas_jobrc]***"
-        print2debug runsas_jobid "*** ERROR: Error message for the job [" "]: $job_err_message "
-        print2debug runsas_jobid "*** ERROR: Log for job [" "] $runsas_logs_root_directory/$runsas_job_log"
+        print2debug runsas_jobid "*** ERROR: $runsas_job [" "] in flow [$runsas_flow](runsas_flowid=$runsas_flowid) failed with runsas_jobrc=[$runsas_jobrc] ***"
+        print2debug runsas_jobid "*** ERROR: [" "]: ${job_err_message}...(Log: $runsas_logs_root_directory/$runsas_job_log)"
 
     elif [[ $runsas_jobrc -ge 0 ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
-
         # SUCCESS: Complete the progress bar with offset 0 (fill the last bit after the step is complete)
         # Display the current job status via progress bar, offset is -1 because you need to wait for each step to complete
         no_of_steps_completed_in_log=`grep -o 'Step:' $runsas_logs_root_directory/$runsas_job_log | wc -l`
