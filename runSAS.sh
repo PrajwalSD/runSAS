@@ -6,7 +6,7 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.5                                                                                                  #
+#     Version: 60.6                                                                                                  #
 #                                                                                                                    #
 #        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.5
+	RUNSAS_CURRENT_VERSION=60.6
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -2021,8 +2021,11 @@ function print2debug(){
     debug_postfix="$3"
     debug_file="${4:-$RUNSAS_DEBUG_FILE}"
 
+    # Timestamp
+    debug_curr_timestamp=$(date -u)
+
     # Print to the file
-    printf "\n$debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
+    printf "\n[${debug_curr_timestamp}: $debug_prefix${debug_var}=${!debug_var}$debug_postfix" >> $debug_file
 }
 #------
 # Name: add_more_info_to_log_in_batch_mode()
@@ -3784,7 +3787,7 @@ function generate_a_new_batchid(){
         batchid_gen_message="Batch ID: $global_batchid"
     else
         batchid_gen_message="Batch ID: $global_batchid (resuming an old batch)"
-        print2debug $global_batchid "\n\n------>>>>>>>>>>> Resuming an old batch failed/stalled batch, batchid: [" "] <<<<<<<<<<<------"
+        print2debug $global_batchid "\n\n------>>>>>>>>>>> Resuming an old failed/stalled batch, batchid: [" "] <<<<<<<<<<<------"
     fi
 
     # Show the current batch id
@@ -3795,8 +3798,9 @@ function generate_a_new_batchid(){
 
     # Terminate if the batch id is missing!
     if [[ "$global_batchid" == "" || $global_batchid -lt 0 ]]; then
-        printf "${red}*** ERROR: Critical error as batchid was not generated (global_batchid=$global_batchid) ***${white}\n"
-        clear_session_and_exit "The batch has failed (batchid null value error)"
+        printf "${red}*** ERROR: runSAS could not generate a new batchid for this run due to internal error ***${white}\n"
+        print2debug $global_batchid "\n\nERROR: NULL value error as runSAS could not generate a new batchid for this run [" "] prev_global_batchid=[${prev_global_batchid}]|bid_new_batchid=[$bid_new_batchid]"
+        clear_session_and_exit "Internal error with batchid generation" "ERROR: runSAS could not generate a new batchid for this run due to an internal error"
     fi
 }
 #------
@@ -5298,7 +5302,7 @@ function runSAS(){
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -gt -1 ]]; then
         if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
             # Update the flags, update the batch state and re-inject the state
-            print2debug runsas_jobid "\nResetting flags in --resume mode for " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|global_batchid=$global_batchid]"
+            print2debug runsas_jobid "\nResetting flags in --resume mode for a failed job - " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|global_batchid=$global_batchid]"
             update_batch_state runsas_job_pid 0 $runsas_jobid $global_batchid
             update_batch_state runsas_jobrc $RC_JOB_PENDING $runsas_jobid $global_batchid
             inject_batch_state $global_batchid $runsas_jobid
@@ -5502,46 +5506,48 @@ function runSAS(){
 
     # Job launch function (standard template for all calls), each PID is monitored by runSAS
     function trigger_the_job_now(){
-        if [[ $runsas_jobrc -eq $RC_JOB_PENDING ]]; then
-            # Get the count of running jobs
-            get_running_jobs_count $flow_file_name
-            print2debug running_jobs_current_count "There are [" "] jobs running currently with sjs_concurrent_job_count_limit=$sjs_concurrent_job_count_limit"
+        if [[ $runsas_jobrc -eq $RC_JOB_PENDING ]]; then 
+            if [[ $runsas_job_pid -eq 0 ]]; then # This attempts to avoid re-triggering the job with same jobid (i.e., no pid assigned for the jobid)
+                # Get the count of running jobs
+                get_running_jobs_count $flow_file_name
+                print2debug running_jobs_current_count "There are [" "] jobs running currently with sjs_concurrent_job_count_limit=$sjs_concurrent_job_count_limit"
 
-            # Check if the job slots are full!
-            if [[ $running_jobs_current_count -lt $sjs_concurrent_job_count_limit ]]; then
-                nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
-                                                                            -batch \
-                                                                            -noterminal \
-                                                                            -logparm "rollover=session" \
-                                                                            -sysin $runsas_deployed_jobs_root_directory/$runsas_job.sas > $RUNSAS_SAS_SH_TRACE_FILE 2>&1 &
-                
-                # Get the PID details
-                if [[ -z "$runsas_job_pid" ]] || [[ "$runsas_job_pid" == "" ]] || [[ $runsas_job_pid -eq 0 ]]; then
-                    assign_and_preserve runsas_job_pid $!
+                # Check if the job slots are full!
+                if [[ $running_jobs_current_count -lt $sjs_concurrent_job_count_limit ]]; then
+                    nice -n 20 $runsas_batch_server_root_directory/$runsas_sh   -log $runsas_logs_root_directory/${runsas_job}_#Y.#m.#d_#H.#M.#s.log \
+                                                                                -batch \
+                                                                                -noterminal \
+                                                                                -logparm "rollover=session" \
+                                                                                -sysin $runsas_deployed_jobs_root_directory/$runsas_job.sas > $RUNSAS_SAS_SH_TRACE_FILE 2>&1 &
+                    
+                    # Get the PID details
+                    if [[ -z "$runsas_job_pid" ]] || [[ "$runsas_job_pid" == "" ]] || [[ $runsas_job_pid -eq 0 ]]; then
+                        assign_and_preserve runsas_job_pid $!
+                    fi
+                    
+                    # Set the triggered return code
+                    assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
+
+                    # Save the timestamps
+                    assign_and_preserve start_datetime_of_job_timestamp "`date '+%d-%m-%Y-%H:%M:%S'`" "STRING"
+                    assign_and_preserve start_datetime_of_job "`date +%s`" "STRING"
+                    start_datetime_of_job_timestamp_for_updsas="`date '+%d%b%Y:%H:%M:%S'`"
+
+                    # Add an entry to the SAS batch status dataset
+                    update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Triggered||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Triggered||.||.||$start_datetime_of_job_timestamp_for_updsas||.||PID:$runsas_job_pid RC:$runsas_jobrc"
+
+                    # Print to debug file
+                    print2debug runsas_job "--->>> Triggered runsas_jobid=$runsas_jobid [" "] job SUCCESSFULLY at $start_datetime_of_job_timestamp [runsas_job_pid=${runsas_job_pid}|runsas_jobrc=${runsas_jobrc}|runsas_job_status_color=${runsas_job_status_color}] <<<---"  
+                else
+                    no_slots_available_flag="Y"
+                    print2debug sjs_concurrent_job_count_limit "(Skipping the trigger as the slots are full!) "  
+                    print2debug running_jobs_current_count
                 fi
-                
-                # Set the triggered return code
-                assign_and_preserve runsas_jobrc $RC_JOB_TRIGGERED
-
-                # Save the timestamps
-                assign_and_preserve start_datetime_of_job_timestamp "`date '+%d-%m-%Y-%H:%M:%S'`" "STRING"
-                assign_and_preserve start_datetime_of_job "`date +%s`" "STRING"
-                start_datetime_of_job_timestamp_for_updsas="`date '+%d%b%Y:%H:%M:%S'`"
-
-                # Add an entry to the SAS batch status dataset
-                update_batch_status_to_sas_dataset "$global_batchid||$runsas_flowid||$runsas_flow||Triggered||$start_datetime_of_flow_timestamp_for_updsas||.||$runsas_jobid||$runsas_job||Triggered||.||.||$start_datetime_of_job_timestamp_for_updsas||.||PID:$runsas_job_pid RC:$runsas_jobrc"
-
-                # Print to debug file
-                print2debug runsas_job "Job launched (SUCCESS) >>> "  
-                print2debug runsas_job_pid
-                print2debug runsas_jobrc
-                print2debug runsas_job_status_color
             else
-                no_slots_available_flag="Y"
-                print2debug sjs_concurrent_job_count_limit "(Skipping the trigger as the slots are full!) "  
-                print2debug running_jobs_current_count
+                print2debug runsas_job "*** WARNING: Detected re-triggering event for [" "] job at $start_datetime_of_job_timestamp [runsas_jobid=${runsas_jobid}|runsas_job_pid=${runsas_job_pid}|runsas_jobrc=${runsas_jobrc}] (skipped re-triggering)***"  
             fi
         fi
+
     }
 
     # Reset the dependent job run counter
