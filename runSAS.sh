@@ -6,9 +6,9 @@
 #                                                                                                                    #
 #        Desc: A simple SAS Data Integration Studio job flow execution script                                        #
 #                                                                                                                    #
-#     Version: 60.4                                                                                                  #
+#     Version: 60.5                                                                                                  #
 #                                                                                                                    #
-#        Date: 15/09/2021                                                                                            #
+#        Date: 04/01/2022                                                                                            #
 #                                                                                                                    #
 #      Author: Prajwal Shetty D                                                                                      #
 #                                                                                                                    #
@@ -112,7 +112,7 @@ printf "\n${white}"
 #------
 function show_the_script_version_number(){
 	# Current version & compatible version for update
-	RUNSAS_CURRENT_VERSION=60.4
+	RUNSAS_CURRENT_VERSION=60.5
 	RUNSAS_IN_PLACE_UPDATE_COMPATIBLE_VERSION=40.0
 
     # Show version numbers
@@ -5296,12 +5296,21 @@ function runSAS(){
         # Set the vars
         resumed_batchid=${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]}
 
+        # If the batchid is not provided as part of "--resume" option, use the $global_batchid (as it is set to the last known batchid already)
+        if [[ "$resumed_batchid" = "" ]]; then 
+			resumed_batchid=$global_batchid
+		fi
+
         # Inject previous batch state
         inject_batch_state $resumed_batchid $runsas_jobid
+
+        # Print the batch state injection message for debugging
+        print2debug runsas_jobid "\n--->Injecting batch state for " " and resumed_batchid=${resumed_batchid} "
 
         # Resume failed jobs
         if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
             # Update state and inject it back!
+            print2debug runsas_jobid "\nResetting flags in --resume mode for " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|resumed_batchid=$resumed_batchid]"
             update_batch_state runsas_job_pid 0 $runsas_jobid $resumed_batchid
             update_batch_state runsas_jobrc $RC_JOB_PENDING $runsas_jobid $resumed_batchid
             inject_batch_state $resumed_batchid $runsas_jobid
