@@ -5292,32 +5292,17 @@ function runSAS(){
     print2debug runsas_job "\n=======[ Looping " " with runsas_flowid=$runsas_flowid and runsas_jobid=$runsas_jobid ]===== "
 
     # Inject job state for a batch (all job specific variables for a batch is restored here to support parallel processing of jobs)
+    inject_batch_state $global_batchid $runsas_jobid # The batch id requested as part of "--resume" option is handled by the generate_a_new_batchid() function 
+
+    # Reset the flags for the failed job (for --resume mode only)
     if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -gt -1 ]]; then
-        # Set the vars
-        resumed_batchid=${RUNSAS_PARAMETERS_ARRAY[$RUNSAS_INVOKED_IN_RESUME_MODE+1]}
-
-        # If the batchid is not provided as part of "--resume" option, use the $global_batchid (as it is set to the last known batchid already)
-        if [[ "$resumed_batchid" = "" ]]; then 
-			resumed_batchid=$global_batchid
-		fi
-
-        # Inject previous batch state
-        inject_batch_state $resumed_batchid $runsas_jobid
-
-        # Print the batch state injection message for debugging
-        print2debug runsas_jobid "\n--->Injecting batch state for " " and resumed_batchid=${resumed_batchid} "
-
-        # Resume failed jobs
         if [[ $runsas_jobrc -gt $runsas_max_jobrc ]]; then
-            # Update state and inject it back!
-            print2debug runsas_jobid "\nResetting flags in --resume mode for " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|resumed_batchid=$resumed_batchid]"
-            update_batch_state runsas_job_pid 0 $runsas_jobid $resumed_batchid
-            update_batch_state runsas_jobrc $RC_JOB_PENDING $runsas_jobid $resumed_batchid
-            inject_batch_state $resumed_batchid $runsas_jobid
-        fi
-    else
-        # Inject current batch state
-        inject_batch_state $global_batchid $runsas_jobid 
+            # Update the flags, update the batch state and re-inject the state
+            print2debug runsas_jobid "\nResetting flags in --resume mode for " " --> [runsas_jobrc=$runsas_jobrc|runsas_job_pid=$runsas_job_pid|global_batchid=$global_batchid]"
+            update_batch_state runsas_job_pid 0 $runsas_jobid $global_batchid
+            update_batch_state runsas_jobrc $RC_JOB_PENDING $runsas_jobid $global_batchid
+            inject_batch_state $global_batchid $runsas_jobid
+        fi       
     fi
 
     # Store the jobrc (max)
