@@ -5890,6 +5890,9 @@ function runSAS(){
 
         # Print to debug file
         print2debug runsas_job_pid ">>> Inside ERROR/FAIL " " >>> runsas_jobrc=${runsas_jobrc} <---" 
+        print2debug runsas_jobid "*** ERROR: Job $runsas_job [" "] has errored/failed with runsas_jobrc=[$runsas_jobrc]***"
+        print2debug runsas_jobid "*** ERROR: Error message for the job [" "]: $job_err_message "
+        print2debug runsas_jobid "*** ERROR: Log for job [" "] $runsas_logs_root_directory/$runsas_job_log"
 
     elif [[ $runsas_jobrc -ge 0 ]] && [[ $runsas_jobrc -le $runsas_max_jobrc ]]; then
 
