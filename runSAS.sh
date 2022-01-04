@@ -6203,7 +6203,7 @@ if [[ $RUNSAS_INVOKED_IN_RESUME_MODE -le -1 ]] && \
    [[ $RUNSAS_INVOKED_IN_UPDATE_COMPATIBILITY_CHECK_MODE -le -1 ]] && \
    [[ $RUNSAS_INVOKED_IN_LIST_MODE -le -1 ]] && \
    [[ $RUNSAS_INVOKED_IN_JOBLIST_MODE -le -1 ]] && \
-   [[ $RUNSAS_INVOKED_IN_REDEPLOY_MODE -le -1 ]] && \
+   [[ $RUNSAS_INVOKED_IN_REDEPLOY_MODE -le -1 ]] && \ 
    [[ $RUNSAS_INVOKED_IN_LOG_MODE -le -1 ]]; then
     delete_a_file $RUNSAS_SESSION_LOG_FILE silent
 fi
